@@ -13,7 +13,6 @@ const SunnyWearTecidos = () => {
   const [movimentacoes, setMovimentacoes] = useState([]);
   const [carregando, setCarregando] = useState(false);
 
-  // Estados para controlar a foto ampliada (Zoom Modal) e edição
   const [fotoSelecionada, setFotoSelecionada] = useState(null);
   const [idEditando, setIdEditando] = useState(null);
 
@@ -23,13 +22,19 @@ const SunnyWearTecidos = () => {
     nome: '',
     cor: '',
     localizacao: '',
+    quantidade: '',
     metros: '',
+    unidadeMedida: 'm',
+    preco: '',
+    notaFiscal: '',
+    fornecedor: '',
     foto: ''
   });
 
   const [busca, setBusca] = useState('');
 
-  const API_URL = 'http://137.24.6.48:3001/api/movimentacoes';
+  // URL corrigida para localhost na porta 3001
+  const API_URL = 'http://localhost:3001/api/movimentacoes';
 
   const carregarDadosDoServidor = async () => {
     try {
@@ -76,37 +81,72 @@ const SunnyWearTecidos = () => {
     }
   };
 
+  const handleBuscaSaidaChange = (valorDigitado) => {
+    const termo = valorDigitado.toLowerCase();
+    const tecidoEncontrado = movimentacoes.find(
+      m => (m.codigo && m.codigo.toLowerCase().includes(termo)) || 
+           (m.nome && m.nome.toLowerCase().includes(termo))
+    );
+
+    if (tecidoEncontrado && termo.trim() !== '') {
+      setForm(prev => ({
+        ...prev,
+        codigo: tecidoEncontrado.codigo || valorDigitado,
+        nome: tecidoEncontrado.nome || '',
+        cor: tecidoEncontrado.cor || '',
+        localizacao: tecidoEncontrado.localizacao || '',
+        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm',
+        preco: tecidoEncontrado.preco || '',
+        notaFiscal: tecidoEncontrado.notafiscal || tecidoEncontrado.notaFiscal || '',
+        fornecedor: tecidoEncontrado.fornecedor || '',
+        foto: tecidoEncontrado.foto || ''
+      }));
+    } else {
+      setForm(prev => ({
+        ...prev,
+        codigo: valorDigitado,
+        nome: valorDigitado
+      }));
+    }
+  };
+
   const registrarOuAtualizarMovimento = async (e) => {
     e.preventDefault();
-    if (!form.codigo || !form.nome || !form.cor || !form.localizacao || !form.metros) return;
+    const qtdValida = form.quantidade || form.metros;
+    if (!form.codigo || !form.nome || !form.cor || !form.localizacao || !qtdValida) return;
+
+    const dadosParaEnviar = {
+      ...form,
+      quantidade: qtdValida,
+      metros: qtdValida
+    };
 
     setCarregando(true);
     try {
       let resposta;
       if (idEditando) {
-        // Atualizar registro existente (PUT)
-        resposta = await fetch(`${API_URL}/${idEditando}`, {
+        resposta = await fetch(`${API_URL}/${encodeURIComponent(idEditando)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form)
+          body: JSON.stringify(dadosParaEnviar)
         });
       } else {
-        // Criar novo registro (POST)
         resposta = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(form)
+          body: JSON.stringify(dadosParaEnviar)
         });
       }
 
       if (resposta.ok) {
-        alert(idEditando ? 'Registro atualizado com sucesso!' : (form.tipoMovimento === 'entrada' ? 'Entrada registrada com sucesso!' : 'Saída registrada com sucesso!'));
-        setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', metros: '', foto: '' });
+        alert(idEditando ? 'Registro atualizado com sucesso!' : 'Cadastrado com sucesso!');
+        setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', notaFiscal: '', fornecedor: '', foto: '' });
         setIdEditando(null);
         carregarDadosDoServidor();
         setAbaAtiva('historico');
       } else {
-        alert('Erro ao salvar no servidor.');
+        const erroServidor = await resposta.json().catch(() => ({}));
+        alert('Erro ao salvar no servidor: ' + (erroServidor.erro || resposta.statusText));
       }
     } catch (erro) {
       console.error('Erro ao salvar no servidor:', erro);
@@ -117,14 +157,24 @@ const SunnyWearTecidos = () => {
   };
 
   const iniciarEdicao = (item) => {
+    if (!item || item.id === undefined || item.id === null) {
+      alert('Erro: ID do registro inválido.');
+      return;
+    }
     setIdEditando(item.id);
+    const qtdItem = item.quantidade || item.metros || '';
     setForm({
       tipoMovimento: item.tipoMovimento || 'entrada',
       codigo: item.codigo || '',
       nome: item.nome || '',
       cor: item.cor || '',
       localizacao: item.localizacao || '',
-      metros: item.metros || '',
+      quantidade: qtdItem,
+      metros: qtdItem,
+      unidadeMedida: item.unidademedida || item.unidadeMedida || 'm',
+      preco: item.preco || '',
+      notaFiscal: item.notafiscal || item.notaFiscal || '',
+      fornecedor: item.fornecedor || '',
       foto: item.foto || ''
     });
     setAbaAtiva(item.tipoMovimento === 'saida' ? 'saida' : 'entrada');
@@ -134,7 +184,7 @@ const SunnyWearTecidos = () => {
     if (!window.confirm('Tem certeza que deseja apagar este tecido/registro?')) return;
 
     try {
-      const resposta = await fetch(`${API_URL}/${id}`, {
+      const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, {
         method: 'DELETE'
       });
 
@@ -150,30 +200,48 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  const totalEntradas = movimentacoes
-    .filter(m => m.tipoMovimento === 'entrada')
-    .reduce((acc, m) => acc + Number(m.metros), 0);
+  const entradasMetros = movimentacoes
+    .filter(m => m.tipoMovimento === 'entrada' && (m.unidademedida === 'm' || m.unidadeMedida === 'm' || !m.unidademedida))
+    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const totalSaidas = movimentacoes
-    .filter(m => m.tipoMovimento === 'saida')
-    .reduce((acc, m) => acc + Number(m.metros), 0);
+  const entradasKg = movimentacoes
+    .filter(m => m.tipoMovimento === 'entrada' && (m.unidademedida === 'kg' || m.unidadeMedida === 'kg'))
+    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const estoqueAtual = totalEntradas - totalSaidas;
+  const saidasMetros = movimentacoes
+    .filter(m => m.tipoMovimento === 'saida' && (m.unidademedida === 'm' || m.unidadeMedida === 'm' || !m.unidademedida))
+    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
+
+  const saidasKg = movimentacoes
+    .filter(m => m.tipoMovimento === 'saida' && (m.unidademedida === 'kg' || m.unidadeMedida === 'kg'))
+    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
+
+  const estoqueMetros = entradasMetros - saidasMetros;
+  const estoqueKg = entradasKg - saidasKg;
 
   const porLocalizacao = movimentacoes.reduce((acc, m) => {
     const loc = m.localizacao || 'Não definido';
-    if (!acc[loc]) acc[loc] = 0;
-    if (m.tipoMovimento === 'entrada') acc[loc] += Number(m.metros);
-    else acc[loc] -= Number(m.metros);
+    if (!acc[loc]) acc[loc] = { m: 0, kg: 0 };
+    const qtd = Number(m.metros || m.quantidade || 0);
+    const unidade = m.unidademedida || m.unidadeMedida || 'm';
+    if (m.tipoMovimento === 'entrada') {
+      acc[loc][unidade] += qtd;
+    } else {
+      acc[loc][unidade] -= qtd;
+    }
     return acc;
   }, {});
 
-  const movFiltradas = movimentacoes.filter(m => 
-    m.codigo.toLowerCase().includes(busca.toLowerCase()) ||
-    m.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    m.cor.toLowerCase().includes(busca.toLowerCase()) ||
-    m.localizacao.toLowerCase().includes(busca.toLowerCase())
-  );
+  const movFiltradas = movimentacoes.filter(m => {
+    const termo = busca.toLowerCase();
+    const codigo = (m.codigo || '').toLowerCase();
+    const nome = (m.nome || '').toLowerCase();
+    const cor = (m.cor || '').toLowerCase();
+    const localizacao = (m.localizacao || '').toLowerCase();
+    const fornecedor = (m.fornecedor || '').toLowerCase();
+    const notaFiscal = (m.notafiscal || m.notaFiscal || '').toLowerCase();
+    return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || fornecedor.includes(termo) || notaFiscal.includes(termo);
+  });
 
   if (!autenticado) {
     return (
@@ -218,7 +286,7 @@ const SunnyWearTecidos = () => {
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Sunny Wear</h1>
-          <p style={styles.subtitle}>Conectado ao Servidor Back-end da Rede (137.24.6.48)</p>
+          <p style={styles.subtitle}>Conectado ao Servidor Back-end (localhost:3001)</p>
         </div>
         <button onClick={handleLogout} style={styles.logoutBtn}>Sair (Logout)</button>
       </div>
@@ -231,13 +299,13 @@ const SunnyWearTecidos = () => {
           📊 Dashboard & Gráficos
         </button>
         <button 
-          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', metros: '', foto: '' }); setAbaAtiva('entrada'); }} 
+          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', notaFiscal: '', fornecedor: '', foto: '' }); setAbaAtiva('entrada'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'entrada' ? styles.tabActive : {}) }}
         >
           📥 Registrar Entrada (Compra)
         </button>
         <button 
-          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', metros: '', foto: '' }); setAbaAtiva('saida'); }} 
+          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', notaFiscal: '', fornecedor: '', foto: '' }); setAbaAtiva('saida'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'saida' ? styles.tabActive : {}) }}
         >
           📤 Registrar Saída (Uso)
@@ -252,44 +320,44 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'dashboard' && (
         <div>
-          <div style={styles.cardsContainer}>
-            <div style={{...styles.card, borderLeft: '4px solid #137333'}}>
-              <span style={styles.cardLabel}>Total Entradas</span>
-              <strong style={{...styles.cardValue, color: '#137333'}}>{totalEntradas.toLocaleString()} m</strong>
-            </div>
-            <div style={{...styles.card, borderLeft: '4px solid #c5221f'}}>
-              <span style={styles.cardLabel}>Total Saídas</span>
-              <strong style={{...styles.cardValue, color: '#c5221f'}}>{totalSaidas.toLocaleString()} m</strong>
-            </div>
-            <div style={{...styles.card, borderLeft: '4px solid #1a73e8'}}>
-              <span style={styles.cardLabel}>Saldo em Estoque</span>
-              <strong style={{...styles.cardValue, color: '#1a73e8'}}>{estoqueAtual.toLocaleString()} m</strong>
+          <div style={styles.cardSection}>
+            <h3 style={styles.sectionTitle}>📥 Total de Entradas (Compras)</h3>
+            <div style={styles.cardsContainer}>
+              <div style={{...styles.card, borderLeft: '4px solid #137333'}}>
+                <span style={styles.cardLabel}>Entradas em Metros</span>
+                <strong style={{...styles.cardValue, color: '#137333'}}>{entradasMetros.toLocaleString()} m</strong>
+              </div>
+              <div style={{...styles.card, borderLeft: '4px solid #137333'}}>
+                <span style={styles.cardLabel}>Entradas em Quilos</span>
+                <strong style={{...styles.cardValue, color: '#137333'}}>{entradasKg.toLocaleString()} kg</strong>
+              </div>
             </div>
           </div>
 
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📈 Fluxo Geral: Entradas vs Saídas</h3>
-            <div style={styles.chartContainer}>
-              <div style={styles.chartBarWrapper}>
-                <span style={styles.chartLabelText}>Entradas ({totalEntradas}m)</span>
-                <div style={styles.chartTrack}>
-                  <div style={{
-                    ...styles.chartFill, 
-                    backgroundColor: '#137333', 
-                    width: `${Math.min(100, (totalEntradas / (totalEntradas + totalSaidas || 1)) * 100)}%`
-                  }}></div>
-                </div>
+            <h3 style={styles.sectionTitle}>📤 Total de Saídas (Uso na Produção)</h3>
+            <div style={styles.cardsContainer}>
+              <div style={{...styles.card, borderLeft: '4px solid #c5221f'}}>
+                <span style={styles.cardLabel}>Saídas em Metros</span>
+                <strong style={{...styles.cardValue, color: '#c5221f'}}>{saidasMetros.toLocaleString()} m</strong>
               </div>
+              <div style={{...styles.card, borderLeft: '4px solid #c5221f'}}>
+                <span style={styles.cardLabel}>Saídas em Quilos</span>
+                <strong style={{...styles.cardValue, color: '#c5221f'}}>{saidasKg.toLocaleString()} kg</strong>
+              </div>
+            </div>
+          </div>
 
-              <div style={styles.chartBarWrapper}>
-                <span style={styles.chartLabelText}>Saídas ({totalSaidas}m)</span>
-                <div style={styles.chartTrack}>
-                  <div style={{
-                    ...styles.chartFill, 
-                    backgroundColor: '#c5221f', 
-                    width: `${Math.min(100, (totalSaidas / (totalEntradas + totalSaidas || 1)) * 100)}%`
-                  }}></div>
-                </div>
+          <div style={styles.cardSection}>
+            <h3 style={styles.sectionTitle}>📦 Estoque Geral Atual</h3>
+            <div style={styles.cardsContainer}>
+              <div style={{...styles.card, borderLeft: '4px solid #1a73e8'}}>
+                <span style={styles.cardLabel}>Saldo Líquido em Metros</span>
+                <strong style={{...styles.cardValue, color: '#1a73e8'}}>{estoqueMetros.toLocaleString()} m</strong>
+              </div>
+              <div style={{...styles.card, borderLeft: '4px solid #f9ab00'}}>
+                <span style={styles.cardLabel}>Saldo Líquido em Quilos</span>
+                <strong style={{...styles.cardValue, color: '#e37400'}}>{estoqueKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
@@ -300,18 +368,14 @@ const SunnyWearTecidos = () => {
               {Object.keys(porLocalizacao).length === 0 ? (
                 <p style={styles.empty}>Nenhum dado de localização cadastrado.</p>
               ) : (
-                Object.entries(porLocalizacao).map(([local, metros]) => (
-                  <div key={local} style={styles.chartBarWrapper}>
-                    <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                      <span style={styles.chartLabelText}>📍 {local}</span>
-                      <span style={{fontSize: '12px', fontWeight: 'bold', color: '#1a73e8'}}>{metros} m</span>
+                Object.entries(porLocalizacao).map(([local, vals]) => (
+                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '12px', background: '#f8f9fa', padding: '10px', borderRadius: '6px'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
+                      <span style={{...styles.chartLabelText, fontWeight: 'bold'}}>📍 {local}</span>
                     </div>
-                    <div style={styles.chartTrack}>
-                      <div style={{
-                        ...styles.chartFill, 
-                        backgroundColor: '#1a73e8', 
-                        width: `${Math.min(100, Math.max(0, (metros / (totalEntradas || 1)) * 100))}%`
-                      }}></div>
+                    <div style={{display: 'flex', gap: '16px', fontSize: '14px'}}>
+                      <span style={{color: '#1a73e8'}}>Metros: <strong>{vals.m} m</strong></span>
+                      <span style={{color: '#e37400'}}>Quilos: <strong>{vals.kg} kg</strong></span>
                     </div>
                   </div>
                 ))
@@ -357,13 +421,46 @@ const SunnyWearTecidos = () => {
               style={styles.input}
               required
             />
+            <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px'}}>
+              <input 
+                type="number" 
+                step="0.01"
+                placeholder="Quantidade (Metros ou Kg)" 
+                value={form.quantidade} 
+                onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} 
+                style={styles.input}
+                required
+              />
+              <select 
+                value={form.unidadeMedida} 
+                onChange={(e) => setForm({...form, unidadeMedida: e.target.value})}
+                style={styles.input}
+              >
+                <option value="m">Metros (m)</option>
+                <option value="kg">Quilos (kg)</option>
+              </select>
+            </div>
             <input 
               type="number" 
-              placeholder="Quantidade Comprada (Metros)" 
-              value={form.metros} 
-              onChange={(e) => setForm({...form, metros: e.target.value})} 
+              step="0.01"
+              placeholder="Valor Unitário (R$ Ex: 15.90 por m ou kg)" 
+              value={form.preco} 
+              onChange={(e) => setForm({...form, preco: e.target.value})} 
               style={styles.input}
-              required
+            />
+            <input 
+              type="text" 
+              placeholder="Número da Nota Fiscal" 
+              value={form.notaFiscal} 
+              onChange={(e) => setForm({...form, notaFiscal: e.target.value})} 
+              style={styles.input}
+            />
+            <input 
+              type="text" 
+              placeholder="Nome do Fornecedor" 
+              value={form.fornecedor} 
+              onChange={(e) => setForm({...form, fornecedor: e.target.value})} 
+              style={styles.input}
             />
             
             <div style={styles.fileContainer}>
@@ -391,56 +488,38 @@ const SunnyWearTecidos = () => {
           <form onSubmit={(e) => { form.tipoMovimento = 'saida'; registrarOuAtualizarMovimento(e); }} style={styles.formGrid}>
             <input 
               type="text" 
-              placeholder="Código do Tecido (Ex: TEC-001)" 
+              placeholder="Digite o Código ou Nome do Tecido para puxar automaticamente" 
               value={form.codigo} 
-              onChange={(e) => setForm({...form, codigo: e.target.value, tipoMovimento: 'saida'})} 
+              onChange={(e) => handleBuscaSaidaChange(e.target.value)} 
               style={styles.input}
               required
             />
-            <input 
-              type="text" 
-              placeholder="Nome do Tecido" 
-              value={form.nome} 
-              onChange={(e) => setForm({...form, nome: e.target.value})} 
-              style={styles.input}
-              required
-            />
-            <input 
-              type="text" 
-              placeholder="Cor do Tecido" 
-              value={form.cor} 
-              onChange={(e) => setForm({...form, cor: e.target.value})} 
-              style={styles.input}
-              required
-            />
-            <input 
-              type="text" 
-              placeholder="Localização (Ex: Sunny Galpão 1)" 
-              value={form.localizacao} 
-              onChange={(e) => setForm({...form, localizacao: e.target.value})} 
-              style={styles.input}
-              required
-            />
-            <input 
-              type="number" 
-              placeholder="Quantidade Utilizada (Metros)" 
-              value={form.metros} 
-              onChange={(e) => setForm({...form, metros: e.target.value})} 
-              style={styles.input}
-              required
-            />
-
-            <div style={styles.fileContainer}>
-              <label style={styles.fileLabel}>Foto do Lote/Retalho (Opcional):</label>
-              <input type="file" accept="image/*" capture="environment" onChange={handleFotoChange} style={styles.inputFile} />
+            <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px'}}>
+              <input 
+                type="number" 
+                step="0.01"
+                placeholder="Quantidade Utilizada" 
+                value={form.quantidade} 
+                onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} 
+                style={styles.input}
+                required
+              />
+              <select 
+                value={form.unidadeMedida} 
+                onChange={(e) => setForm({...form, unidadeMedida: e.target.value})}
+                style={styles.input}
+              >
+                <option value="m">Metros (m)</option>
+                <option value="kg">Quilos (kg)</option>
+              </select>
             </div>
 
-            {form.foto && (
-              <div style={styles.previewContainer}>
-                <img src={form.foto} alt="Prévia" style={styles.previewImg} onClick={() => setFotoSelecionada(form.foto)} />
-                <span style={styles.previewText}>Foto anexada! (Clique para ampliar)</span>
-              </div>
-            )}
+            <div style={{background: '#f8f9fa', padding: '12px', borderRadius: '6px', border: '1px solid #dadce0', display: 'flex', flexDirection: 'column', gap: '8px'}}>
+              <span style={{fontSize: '12px', color: '#5f6368', fontWeight: 'bold'}}>📋 Informações puxadas do cadastro:</span>
+              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Código / Nome:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando...'} ({form.cor || '-'})</div>
+              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
+              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Fornecedor / NF:</strong> {form.fornecedor || '-'} / {form.notaFiscal || '-'}</div>
+            </div>
 
             <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#f9ab00' : '#c5221f'}}>
               {carregando ? 'Salvando...' : (idEditando ? 'Salvar Alterações' : 'Registrar Saída no Servidor')}
@@ -451,10 +530,10 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'historico' && (
         <div style={styles.cardSection}>
-          <h3 style={styles.sectionTitle}>🔍 Localizar Tecidos & Gerenciar Registros</h3>
+          <h3 style={styles.sectionTitle}>🔍 Localizar Tecidos, Notas Fiscais & Fornecedores</h3>
           <input 
             type="text" 
-            placeholder="Digite para pesquisar (ex: Preto, Galpão 1, TEC-001)..." 
+            placeholder="Digite para pesquisar (ex: Nome, Fornecedor, NF, Galpão, Código)..." 
             value={busca} 
             onChange={(e) => setBusca(e.target.value)} 
             style={styles.inputFull}
@@ -468,8 +547,9 @@ const SunnyWearTecidos = () => {
                   <th style={styles.th}>Tipo</th>
                   <th style={styles.th}>Código</th>
                   <th style={styles.th}>Tecido / Cor</th>
+                  <th style={styles.th}>Fornecedor & NF</th>
                   <th style={styles.th}>Localização</th>
-                  <th style={styles.th}>Metros</th>
+                  <th style={styles.th}>Quantidade & Custo</th>
                   <th style={styles.th}>Data</th>
                   <th style={styles.th}>Ações</th>
                 </tr>
@@ -477,56 +557,73 @@ const SunnyWearTecidos = () => {
               <tbody>
                 {movFiltradas.length === 0 ? (
                   <tr>
-                    <td colSpan="8" style={styles.empty}>Nenhum registro encontrado.</td>
+                    <td colSpan="9" style={styles.empty}>Nenhum registro encontrado.</td>
                   </tr>
                 ) : (
-                  movFiltradas.map((item) => (
-                    <tr key={item.id} style={styles.tr}>
-                      <td style={styles.td}>
-                        {item.foto ? (
-                          <img 
-                            src={item.foto} 
-                            alt="Tecido" 
-                            style={styles.tableImgClickable} 
-                            title="Clique para ampliar a foto"
-                            onClick={() => setFotoSelecionada(item.foto)} 
-                          />
-                        ) : (
-                          <span style={styles.noFoto}>Sem foto</span>
-                        )}
-                      </td>
-                      <td style={styles.td}>
-                        <span style={{
-                          ...styles.badge, 
-                          background: item.tipoMovimento === 'entrada' ? '#e6f4ea' : '#fce8e6',
-                          color: item.tipoMovimento === 'entrada' ? '#137333' : '#c5221f'
-                        }}>
-                          {item.tipoMovimento === 'entrada' ? '📥 Entrada' : '📤 Saída'}
-                        </span>
-                      </td>
-                      <td style={styles.td}><strong>{item.codigo}</strong></td>
-                      <td style={styles.td}>{item.nome} ({item.cor})</td>
-                      <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                      <td style={styles.td}><strong>{item.metros} m</strong></td>
-                      <td style={styles.td}>{item.data}</td>
-                      <td style={styles.td}>
-                        <button 
-                          onClick={() => iniciarEdicao(item)} 
-                          style={styles.btnEditar} 
-                          title="Editar este registro"
-                        >
-                          ✏️
-                        </button>
-                        <button 
-                          onClick={() => deletarItem(item.id)} 
-                          style={styles.btnDeletar} 
-                          title="Apagar este registro"
-                        >
-                          🗑️
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  movFiltradas.map((item) => {
+                    const precoUnit = Number(item.preco) || 0;
+                    const qtd = Number(item.metros || item.quantidade || 0);
+                    const unidade = item.unidademedida || item.unidadeMedida || 'm';
+                    const custoTotal = qtd * precoUnit;
+                    const nf = item.notafiscal || item.notaFiscal || '';
+                    const fornecedor = item.fornecedor || '';
+                    return (
+                      <tr key={item.id} style={styles.tr}>
+                        <td style={styles.td}>
+                          {item.foto ? (
+                            <img 
+                              src={item.foto} 
+                              alt="Tecido" 
+                              style={styles.tableImgClickable} 
+                              title="Clique para ampliar a foto"
+                              onClick={() => setFotoSelecionada(item.foto)} 
+                            />
+                          ) : (
+                            <span style={styles.noFoto}>Sem foto</span>
+                          )}
+                        </td>
+                        <td style={styles.td}>
+                          <span style={{
+                            ...styles.badge, 
+                            background: item.tipoMovimento === 'entrada' ? '#e6f4ea' : '#fce8e6',
+                            color: item.tipoMovimento === 'entrada' ? '#137333' : '#c5221f'
+                          }}>
+                            {item.tipoMovimento === 'entrada' ? '📥 Entrada' : '📤 Saída'}
+                          </span>
+                        </td>
+                        <td style={styles.td}><strong>{item.codigo}</strong></td>
+                        <td style={styles.td}>{item.nome} ({item.cor})</td>
+                        <td style={styles.td}>
+                          <div style={{fontSize: '13px', fontWeight: '500', color: '#202124'}}>{fornecedor || 'Não informado'}</div>
+                          <div style={{fontSize: '11px', color: '#5f6368'}}>NF: {nf || 'N/D'}</div>
+                        </td>
+                        <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
+                        <td style={styles.td}>
+                          <strong>{qtd} {unidade}</strong>
+                          <div style={{fontSize: '12px', color: '#5f6368'}}>
+                            R$ {precoUnit.toFixed(2)}/{unidade} | <strong>Total: R$ {custoTotal.toFixed(2)}</strong>
+                          </div>
+                        </td>
+                        <td style={styles.td}>{item.data}</td>
+                        <td style={styles.td}>
+                          <button 
+                            onClick={() => iniciarEdicao(item)} 
+                            style={styles.btnEditar} 
+                            title="Editar este registro"
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            onClick={() => deletarItem(item.id)} 
+                            style={styles.btnDeletar} 
+                            title="Apagar este registro"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -573,7 +670,7 @@ const styles = {
     fontWeight: '500',
   },
   container: {
-    maxWidth: '1000px',
+    maxWidth: '1050px',
     margin: '0 auto',
     padding: '16px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
@@ -618,9 +715,8 @@ const styles = {
   },
   cardsContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: '12px',
-    marginBottom: '16px',
   },
   card: {
     backgroundColor: '#ffffff',
@@ -683,10 +779,8 @@ const styles = {
   chartContainer: { display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' },
   chartBarWrapper: { display: 'flex', flexDirection: 'column', gap: '4px' },
   chartLabelText: { fontSize: '13px', color: '#5f6368', fontWeight: '500' },
-  chartTrack: { width: '100%', height: '16px', backgroundColor: '#f1f3f4', borderRadius: '8px', overflow: 'hidden' },
-  chartFill: { height: '100%', transition: 'width 0.4s ease' },
   tableResponsive: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
-  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '750px' },
+  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' },
   thTr: { borderBottom: '2px solid #f1f3f4' },
   th: { padding: '10px 8px', fontSize: '12px', color: '#5f6368', textTransform: 'uppercase' },
   tr: { borderBottom: '1px solid #f1f3f4' },
