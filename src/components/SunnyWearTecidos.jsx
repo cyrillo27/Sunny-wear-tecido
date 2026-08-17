@@ -26,6 +26,7 @@ const SunnyWearTecidos = () => {
     metros: '',
     unidadeMedida: 'm',
     preco: '',
+    estoqueMinimo: '',
     notaFiscal: '',
     fornecedor: '',
     foto: ''
@@ -33,8 +34,13 @@ const SunnyWearTecidos = () => {
 
   const [busca, setBusca] = useState('');
 
-  // URL corrigida para localhost na porta 3001
   const API_URL = 'http://localhost:3001/api/movimentacoes';
+
+  // Função blindada para sempre resgatar o estoque mínimo, independente de letras maiúsculas/minúsculas do banco
+  const obterMinimo = (item) => Number(item.estoqueminimo || item.estoqueMinimo || item.estoque_minimo || 0);
+  
+  // Função blindada para o tipo de movimento
+  const obterTipo = (item) => item.tipomovimento || item.tipoMovimento || 'entrada';
 
   const carregarDadosDoServidor = async () => {
     try {
@@ -49,6 +55,8 @@ const SunnyWearTecidos = () => {
   useEffect(() => {
     if (autenticado) {
       carregarDadosDoServidor();
+      const intervalo = setInterval(carregarDadosDoServidor, 5000);
+      return () => clearInterval(intervalo);
     }
   }, [autenticado]);
 
@@ -89,14 +97,17 @@ const SunnyWearTecidos = () => {
     );
 
     if (tecidoEncontrado && termo.trim() !== '') {
+      const minEncontrado = obterMinimo(tecidoEncontrado) || '';
       setForm(prev => ({
         ...prev,
+        tipoMovimento: 'saida',
         codigo: tecidoEncontrado.codigo || valorDigitado,
         nome: tecidoEncontrado.nome || '',
         cor: tecidoEncontrado.cor || '',
         localizacao: tecidoEncontrado.localizacao || '',
         unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm',
         preco: tecidoEncontrado.preco || '',
+        estoqueMinimo: minEncontrado,
         notaFiscal: tecidoEncontrado.notafiscal || tecidoEncontrado.notaFiscal || '',
         fornecedor: tecidoEncontrado.fornecedor || '',
         foto: tecidoEncontrado.foto || ''
@@ -104,6 +115,7 @@ const SunnyWearTecidos = () => {
     } else {
       setForm(prev => ({
         ...prev,
+        tipoMovimento: 'saida',
         codigo: valorDigitado,
         nome: valorDigitado
       }));
@@ -115,10 +127,41 @@ const SunnyWearTecidos = () => {
     const qtdValida = form.quantidade || form.metros;
     if (!form.codigo || !form.nome || !form.cor || !form.localizacao || !qtdValida) return;
 
+    const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
+
+    let minFinal = Number(form.estoqueMinimo || 0);
+    // Tenta puxar o mínimo de outra entrada do mesmo código caso o usuário deixe zerado
+    if (minFinal === 0) {
+      const regEntrada = movimentacoes.find(m => m.codigo && m.codigo.toLowerCase() === form.codigo.toLowerCase() && obterMinimo(m) > 0);
+      if (regEntrada) {
+        minFinal = obterMinimo(regEntrada);
+      }
+    }
+
+    if (tipoFinal === 'saida') {
+      const entradasTotais = movimentacoes.filter(m => {
+        return m.codigo && m.codigo.toLowerCase() === form.codigo.toLowerCase() && obterTipo(m) === 'entrada';
+      }).reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
+      
+      const saidasTotais = movimentacoes.filter(m => {
+        return m.codigo && m.codigo.toLowerCase() === form.codigo.toLowerCase() && obterTipo(m) === 'saida';
+      }).reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
+      
+      const saldoAtual = entradasTotais - saidasTotais;
+      const qtdSaida = Number(qtdValida);
+
+      if (minFinal > 0 && (saldoAtual - qtdSaida) < minFinal) {
+        alert(`⚠️ ALERTA DE ESTOQUE MÍNIMO!\n\nAtenção: Esta saída deixará o tecido "${form.nome}" com saldo ${(saldoAtual - qtdSaida).toFixed(2)}, ficando abaixo do mínimo permitido (${minFinal}).`);
+      }
+    }
+
     const dadosParaEnviar = {
       ...form,
+      tipoMovimento: tipoFinal,
       quantidade: qtdValida,
-      metros: qtdValida
+      metros: qtdValida,
+      estoqueMinimo: minFinal,
+      estoqueminimo: minFinal
     };
 
     setCarregando(true);
@@ -140,7 +183,7 @@ const SunnyWearTecidos = () => {
 
       if (resposta.ok) {
         alert(idEditando ? 'Registro atualizado com sucesso!' : 'Cadastrado com sucesso!');
-        setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', notaFiscal: '', fornecedor: '', foto: '' });
+        setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '' });
         setIdEditando(null);
         carregarDadosDoServidor();
         setAbaAtiva('historico');
@@ -163,8 +206,11 @@ const SunnyWearTecidos = () => {
     }
     setIdEditando(item.id);
     const qtdItem = item.quantidade || item.metros || '';
+    const minItem = obterMinimo(item) || '';
+    const tipoItem = obterTipo(item);
+    
     setForm({
-      tipoMovimento: item.tipoMovimento || 'entrada',
+      tipoMovimento: tipoItem,
       codigo: item.codigo || '',
       nome: item.nome || '',
       cor: item.cor || '',
@@ -173,11 +219,12 @@ const SunnyWearTecidos = () => {
       metros: qtdItem,
       unidadeMedida: item.unidademedida || item.unidadeMedida || 'm',
       preco: item.preco || '',
+      estoqueMinimo: minItem,
       notaFiscal: item.notafiscal || item.notaFiscal || '',
       fornecedor: item.fornecedor || '',
       foto: item.foto || ''
     });
-    setAbaAtiva(item.tipoMovimento === 'saida' ? 'saida' : 'entrada');
+    setAbaAtiva(tipoItem === 'saida' ? 'saida' : 'entrada');
   };
 
   const deletarItem = async (id) => {
@@ -200,20 +247,64 @@ const SunnyWearTecidos = () => {
     }
   };
 
+  const tecidosConsolidados = {};
+  const usoTecidos = {};
+
+  movimentacoes.forEach(m => {
+    if (!m.codigo) return;
+    const cod = m.codigo.toLowerCase();
+    const qtd = Number(m.metros || m.quantidade || 0);
+    const minReg = obterMinimo(m);
+    const tipoM = obterTipo(m);
+
+    if (!tecidosConsolidados[cod]) {
+      tecidosConsolidados[cod] = {
+        codigo: m.codigo,
+        nome: m.nome,
+        minimo: minReg,
+        unidade: m.unidademedida || m.unidadeMedida || 'm',
+        total: 0
+      };
+    }
+
+    if (tipoM === 'entrada') {
+      tecidosConsolidados[cod].total += qtd;
+    } else {
+      tecidosConsolidados[cod].total -= qtd;
+    }
+
+    if (!usoTecidos[cod]) {
+      usoTecidos[cod] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
+    }
+    if (tipoM === 'saida') {
+      usoTecidos[cod].totalUso += qtd;
+    }
+
+    // Garante que se houver um mínimo configurado em algum registro desse tecido, ele salva
+    if (minReg > 0) tecidosConsolidados[cod].minimo = minReg;
+  });
+
+  const alertasEstoqueBaixo = Object.values(tecidosConsolidados).filter(t => t.minimo > 0 && t.total < t.minimo);
+
+  const topTecidosMaisUsados = Object.values(usoTecidos)
+    .filter(t => t.totalUso > 0)
+    .sort((a, b) => b.totalUso - a.totalUso)
+    .slice(0, 5);
+
   const entradasMetros = movimentacoes
-    .filter(m => m.tipoMovimento === 'entrada' && (m.unidademedida === 'm' || m.unidadeMedida === 'm' || !m.unidademedida))
+    .filter(m => obterTipo(m) === 'entrada' && (m.unidademedida === 'm' || m.unidadeMedida === 'm' || !m.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
   const entradasKg = movimentacoes
-    .filter(m => m.tipoMovimento === 'entrada' && (m.unidademedida === 'kg' || m.unidadeMedida === 'kg'))
+    .filter(m => obterTipo(m) === 'entrada' && (m.unidademedida === 'kg' || m.unidadeMedida === 'kg'))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
   const saidasMetros = movimentacoes
-    .filter(m => m.tipoMovimento === 'saida' && (m.unidademedida === 'm' || m.unidadeMedida === 'm' || !m.unidademedida))
+    .filter(m => obterTipo(m) === 'saida' && (m.unidademedida === 'm' || m.unidadeMedida === 'm' || !m.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
   const saidasKg = movimentacoes
-    .filter(m => m.tipoMovimento === 'saida' && (m.unidademedida === 'kg' || m.unidadeMedida === 'kg'))
+    .filter(m => obterTipo(m) === 'saida' && (m.unidademedida === 'kg' || m.unidadeMedida === 'kg'))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
   const estoqueMetros = entradasMetros - saidasMetros;
@@ -224,9 +315,11 @@ const SunnyWearTecidos = () => {
     if (!acc[loc]) acc[loc] = { m: 0, kg: 0 };
     const qtd = Number(m.metros || m.quantidade || 0);
     const unidade = m.unidademedida || m.unidadeMedida || 'm';
-    if (m.tipoMovimento === 'entrada') {
+    const tipoM = obterTipo(m);
+    
+    if (tipoM === 'entrada') {
       acc[loc][unidade] += qtd;
-    } else {
+    } else if (tipoM === 'saida') {
       acc[loc][unidade] -= qtd;
     }
     return acc;
@@ -286,26 +379,39 @@ const SunnyWearTecidos = () => {
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Sunny Wear</h1>
-          <p style={styles.subtitle}>Conectado ao Servidor Back-end (localhost:3001)</p>
+          <p style={styles.subtitle}>Dashboard em Tempo Real 🟢</p>
         </div>
         <button onClick={handleLogout} style={styles.logoutBtn}>Sair (Logout)</button>
       </div>
+
+      {alertasEstoqueBaixo.length > 0 && (
+        <div style={styles.alertaContainer}>
+          <strong style={{ color: '#c5221f' }}>🚨 ALERTA: Tecidos abaixo do estoque mínimo configurado:</strong>
+          <ul style={{ margin: '6px 0 0 16px', padding: 0, fontSize: '13px', color: '#c5221f' }}>
+            {alertasEstoqueBaixo.map((alt, idx) => (
+              <li key={idx}>
+                <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Atual: <strong>{alt.total} {alt.unidade}</strong> (Mínimo exigido: {alt.minimo} {alt.unidade})
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div style={styles.navTabs}>
         <button 
           onClick={() => setAbaAtiva('dashboard')} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'dashboard' ? styles.tabActive : {}) }}
         >
-          📊 Dashboard & Gráficos
+          📊 Dashboard em Tempo Real
         </button>
         <button 
-          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', notaFiscal: '', fornecedor: '', foto: '' }); setAbaAtiva('entrada'); }} 
+          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '' }); setAbaAtiva('entrada'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'entrada' ? styles.tabActive : {}) }}
         >
           📥 Registrar Entrada (Compra)
         </button>
         <button 
-          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', notaFiscal: '', fornecedor: '', foto: '' }); setAbaAtiva('saida'); }} 
+          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '' }); setAbaAtiva('saida'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'saida' ? styles.tabActive : {}) }}
         >
           📤 Registrar Saída (Uso)
@@ -321,7 +427,50 @@ const SunnyWearTecidos = () => {
       {abaAtiva === 'dashboard' && (
         <div>
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📥 Total de Entradas (Compras)</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔥 Top 5 Tecidos Mais Usados (Arraste para o lado ➔)</h3>
+              <span style={{ fontSize: '11px', color: '#1a73e8', backgroundColor: '#e8f0fe', padding: '3px 8px', borderRadius: '12px', fontWeight: '600' }}>● Ao vivo</span>
+            </div>
+            
+            {topTecidosMaisUsados.length === 0 ? (
+              <p style={styles.empty}>Nenhuma saída registrada ainda para calcular os mais usados.</p>
+            ) : (
+              <div style={styles.carrosselContainer}>
+                {topTecidosMaisUsados.map((tecido, index) => {
+                  const posicoesNomes = ['1º Primeiro', '2º Segundo', '3º Terceiro', '4º Quarto', '5º Quinto'];
+                  const coresBordas = ['#1a73e8', '#137333', '#f9ab00', '#c5221f', '#9334e6'];
+                  return (
+                    <div 
+                      key={index} 
+                      style={{ 
+                        ...styles.carrosselCard, 
+                        borderTop: `4px solid ${coresBordas[index] || '#1a73e8'}` 
+                      }}
+                    >
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#5f6368', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
+                        {posicoesNomes[index] || `${index + 1}º Lugar`}
+                      </span>
+                      <strong style={{ fontSize: '15px', color: '#202124', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {tecido.nome}
+                      </strong>
+                      <span style={{ fontSize: '12px', color: '#5f6368', display: 'block', marginBottom: '8px' }}>
+                        Cor: {tecido.cor || 'N/D'} | Cód: {tecido.codigo}
+                      </span>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: coresBordas[index] || '#1a73e8', marginTop: 'auto' }}>
+                        {tecido.totalUso.toLocaleString()} {tecido.unidade}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div style={styles.cardSection}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📥 Total de Entradas (Compras)</h3>
+              <span style={{ fontSize: '12px', color: '#137333', backgroundColor: '#e6f4ea', padding: '3px 8px', borderRadius: '12px', fontWeight: '600' }}>● Tempo real</span>
+            </div>
             <div style={styles.cardsContainer}>
               <div style={{...styles.card, borderLeft: '4px solid #137333'}}>
                 <span style={styles.cardLabel}>Entradas em Metros</span>
@@ -388,12 +537,12 @@ const SunnyWearTecidos = () => {
       {abaAtiva === 'entrada' && (
         <div style={styles.cardSection}>
           <h3 style={styles.sectionTitle}>{idEditando ? '✏️ Editar Entrada de Tecido' : '📥 Registrar Compra / Entrada de Tecido'}</h3>
-          <form onSubmit={(e) => { form.tipoMovimento = 'entrada'; registrarOuAtualizarMovimento(e); }} style={styles.formGrid}>
+          <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
             <input 
               type="text" 
               placeholder="Código do Tecido (Ex: TEC-001)" 
               value={form.codigo} 
-              onChange={(e) => setForm({...form, codigo: e.target.value, tipoMovimento: 'entrada'})} 
+              onChange={(e) => setForm({...form, codigo: e.target.value})} 
               style={styles.input}
               required
             />
@@ -443,6 +592,14 @@ const SunnyWearTecidos = () => {
             <input 
               type="number" 
               step="0.01"
+              placeholder="Estoque Mínimo (Alerta de Limite)" 
+              value={form.estoqueMinimo} 
+              onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} 
+              style={styles.input}
+            />
+            <input 
+              type="number" 
+              step="0.01"
               placeholder="Valor Unitário (R$ Ex: 15.90 por m ou kg)" 
               value={form.preco} 
               onChange={(e) => setForm({...form, preco: e.target.value})} 
@@ -485,7 +642,7 @@ const SunnyWearTecidos = () => {
       {abaAtiva === 'saida' && (
         <div style={styles.cardSection}>
           <h3 style={styles.sectionTitle}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Registrar Uso / Saída de Tecido'}</h3>
-          <form onSubmit={(e) => { form.tipoMovimento = 'saida'; registrarOuAtualizarMovimento(e); }} style={styles.formGrid}>
+          <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
             <input 
               type="text" 
               placeholder="Digite o Código ou Nome do Tecido para puxar automaticamente" 
@@ -518,7 +675,7 @@ const SunnyWearTecidos = () => {
               <span style={{fontSize: '12px', color: '#5f6368', fontWeight: 'bold'}}>📋 Informações puxadas do cadastro:</span>
               <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Código / Nome:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando...'} ({form.cor || '-'})</div>
               <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
-              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Fornecedor / NF:</strong> {form.fornecedor || '-'} / {form.notaFiscal || '-'}</div>
+              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Estoque Mínimo Configurado:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
             </div>
 
             <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#f9ab00' : '#c5221f'}}>
@@ -549,7 +706,7 @@ const SunnyWearTecidos = () => {
                   <th style={styles.th}>Tecido / Cor</th>
                   <th style={styles.th}>Fornecedor & NF</th>
                   <th style={styles.th}>Localização</th>
-                  <th style={styles.th}>Quantidade & Custo</th>
+                  <th style={styles.th}>Qtd & Mínimo</th>
                   <th style={styles.th}>Data</th>
                   <th style={styles.th}>Ações</th>
                 </tr>
@@ -564,6 +721,18 @@ const SunnyWearTecidos = () => {
                     const precoUnit = Number(item.preco) || 0;
                     const qtd = Number(item.metros || item.quantidade || 0);
                     const unidade = item.unidademedida || item.unidadeMedida || 'm';
+                    const tipoMovimentoNoBanco = obterTipo(item);
+                    
+                    let minimo = obterMinimo(item);
+
+                    // Se não tiver mínimo, procura nas outras entradas do mesmo tecido
+                    if (minimo === 0 && item.codigo) {
+                      const regOrigem = movimentacoes.find(m => m.codigo && m.codigo.toLowerCase() === item.codigo.toLowerCase() && obterMinimo(m) > 0);
+                      if (regOrigem) {
+                        minimo = obterMinimo(regOrigem);
+                      }
+                    }
+
                     const custoTotal = qtd * precoUnit;
                     const nf = item.notafiscal || item.notaFiscal || '';
                     const fornecedor = item.fornecedor || '';
@@ -585,10 +754,10 @@ const SunnyWearTecidos = () => {
                         <td style={styles.td}>
                           <span style={{
                             ...styles.badge, 
-                            background: item.tipoMovimento === 'entrada' ? '#e6f4ea' : '#fce8e6',
-                            color: item.tipoMovimento === 'entrada' ? '#137333' : '#c5221f'
+                            background: tipoMovimentoNoBanco === 'entrada' ? '#e6f4ea' : '#fce8e6',
+                            color: tipoMovimentoNoBanco === 'entrada' ? '#137333' : '#c5221f'
                           }}>
-                            {item.tipoMovimento === 'entrada' ? '📥 Entrada' : '📤 Saída'}
+                            {tipoMovimentoNoBanco === 'entrada' ? '📥 Entrada' : '📤 Saída'}
                           </span>
                         </td>
                         <td style={styles.td}><strong>{item.codigo}</strong></td>
@@ -600,8 +769,9 @@ const SunnyWearTecidos = () => {
                         <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                         <td style={styles.td}>
                           <strong>{qtd} {unidade}</strong>
-                          <div style={{fontSize: '12px', color: '#5f6368'}}>
-                            R$ {precoUnit.toFixed(2)}/{unidade} | <strong>Total: R$ {custoTotal.toFixed(2)}</strong>
+                          <div style={{fontSize: '11px', color: '#1a73e8'}}>Mín: {minimo} {unidade}</div>
+                          <div style={{fontSize: '11px', color: '#5f6368'}}>
+                            R$ {precoUnit.toFixed(2)} | <strong>Tot: R$ {custoTotal.toFixed(2)}</strong>
                           </div>
                         </td>
                         <td style={styles.td}>{item.data}</td>
@@ -631,7 +801,6 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {/* MODAL DE ZOOM DA FOTO */}
       {fotoSelecionada && (
         <div style={styles.modalOverlay} onClick={() => setFotoSelecionada(null)}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -691,6 +860,13 @@ const styles = {
     fontWeight: '600',
     cursor: 'pointer',
   },
+  alertaContainer: {
+    backgroundColor: '#fce8e6',
+    border: '1px solid #f5c6cb',
+    padding: '12px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+  },
   navTabs: {
     display: 'flex',
     gap: '8px',
@@ -712,6 +888,25 @@ const styles = {
   tabActive: {
     backgroundColor: '#1a73e8',
     color: '#ffffff',
+  },
+  carrosselContainer: {
+    display: 'flex',
+    gap: '12px',
+    overflowX: 'auto',
+    paddingBottom: '8px',
+    WebkitOverflowScrolling: 'touch',
+  },
+  carrosselCard: {
+    backgroundColor: '#f8f9fa',
+    border: '1px solid #dadce0',
+    borderRadius: '8px',
+    padding: '14px',
+    minWidth: '200px',
+    maxWidth: '200px',
+    flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
   },
   cardsContainer: {
     display: 'grid',
