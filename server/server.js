@@ -4,74 +4,90 @@ const { Pool } = require('pg');
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Permite imagens em Base64 grandes
+app.use(express.json({ limit: '10mb' }));
 
-// Configuração da conexão com o PostgreSQL
+// Conexão segura com o PostgreSQL no Render via Variável de Ambiente
 const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'sunny_wear', // Altere se o nome do seu banco for diferente
-  password: 'sua_senha',  // Coloque a sua senha do PostgreSQL aqui
-  port: 5432,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// Rota de login segura no back-end (protege sua senha de acesso)
+app.post('/api/login', (req, res) => {
+  const { usuario, senha } = req.body;
+  const usuarioAdmin = process.env.ADMIN_USER || 'sunnytecido';
+  const senhaAdmin = process.env.ADMIN_PASS || 'tecido@2026';
+
+  if (usuario === usuarioAdmin && senha === senhaAdmin) {
+    res.json({ sucesso: true });
+  } else {
+    res.status(401).json({ sucesso: false, erro: 'Usuário ou senha incorretos' });
+  }
 });
 
 // Rota para buscar todas as movimentações
 app.get('/api/movimentacoes', async (req, res) => {
   try {
     const resultado = await pool.query('SELECT * FROM movimentacoes ORDER BY id DESC');
-    res.json(resultado.rows);
+    
+    const dadosPadronizados = resultado.rows.map(r => ({
+      ...r,
+      estoqueminimo: Number(r.estoqueminimo || r.estoqueMinimo || r.estoque_minimo || 0),
+      unidademedida: r.unidademedida || r.unidadeMedida || 'm',
+      notafiscal: r.notafiscal || r.notaFiscal || '',
+      tipomovimento: r.tipomovimento || r.tipoMovimento || 'entrada'
+    }));
+
+    res.json(dadosPadronizados);
   } catch (erro) {
-    console.error('Erro ao buscar movimentações:', erro);
+    console.error('Erro ao buscar:', erro.message);
     res.status(500).json({ erro: 'Erro ao buscar dados no banco' });
   }
 });
 
-// Rota para cadastrar nova movimentação (com blindagem de tipo e estoque mínimo)
+// Rota para cadastrar nova movimentação
 app.post('/api/movimentacoes', async (req, res) => {
   let { tipoMovimento, codigo, nome, cor, localizacao, quantidade, metros, unidadeMedida, preco, estoqueMinimo, estoqueminimo, notaFiscal, notafiscal, fornecedor, foto, data } = req.body;
   
-  // Força rigidamente para 'entrada' ou 'saida'
   const tipoFinal = tipoMovimento === 'saida' ? 'saida' : 'entrada';
-  
-  const qtdFinal = Number(quantidade || metros || 0);
-  const precoFinal = Number(preco || 0);
-  const minFinal = Number(estoqueminimo || estoqueMinimo || 0);
-  const unidadeFinal = unidadeMedida || 'm';
-  const nfFinal = notafiscal || notaFiscal || '';
-  const fornFinal = fornecedor || '';
+  const qtdFinal = parseFloat(String(quantidade || metros || 0).replace(',', '.')) || 0;
+  const precoFinal = parseFloat(String(preco || 0).replace(',', '.')) || 0;
+  let minFinal = Number(estoqueminimo !== undefined && estoqueminimo !== '' ? estoqueminimo : (estoqueMinimo !== undefined && estoqueMinimo !== '' ? estoqueMinimo : 0));
 
   try {
     const query = `
       INSERT INTO movimentacoes (tipomovimento, codigo, nome, cor, localizacao, metros, quantidade, unidademedida, preco, estoqueminimo, notafiscal, fornecedor, foto, data)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *
     `;
-    const valores = [
-      tipoFinal, codigo, nome, cor, localizacao, 
-      qtdFinal, qtdFinal, unidadeFinal, 
-      precoFinal, minFinal, nfFinal, fornFinal, 
-      foto, data || new Date().toISOString().split('T')[0]
-    ];
+    const valores = [tipoFinal, codigo, nome, cor, localizacao, qtdFinal, qtdFinal, unidadeMedida || 'm', precoFinal, minFinal, notafiscal || notaFiscal || '', fornecedor || '', foto, data || new Date().toISOString().split('T')[0]];
     const novoRegistro = await pool.query(query, valores);
-    console.log(`✅ Salvo com sucesso como: [${tipoFinal.toUpperCase()}] | Mínimo: ${minFinal}`);
+
+    // SINCRONIZAÇÃO GLOBAL: Atualiza todas as linhas desse mesmo código no Render
+    if (minFinal > 0 && codigo) {
+      await pool.query(
+        'UPDATE movimentacoes SET estoqueminimo = $1 WHERE LOWER(TRIM(codigo)) = LOWER(TRIM($2))',
+        [minFinal, codigo]
+      );
+    }
+
     res.status(201).json(novoRegistro.rows[0]);
   } catch (erro) {
-    console.error('Erro ao inserir:', erro);
-    res.status(500).json({ erro: 'Erro ao salvar no banco' });
+    console.error('Erro ao inserir:', erro.message);
+    res.status(500).json({ erro: erro.message });
   }
 });
 
-// Rota para atualizar uma movimentação (Corrigido para salvar colunas em minúsculo)
+// Rota para atualizar uma movimentação
 app.put('/api/movimentacoes/:id', async (req, res) => {
   const { id } = req.params;
   let { tipoMovimento, codigo, nome, cor, localizacao, quantidade, metros, unidadeMedida, preco, estoqueMinimo, estoqueminimo, notaFiscal, notafiscal, fornecedor, foto } = req.body;
   
   const tipoFinal = tipoMovimento === 'saida' ? 'saida' : 'entrada';
-  const qtdFinal = Number(quantidade || metros || 0);
-  const precoFinal = Number(preco || 0);
-  const minFinal = Number(estoqueminimo || estoqueMinimo || 0);
-  const unidadeFinal = unidadeMedida || 'm';
-  const nfFinal = notafiscal || notaFiscal || '';
-  const fornFinal = fornecedor || '';
+  const qtdFinal = parseFloat(String(quantidade || metros || 0).replace(',', '.')) || 0;
+  const precoFinal = parseFloat(String(preco || 0).replace(',', '.')) || 0;
+  let minFinal = Number(estoqueminimo !== undefined && estoqueminimo !== '' ? estoqueminimo : (estoqueMinimo !== undefined && estoqueMinimo !== '' ? estoqueMinimo : 0));
 
   try {
     const query = `
@@ -79,34 +95,40 @@ app.put('/api/movimentacoes/:id', async (req, res) => {
       SET tipomovimento = $1, codigo = $2, nome = $3, cor = $4, localizacao = $5, metros = $6, quantidade = $7, unidademedida = $8, preco = $9, estoqueminimo = $10, notafiscal = $11, fornecedor = $12, foto = $13
       WHERE id = $14 RETURNING *
     `;
-    const valores = [
-      tipoFinal, codigo, nome, cor, localizacao, 
-      qtdFinal, qtdFinal, unidadeFinal, 
-      precoFinal, minFinal, nfFinal, fornFinal, 
-      foto, id
-    ];
+    const valores = [tipoFinal, codigo, nome, cor, localizacao, qtdFinal, qtdFinal, unidadeMedida || 'm', precoFinal, minFinal, notafiscal || notaFiscal || '', fornecedor || '', foto, id];
     const atualizado = await pool.query(query, valores);
-    console.log(`✅ Registro ${id} atualizado com sucesso! Mínimo salvo: ${minFinal}`);
+    
+    if (atualizado.rows.length === 0) {
+      return res.status(404).json({ erro: 'ID não encontrado' });
+    }
+
+    // SINCRONIZAÇÃO GLOBAL: Atualiza TODAS as linhas desse mesmo tecido no Render para o novo valor
+    if (minFinal > 0 && codigo) {
+      await pool.query(
+        'UPDATE movimentacoes SET estoqueminimo = $1 WHERE LOWER(TRIM(codigo)) = LOWER(TRIM($2))',
+        [minFinal, codigo]
+      );
+    }
+
     res.json(atualizado.rows[0]);
   } catch (erro) {
-    console.error('Erro ao atualizar:', erro);
-    res.status(500).json({ erro: 'Erro ao atualizar no banco' });
+    console.error('Erro ao atualizar:', erro.message);
+    res.status(500).json({ erro: erro.message });
   }
 });
 
-// Rota para deletar uma movimentação
+// Rota para deletar
 app.delete('/api/movimentacoes/:id', async (req, res) => {
-  const { id } = req.params;
   try {
-    await pool.query('DELETE FROM movimentacoes WHERE id = $1', [id]);
+    await pool.query('DELETE FROM movimentacoes WHERE id = $1', [req.params.id]);
     res.json({ mensagem: 'Deletado com sucesso' });
   } catch (erro) {
-    console.error('Erro ao deletar:', erro);
     res.status(500).json({ erro: 'Erro ao deletar do banco' });
   }
 });
 
-const PORT = 3001;
-app.listen(PORT, () => {
+// Porta dinâmica exigida pelo Render
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
