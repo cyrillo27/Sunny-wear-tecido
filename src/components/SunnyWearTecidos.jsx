@@ -39,19 +39,29 @@ const SunnyWearTecidos = () => {
 
   // Função para ler o estoque mínimo de forma limpa
   const obterMinimo = (item) => {
-    return Number(item.estoqueminimo || item.estoqueMinimo || item.estoque_minimo || 0);
+    return Number(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
   };
   
   // Função blindada para o tipo de movimento
-  const obterTipo = (item) => item.tipomovimento || item.tipoMovimento || 'entrada';
+  const obterTipo = (item) => item?.tipomovimento || item?.tipoMovimento || 'entrada';
 
   const carregarDadosDoServidor = async () => {
     try {
       const resposta = await fetch(`${API_URL}?_t=${Date.now()}`);
-      const dados = await resposta.json();
-      setMovimentacoes(dados);
+      if (resposta.ok) {
+        const dados = await resposta.json();
+        // BLINDAGEM RÍGIDA: Só define se for estritamente um Array
+        if (Array.isArray(dados)) {
+          setMovimentacoes(dados);
+        } else {
+          setMovimentacoes([]);
+        }
+      } else {
+        setMovimentacoes([]);
+      }
     } catch (erro) {
       console.error('Erro ao conectar com o back-end:', erro);
+      setMovimentacoes([]);
     }
   };
 
@@ -106,9 +116,10 @@ const SunnyWearTecidos = () => {
 
   const handleBuscaSaidaChange = (valorDigitado) => {
     const termo = valorDigitado.toLowerCase();
-    const tecidoEncontrado = movimentacoes.find(
-      m => (m.codigo && m.codigo.toLowerCase().includes(termo)) || 
-           (m.nome && m.nome.toLowerCase().includes(termo))
+    const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
+    const tecidoEncontrado = listaSegura.find(
+      m => (m?.codigo && m.codigo.toLowerCase().includes(termo)) || 
+           (m?.nome && m.nome.toLowerCase().includes(termo))
     );
 
     if (tecidoEncontrado && termo.trim() !== '') {
@@ -143,16 +154,16 @@ const SunnyWearTecidos = () => {
     if (!form.codigo || !form.nome || !form.cor || !form.localizacao || !qtdValida) return;
 
     const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
-
     let minFinal = form.estoqueMinimo !== '' && form.estoqueMinimo !== null ? Number(form.estoqueMinimo) : 0;
+    const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
 
     if (tipoFinal === 'saida') {
-      const entradasTotais = movimentacoes.filter(m => {
-        return m.codigo && m.codigo.toLowerCase() === form.codigo.toLowerCase() && obterTipo(m) === 'entrada';
+      const entradasTotais = listaSegura.filter(m => {
+        return m?.codigo && m.codigo.toLowerCase() === form.codigo.toLowerCase() && obterTipo(m) === 'entrada';
       }).reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
       
-      const saidasTotais = movimentacoes.filter(m => {
-        return m.codigo && m.codigo.toLowerCase() === form.codigo.toLowerCase() && obterTipo(m) === 'saida';
+      const saidasTotais = listaSegura.filter(m => {
+        return m?.codigo && m.codigo.toLowerCase() === form.codigo.toLowerCase() && obterTipo(m) === 'saida';
       }).reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
       
       const saldoAtual = entradasTotais - saidasTotais;
@@ -214,7 +225,6 @@ const SunnyWearTecidos = () => {
     }
     setIdEditando(item.id);
     const qtdItem = item.quantidade || item.metros || '';
-    
     const minItem = Number(item.estoqueminimo !== undefined ? item.estoqueminimo : (item.estoqueMinimo !== undefined ? item.estoqueMinimo : 0));
     const tipoItem = obterTipo(item);
     
@@ -258,9 +268,10 @@ const SunnyWearTecidos = () => {
 
   const tecidosConsolidados = {};
   const usoTecidos = {};
+  const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
 
-  movimentacoes.forEach(m => {
-    if (!m.codigo) return;
+  listaSeguraCalculos.forEach(m => {
+    if (!m || !m.codigo) return;
     const cod = m.codigo.toLowerCase();
     const qtd = Number(m.metros || m.quantidade || 0);
     const minReg = obterMinimo(m);
@@ -299,26 +310,27 @@ const SunnyWearTecidos = () => {
     .sort((a, b) => b.totalUso - a.totalUso)
     .slice(0, 5);
 
-  const entradasMetros = movimentacoes
-    .filter(m => obterTipo(m) === 'entrada' && (m.unidademedida === 'm' || m.unidadeMedida === 'm' || !m.unidademedida))
+  const entradasMetros = listaSeguraCalculos
+    .filter(m => obterTipo(m) === 'entrada' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const entradasKg = movimentacoes
-    .filter(m => obterTipo(m) === 'entrada' && (m.unidademedida === 'kg' || m.unidadeMedida === 'kg'))
+  const entradasKg = listaSeguraCalculos
+    .filter(m => obterTipo(m) === 'entrada' && (m?.unidademedida === 'kg' || m?.unidadeMedida === 'kg'))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const saidasMetros = movimentacoes
-    .filter(m => obterTipo(m) === 'saida' && (m.unidademedida === 'm' || m.unidadeMedida === 'm' || !m.unidademedida))
+  const saidasMetros = listaSeguraCalculos
+    .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const saidasKg = movimentacoes
-    .filter(m => obterTipo(m) === 'saida' && (m.unidademedida === 'kg' || m.unidadeMedida === 'kg'))
+  const saidasKg = listaSeguraCalculos
+    .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'kg' || m?.unidadeMedida === 'kg'))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
   const estoqueMetros = entradasMetros - saidasMetros;
   const estoqueKg = entradasKg - saidasKg;
 
-  const porLocalizacao = movimentacoes.reduce((acc, m) => {
+  const porLocalizacao = listaSeguraCalculos.reduce((acc, m) => {
+    if (!m) return acc;
     const loc = m.localizacao || 'Não definido';
     if (!acc[loc]) acc[loc] = { m: 0, kg: 0 };
     const qtd = Number(m.metros || m.quantidade || 0);
@@ -333,7 +345,8 @@ const SunnyWearTecidos = () => {
     return acc;
   }, {});
 
-  const movFiltradas = movimentacoes.filter(m => {
+  const movFiltradas = listaSeguraCalculos.filter(m => {
+    if (!m) return false;
     const termo = busca.toLowerCase();
     const codigo = (m.codigo || '').toLowerCase();
     const nome = (m.nome || '').toLowerCase();
