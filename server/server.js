@@ -14,7 +14,7 @@ const pool = new Pool({
   }
 });
 
-// 🟢 CRIA A TABELA AUTOMATICAMENTE SE ELA NÃO EXISTIR (Resolve o erro 500)
+// 🟢 CRIA A TABELA AUTOMATICAMENTE SE ELA NÃO EXISTIR
 pool.query(`
   CREATE TABLE IF NOT EXISTS movimentacoes (
     id SERIAL PRIMARY KEY,
@@ -36,7 +36,7 @@ pool.query(`
 `).then(() => console.log('📦 Tabela "movimentacoes" verificada/criada com sucesso!'))
   .catch(err => console.error('Erro ao criar tabela automaticamente:', err));
 
-// Rota de login segura no back-end (protege sua senha de acesso)
+// Rota de login segura no back-end
 app.post('/api/login', (req, res) => {
   const { usuario, senha } = req.body;
   const usuarioAdmin = process.env.ADMIN_USER || 'sunnytecido';
@@ -86,7 +86,6 @@ app.post('/api/movimentacoes', async (req, res) => {
     const valores = [tipoFinal, codigo, nome, cor, localizacao, qtdFinal, qtdFinal, unidadeMedida || 'm', precoFinal, minFinal, notafiscal || notaFiscal || '', fornecedor || '', foto, data || new Date().toISOString().split('T')[0]];
     const novoRegistro = await pool.query(query, valores);
 
-    // SINCRONIZAÇÃO GLOBAL: Atualiza todas as linhas desse mesmo código no Render
     if (minFinal > 0 && codigo) {
       await pool.query(
         'UPDATE movimentacoes SET estoqueminimo = $1 WHERE LOWER(TRIM(codigo)) = LOWER(TRIM($2))',
@@ -124,7 +123,6 @@ app.put('/api/movimentacoes/:id', async (req, res) => {
       return res.status(404).json({ erro: 'ID não encontrado' });
     }
 
-    // SINCRONIZAÇÃO GLOBAL: Atualiza TODAS as linhas desse mesmo tecido no Render para o novo valor
     if (minFinal > 0 && codigo) {
       await pool.query(
         'UPDATE movimentacoes SET estoqueminimo = $1 WHERE LOWER(TRIM(codigo)) = LOWER(TRIM($2))',
