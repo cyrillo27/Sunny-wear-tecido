@@ -14,6 +14,28 @@ const pool = new Pool({
   }
 });
 
+// 🟢 CRIA A TABELA AUTOMATICAMENTE SE ELA NÃO EXISTIR (Resolve o erro 500)
+pool.query(`
+  CREATE TABLE IF NOT EXISTS movimentacoes (
+    id SERIAL PRIMARY KEY,
+    tipomovimento VARCHAR(50),
+    codigo VARCHAR(100),
+    nome VARCHAR(255),
+    cor VARCHAR(100),
+    localizacao VARCHAR(255),
+    metros NUMERIC,
+    quantidade NUMERIC,
+    unidademedida VARCHAR(20),
+    preco NUMERIC,
+    estoqueminimo NUMERIC,
+    notafiscal VARCHAR(100),
+    fornecedor VARCHAR(255),
+    foto TEXT,
+    data DATE
+  )
+`).then(() => console.log('📦 Tabela "movimentacoes" verificada/criada com sucesso!'))
+  .catch(err => console.error('Erro ao criar tabela automaticamente:', err));
+
 // Rota de login segura no back-end (protege sua senha de acesso)
 app.post('/api/login', (req, res) => {
   const { usuario, senha } = req.body;
