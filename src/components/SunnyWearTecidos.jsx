@@ -494,281 +494,513 @@ const SunnyWearTecidos = () => {
   }
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+    <div style={styles.appLayout}>
+      {/* SIDEBAR ESQUERDA ESTILIZADA */}
+      <aside style={styles.sidebar}>
+        <div style={styles.sidebarHeader}>
           <div style={styles.logoBadge}>SW</div>
           <div>
-            <h1 style={styles.title}>Sunny Wear <span style={styles.versionBadge}>v2.5 GLASS</span></h1>
-            <p style={styles.subtitle}>Painel Holográfico de Controle de Estoque</p>
+            <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
+            <span style={styles.versionBadge}>v2.5 GLASS</span>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={styles.statusBadgeContainer}>
-            <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Quantum Link Ativo</span>
-          </div>
-          <button onClick={handleLogout} style={styles.logoutBtn}>Desconectar</button>
+
+        <div style={styles.sidebarNavGroup}>
+          <button 
+            onClick={() => setAbaAtiva('dashboard')} 
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'dashboard' ? styles.sidebarLinkActive : {}) }}
+          >
+            📊 Visão Geral
+          </button>
+          <button 
+            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('entrada'); }} 
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'entrada' ? styles.sidebarLinkActive : {}) }}
+          >
+            📥 Registrar Entrada
+          </button>
+          <button 
+            onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); setAbaAtiva('op'); }} 
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'op' ? styles.sidebarLinkActive : {}) }}
+          >
+            📋 Ordens de Produção
+          </button>
+          <button 
+            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); }} 
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'saida' ? styles.sidebarLinkActive : {}) }}
+          >
+            📤 Registrar Saída
+          </button>
+          <button 
+            onClick={() => setAbaAtiva('historico')} 
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'historico' ? styles.sidebarLinkActive : {}) }}
+          >
+            🔍 Consulta & Galpões
+          </button>
         </div>
-      </header>
 
-      {alertasEstoqueBaixo.length > 0 && (
-        <div style={styles.alertaContainer}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '16px' }}>⚡</span>
-            <strong style={{ color: '#991B1B', fontSize: '14px', letterSpacing: '0.3px' }}>ALERTA CRÍTICO: ESTOQUE ABAIXO DO MÍNIMO</strong>
+        {/* PERFIL DO USUÁRIO NA BASE DA SIDEBAR */}
+        <div style={styles.sidebarUserCard}>
+          <div style={styles.userAvatar}>LC</div>
+          <div style={{flex: 1, overflow: 'hidden'}}>
+            <strong style={{display: 'block', fontSize: '13px', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>Leandro Cyrillo</strong>
+            <span style={{fontSize: '11px', color: '#64748B'}}>Administrador</span>
           </div>
-          <ul style={{ margin: '6px 0 0 24px', padding: 0, fontSize: '13px', color: '#7F1D1D' }}>
-            {alertasEstoqueBaixo.map((alt, idx) => (
-              <li key={idx} style={{ marginBottom: '4px' }}>
-                <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Atual: <strong>{alt.total} {alt.unidade}</strong> | Mínimo: {alt.minimo} {alt.unidade}
-              </li>
-            ))}
-          </ul>
+          <button onClick={handleLogout} style={styles.sidebarLogoutBtn} title="Sair">⏏</button>
         </div>
-      )}
+      </aside>
 
-      <nav style={styles.navTabs}>
-        <button 
-          onClick={() => setAbaAtiva('dashboard')} 
-          style={{ ...styles.tabBtn, ...(abaAtiva === 'dashboard' ? styles.tabActive : {}) }}
-        >
-          📊 Visão Geral
-        </button>
-        <button 
-          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('entrada'); }} 
-          style={{ ...styles.tabBtn, ...(abaAtiva === 'entrada' ? styles.tabActive : {}) }}
-        >
-          📥 Registrar Entrada
-        </button>
-        <button 
-          onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); setAbaAtiva('op'); }} 
-          style={{ ...styles.tabBtn, ...(abaAtiva === 'op' ? styles.tabActive : {}) }}
-        >
-          📋 Ordens de Produção
-        </button>
-        <button 
-          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); }} 
-          style={{ ...styles.tabBtn, ...(abaAtiva === 'saida' ? styles.tabActive : {}) }}
-        >
-          📤 Registrar Saída
-        </button>
-        <button 
-          onClick={() => setAbaAtiva('historico')} 
-          style={{ ...styles.tabBtn, ...(abaAtiva === 'historico' ? styles.tabActive : {}) }}
-        >
-          🔍 Consulta & Galpões
-        </button>
-      </nav>
+      {/* CONTEÚDO PRINCIPAL */}
+      <main style={styles.mainContent}>
+        {/* TOPBAR SUPERIOR */}
+        <header style={styles.topbar}>
+          <div>
+            <h1 style={styles.topbarGreeting}>Olá, Leandro! 👋</h1>
+            <p style={styles.topbarSub}>Aqui está o resumo do seu estoque hoje.</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={styles.statusBadgeContainer}>
+              <span style={styles.pulseDot}></span>
+              <span style={styles.statusText}>Quantum Link Ativo</span>
+            </div>
+          </div>
+        </header>
 
-      {abaAtiva === 'dashboard' && (
-        <div>
+        {alertasEstoqueBaixo.length > 0 && (
+          <div style={styles.alertaContainer}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '16px' }}>⚡</span>
+              <strong style={{ color: '#991B1B', fontSize: '14px', letterSpacing: '0.3px' }}>ALERTA CRÍTICO: ESTOQUE ABAIXO DO MÍNIMO</strong>
+            </div>
+            <ul style={{ margin: '6px 0 0 24px', padding: 0, fontSize: '13px', color: '#7F1D1D' }}>
+              {alertasEstoqueBaixo.map((alt, idx) => (
+                <li key={idx} style={{ marginBottom: '4px' }}>
+                  <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Atual: <strong>{alt.total} {alt.unidade}</strong> | Mínimo: {alt.minimo} {alt.unidade}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {abaAtiva === 'dashboard' && (
+          <div>
+            {/* CARDS SUPERIORES DE MÉTRICAS */}
+            <div style={styles.metricsGrid}>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Metragem Total</span>
+                <strong style={{...styles.metricVal, color: '#2563EB'}}>{estoqueMetros.toLocaleString()} m</strong>
+                <span style={styles.metricSub}>Total em estoque</span>
+              </div>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Itens Cadastrados</span>
+                <strong style={{...styles.metricVal, color: '#059669'}}>{Object.keys(tecidosConsolidados).length}</strong>
+                <span style={styles.metricSub}>Produtos ativos</span>
+              </div>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Galpões</span>
+                <strong style={{...styles.metricVal, color: '#9333EA'}}>{Object.keys(porLocalizacao).length}</strong>
+                <span style={styles.metricSub}>Áreas monitoradas</span>
+              </div>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Entradas Hoje</span>
+                <strong style={{...styles.metricVal, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
+                <span style={styles.metricSub}>Aquisições registradas</span>
+              </div>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Saídas Hoje</span>
+                <strong style={{...styles.metricVal, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
+                <span style={styles.metricSub}>Consumo / OPs</span>
+              </div>
+            </div>
+
+            {/* TOP TECIDOS */}
+            <div style={styles.cardSection}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
+                <span style={styles.liveMetricsBadge}>LIVE METRICS</span>
+              </div>
+              
+              {topTecidosMaisUsados.length === 0 ? (
+                <p style={styles.empty}>Aguardando registros de saída ou OPs para análise de consumo.</p>
+              ) : (
+                <div style={styles.carrosselContainer}>
+                  {topTecidosMaisUsados.map((tecido, index) => {
+                    const posicoesNomes = ['1º Posição', '2º Posição', '3º Posição', '4º Posição', '5º Posição'];
+                    const coresBordas = ['#2563EB', '#059669', '#D97706', '#DC2626', '#9333EA'];
+                    return (
+                      <div 
+                        key={index} 
+                        style={{ 
+                          ...styles.carrosselCard, 
+                          borderTop: `3px solid ${coresBordas[index] || '#2563EB'}` 
+                        }}
+                      >
+                        <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px', display: 'block', letterSpacing: '0.5px' }}>
+                          {posicoesNomes[index] || `${index + 1}º Lugar`}
+                        </span>
+                        <strong style={{ fontSize: '14px', color: '#0F172A', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
+                          {tecido.nome}
+                        </strong>
+                        <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '12px' }}>
+                          Cor: {tecido.cor || 'N/D'} • Cód: {tecido.codigo}
+                        </span>
+                        <div style={{ fontSize: '16px', fontWeight: '800', color: coresBordas[index] || '#2563EB', marginTop: 'auto' }}>
+                          {tecido.totalUso.toLocaleString()} {tecido.unidade}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* FLUXOS E SALDOS */}
+            <div style={styles.cardsContainer}>
+              <div style={styles.cardSection}>
+                <h3 style={styles.sectionTitle}>📥 Fluxo de Entradas</h3>
+                <div style={{display: 'flex', gap: '16px'}}>
+                  <div style={{flex: 1}}>
+                    <span style={styles.cardLabel}>Metragem Adquirida</span>
+                    <strong style={{...styles.cardValue, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
+                  </div>
+                  <div style={{flex: 1}}>
+                    <span style={styles.cardLabel}>Peso Adquirido</span>
+                    <strong style={{...styles.cardValue, color: '#059669'}}>{entradasKg.toLocaleString()} kg</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div style={styles.cardSection}>
+                <h3 style={styles.sectionTitle}>📤 Fluxo de Saídas & OPs</h3>
+                <div style={{display: 'flex', gap: '16px'}}>
+                  <div style={{flex: 1}}>
+                    <span style={styles.cardLabel}>Metragem Baixada</span>
+                    <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
+                  </div>
+                  <div style={{flex: 1}}>
+                    <span style={styles.cardLabel}>Peso Baixado</span>
+                    <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasKg.toLocaleString()} kg</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* GALPÕES */}
+            <div style={styles.cardSection}>
+              <h3 style={styles.sectionTitle}>🏢 Logística e Distribuição por Galpão</h3>
+              <div style={styles.chartContainer}>
+                {Object.keys(porLocalizacao).length === 0 ? (
+                  <p style={styles.empty}>Nenhum local cadastrado até o momento.</p>
+                ) : (
+                  Object.entries(porLocalizacao).map(([local, vals]) => (
+                    <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: 'rgba(255,255,255,0.8)', padding: '14px 18px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
+                      <span style={{fontWeight: '700', color: '#0F172A', fontSize: '14px'}}>📍 {local}</span>
+                      <div style={{display: 'flex', gap: '24px', fontSize: '13px'}}>
+                        <span style={{color: '#64748B'}}>Metros livres: <strong style={{color: '#2563EB', fontWeight: '700'}}>{vals.m} m</strong></span>
+                        <span style={{color: '#64748B'}}>Quilos livres: <strong style={{color: '#D97706', fontWeight: '700'}}>{vals.kg} kg</strong></span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {abaAtiva === 'op' && (
           <div style={styles.cardSection}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
-              <span style={styles.liveMetricsBadge}>LIVE METRICS</span>
+            <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditandoOp ? '✏️ Editar Ordem de Produção (OP)' : '📋 Cadastro e Gestão de Ordens de Produção (OPs)'}</h3>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre o número da OP e o tecido necessário. O sistema reserva o material imediatamente.</p>
+            </div>
+
+            <form onSubmit={salvarOp} style={styles.formGrid}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Número da OP *</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: OP-2026-001" 
+                  value={formOp.numeroOp} 
+                  onChange={(e) => setFormOp({...formOp, numeroOp: e.target.value})} 
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Código ou Nome do Tecido *</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: TEC-001 ou Malha" 
+                  value={formOp.termoBusca} 
+                  onChange={(e) => setFormOp({...formOp, termoBusca: e.target.value})} 
+                  style={styles.input}
+                  required
+                />
+              </div>
+
+              <div style={{gridColumn: '1 / -1'}}>
+                <label style={styles.formLabel}>Quantidade Necessária *</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  placeholder="Ex: 150" 
+                  value={formOp.quantidade} 
+                  onChange={(e) => setFormOp({...formOp, quantidade: e.target.value})} 
+                  style={styles.input}
+                  required
+                />
+              </div>
+
+              {formOp.termoBusca && (
+                <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.9)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', flexDirection: 'column', gap: '6px', boxShadow: '0 0 15px rgba(37,99,235,0.05)'}}>
+                  <span style={{fontSize: '11px', color: '#2563EB', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados do Tecido Localizados na Hora:</span>
+                  {(() => {
+                    const termo = formOp.termoBusca.toLowerCase().trim();
+                    const tecidoMatch = movimentacoes.find(
+                      m => (m?.codigo && m.codigo.toLowerCase().includes(termo)) || 
+                           (m?.nome && m.nome.toLowerCase().includes(termo))
+                    );
+                    if (tecidoMatch) {
+                      return (
+                        <>
+                          <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {tecidoMatch.codigo} - {tecidoMatch.nome} ({tecidoMatch.cor})</div>
+                          <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {tecidoMatch.largura ? `${tecidoMatch.largura}m` : 'Não informada'}</div>
+                          <div style={{fontSize: '13px', color: '#059669', fontWeight: '600'}}>✅ Tecido encontrado no sistema! Pronto para reserva.</div>
+                        </>
+                      );
+                    } else {
+                      return (
+                        <div style={{fontSize: '13px', color: '#D97706'}}>
+                          ⚠️ Nenhum tecido exato cadastrado com este termo. Um registro temporário será criado para esta OP.
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              )}
+
+              <div style={{gridColumn: '1 / -1', background: '#FEF3C7', padding: '12px 16px', borderRadius: '10px', border: '1px solid #FCD34D', fontSize: '13px', color: '#92400E'}}>
+                ⚠️ O tecido desta OP será separado e deduzido do estoque total para evitar duplicação de uso.
+              </div>
+
+              <div style={{gridColumn: '1 / -1', display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+                <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoOp ? '#D97706' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', flex: 1}}>
+                  {carregando ? 'Salvando OP...' : (idEditandoOp ? 'Atualizar OP' : 'Cadastrar OP e Reservar Estoque')}
+                </button>
+                {idEditandoOp && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); }}
+                    style={{padding: '12px 20px', backgroundColor: '#64748B', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: 'pointer'}}
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            </form>
+
+            <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>Total de OPs: <strong>{opsFiltradas.length}</strong></span>
+              </div>
+
+              <input 
+                type="text" 
+                placeholder="Pesquisar OP por número, código ou nome do tecido..." 
+                value={buscaOp} 
+                onChange={(e) => setBuscaOp(e.target.value)} 
+                style={styles.inputFull}
+              />
+
+              <div style={styles.tableResponsive}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr style={styles.thTr}>
+                      <th style={styles.th}>Nº da OP</th>
+                      <th style={styles.th}>Código</th>
+                      <th style={styles.th}>Tecido / Cor</th>
+                      <th style={styles.th}>Qtd Reservada</th>
+                      <th style={styles.th}>Data</th>
+                      <th style={styles.th}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {opsFiltradas.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" style={styles.empty}>Nenhuma Ordem de Produção encontrada.</td>
+                      </tr>
+                    ) : (
+                      opsFiltradas.map((item) => {
+                        const qtd = Number(item.metros || item.quantidade || 0);
+                        const unidade = item.unidademedida || item.unidadeMedida || 'm';
+                        const numOp = item.notafiscal || item.notaFiscal || 'N/D';
+
+                        return (
+                          <tr key={item.id} style={styles.tr}>
+                            <td style={styles.td}><strong style={{ color: '#2563EB' }}>{numOp}</strong></td>
+                            <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
+                            <td style={styles.td}>
+                              <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
+                              {item.largura ? <div style={{fontSize: '11px', color: '#64748B'}}>Largura: {item.largura}m</div> : null}
+                            </td>
+                            <td style={styles.td}><strong style={{ color: '#D97706' }}>{qtd} {unidade}</strong></td>
+                            <td style={styles.td}><span style={{color: '#64748B'}}>{item.data}</span></td>
+                            <td style={styles.td}>
+                              <button onClick={() => iniciarEdicaoOp(item)} style={styles.btnEditar} title="Editar OP">✏️</button>
+                              <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Excluir OP">🗑️</button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {abaAtiva === 'entrada' && (
+          <div style={styles.cardSection}>
+            <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Atualizar Dados de Entrada' : '📥 Cadastro de Nova Entrada / Compra'}</h3>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os campos abaixo para registrar novos tecidos ou lotes no sistema.</p>
             </div>
             
-            {topTecidosMaisUsados.length === 0 ? (
-              <p style={styles.empty}>Aguardando registros de saída ou OPs para análise de consumo.</p>
-            ) : (
-              <div style={styles.carrosselContainer}>
-                {topTecidosMaisUsados.map((tecido, index) => {
-                  const posicoesNomes = ['1º Posição', '2º Posição', '3º Posição', '4º Posição', '5º Posição'];
-                  const coresBordas = ['#2563EB', '#059669', '#D97706', '#DC2626', '#9333EA'];
-                  return (
-                    <div 
-                      key={index} 
-                      style={{ 
-                        ...styles.carrosselCard, 
-                        borderTop: `3px solid ${coresBordas[index] || '#2563EB'}` 
-                      }}
-                    >
-                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px', display: 'block', letterSpacing: '0.5px' }}>
-                        {posicoesNomes[index] || `${index + 1}º Lugar`}
-                      </span>
-                      <strong style={{ fontSize: '14px', color: '#0F172A', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
-                        {tecido.nome}
-                      </strong>
-                      <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '12px' }}>
-                        Cor: {tecido.cor || 'N/D'} • Cód: {tecido.codigo}
-                      </span>
-                      <div style={{ fontSize: '16px', fontWeight: '800', color: coresBordas[index] || '#2563EB', marginTop: 'auto' }}>
-                        {tecido.totalUso.toLocaleString()} {tecido.unidade}
-                      </div>
-                    </div>
-                  );
-                })}
+            <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Código do Tecido *</label>
+                <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
               </div>
-            )}
-          </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome do Tecido *</label>
+                <input type="text" placeholder="Ex: Malha Canelada" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Cor do Tecido *</label>
+                <input type="text" placeholder="Ex: Azul Marinho" value={form.cor} onChange={(e) => setForm({...form, cor: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Largura (m)</label>
+                <input type="number" step="0.01" placeholder="Ex: 1.50" value={form.largura} onChange={(e) => setForm({...form, largura: e.target.value})} style={styles.input} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Localização / Galpão *</label>
+                <input type="text" placeholder="Ex: Galpão A - Setor 2" value={form.localizacao} onChange={(e) => setForm({...form, localizacao: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Quantidade *</label>
+                  <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Unidade</label>
+                  <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
+                    <option value="m">Metros (m)</option>
+                    <option value="kg">Quilos (kg)</option>
+                  </select>
+                </div>
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
+                <input type="number" step="0.01" placeholder="Ex: 180" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Valor Unitário (R$)</label>
+                <input type="number" step="0.01" placeholder="Ex: 15.90" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Número da Nota Fiscal</label>
+                <input type="text" placeholder="Ex: 45892" value={form.notaFiscal} onChange={(e) => setForm({...form, notaFiscal: e.target.value})} style={styles.input} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome do Fornecedor</label>
+                <input type="text" placeholder="Ex: Têxtil Exemplo S.A." value={form.fornecedor} onChange={(e) => setForm({...form, fornecedor: e.target.value})} style={styles.input} />
+              </div>
+              
+              <div style={{gridColumn: '1 / -1'}}>
+                <label style={styles.formLabel}>Anexar Imagem / Foto do Tecido (Opcional)</label>
+                <input type="file" accept="image/*" capture="environment" onChange={handleFotoChange} style={styles.inputFile} />
+              </div>
 
-          <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📥 Fluxo de Entradas (Aquisições Totais)</h3>
-            <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
-                <span style={styles.cardLabel}>Metragem Adquirida</span>
-                <strong style={{...styles.cardValue, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
-              </div>
-              <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
-                <span style={styles.cardLabel}>Peso Adquirido</span>
-                <strong style={{...styles.cardValue, color: '#059669'}}>{entradasKg.toLocaleString()} kg</strong>
-              </div>
-            </div>
-          </div>
-
-          <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📤 Saídas & OPs (Consumo e Reservas)</h3>
-            <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
-                <span style={styles.cardLabel}>Metragem Baixada / Reservada</span>
-                <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
-              </div>
-              <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
-                <span style={styles.cardLabel}>Peso Baixado / Reservado</span>
-                <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasKg.toLocaleString()} kg</strong>
-              </div>
-            </div>
-          </div>
-
-          <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📦 Saldo Disponível em Estoque (Livre de OPs)</h3>
-            <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #2563EB'}}>
-                <span style={styles.cardLabel}>Saldo em Metros</span>
-                <strong style={{...styles.cardValue, color: '#2563EB'}}>{estoqueMetros.toLocaleString()} m</strong>
-              </div>
-              <div style={{...styles.card, borderLeft: '4px solid #D97706'}}>
-                <span style={styles.cardLabel}>Saldo em Quilos</span>
-                <strong style={{...styles.cardValue, color: '#D97706'}}>{estoqueKg.toLocaleString()} kg</strong>
-              </div>
-            </div>
-          </div>
-
-          <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>🏢 Logística e Distribuição por Galpão / Armazém</h3>
-            <div style={styles.chartContainer}>
-              {Object.keys(porLocalizacao).length === 0 ? (
-                <p style={styles.empty}>Nenhum local cadastrado até o momento.</p>
-              ) : (
-                Object.entries(porLocalizacao).map(([local, vals]) => (
-                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: 'rgba(255,255,255,0.6)', padding: '14px 18px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
-                    <span style={{fontWeight: '700', color: '#0F172A', fontSize: '14px'}}>📍 {local}</span>
-                    <div style={{display: 'flex', gap: '24px', fontSize: '13px'}}>
-                      <span style={{color: '#64748B'}}>Metros livres: <strong style={{color: '#2563EB', fontWeight: '700'}}>{vals.m} m</strong></span>
-                      <span style={{color: '#64748B'}}>Quilos livres: <strong style={{color: '#D97706', fontWeight: '700'}}>{vals.kg} kg</strong></span>
-                    </div>
+              {form.foto && (
+                <div style={{gridColumn: '1 / -1', ...styles.previewContainer}}>
+                  <img src={form.foto} alt="Prévia" style={styles.previewImg} onClick={() => setFotoSelecionada(form.foto)} />
+                  <div>
+                    <strong style={{display: 'block', color: '#065F46', fontSize: '13px'}}>Imagem anexada com sucesso</strong>
+                    <span style={{color: '#64748B', fontSize: '11px', cursor: 'pointer'}} onClick={() => setFotoSelecionada(form.foto)}>Clique na miniatura para ampliar</span>
                   </div>
-                ))
+                </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {abaAtiva === 'op' && (
-        <div style={styles.cardSection}>
-          <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
-            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditandoOp ? '✏️ Editar Ordem de Produção (OP)' : '📋 Cadastro e Gestão de Ordens de Produção (OPs)'}</h3>
-            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre o número da OP e o tecido necessário. O sistema reserva o material imediatamente.</p>
-          </div>
-
-          <form onSubmit={salvarOp} style={styles.formGrid}>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Número da OP *</label>
-              <input 
-                type="text" 
-                placeholder="Ex: OP-2026-001" 
-                value={formOp.numeroOp} 
-                onChange={(e) => setFormOp({...formOp, numeroOp: e.target.value})} 
-                style={styles.input}
-                required
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Código ou Nome do Tecido *</label>
-              <input 
-                type="text" 
-                placeholder="Ex: TEC-001 ou Malha" 
-                value={formOp.termoBusca} 
-                onChange={(e) => setFormOp({...formOp, termoBusca: e.target.value})} 
-                style={styles.input}
-                required
-              />
-            </div>
-
-            <div style={{gridColumn: '1 / -1'}}>
-              <label style={styles.formLabel}>Quantidade Necessária *</label>
-              <input 
-                type="number" 
-                step="0.01"
-                placeholder="Ex: 150" 
-                value={formOp.quantidade} 
-                onChange={(e) => setFormOp({...formOp, quantidade: e.target.value})} 
-                style={styles.input}
-                required
-              />
-            </div>
-
-            {formOp.termoBusca && (
-              <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.8)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', flexDirection: 'column', gap: '6px', boxShadow: '0 0 15px rgba(37,99,235,0.05)'}}>
-                <span style={{fontSize: '11px', color: '#2563EB', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados do Tecido Localizados na Hora:</span>
-                {(() => {
-                  const termo = formOp.termoBusca.toLowerCase().trim();
-                  const tecidoMatch = movimentacoes.find(
-                    m => (m?.codigo && m.codigo.toLowerCase().includes(termo)) || 
-                         (m?.nome && m.nome.toLowerCase().includes(termo))
-                  );
-                  if (tecidoMatch) {
-                    return (
-                      <>
-                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {tecidoMatch.codigo} - {tecidoMatch.nome} ({tecidoMatch.cor})</div>
-                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {tecidoMatch.largura ? `${tecidoMatch.largura}m` : 'Não informada'}</div>
-                        <div style={{fontSize: '13px', color: '#059669', fontWeight: '600'}}>✅ Tecido encontrado no sistema! Pronto para reserva.</div>
-                      </>
-                    );
-                  } else {
-                    return (
-                      <div style={{fontSize: '13px', color: '#D97706'}}>
-                        ⚠️ Nenhum tecido exato cadastrado com este termo. Um registro temporário será criado para esta OP.
-                      </div>
-                    );
-                  }
-                })()}
-              </div>
-            )}
-
-            <div style={{gridColumn: '1 / -1', background: '#FEF3C7', padding: '12px 16px', borderRadius: '10px', border: '1px solid #FCD34D', fontSize: '13px', color: '#92400E'}}>
-              ⚠️ O tecido desta OP será separado e deduzido do estoque total para evitar duplicação de uso.
-            </div>
-
-            <div style={{gridColumn: '1 / -1', display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoOp ? '#D97706' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', flex: 1}}>
-                {carregando ? 'Salvando OP...' : (idEditandoOp ? 'Atualizar OP' : 'Cadastrar OP e Reservar Estoque')}
-              </button>
-              {idEditandoOp && (
-                <button 
-                  type="button" 
-                  onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); }}
-                  style={{padding: '12px 20px', backgroundColor: '#64748B', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: 'pointer'}}
-                >
-                  Cancelar
+              <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
+                <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: '#fff'}}>
+                  {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Salvar Entrada no Servidor')}
                 </button>
-              )}
-            </div>
-          </form>
+              </div>
+            </form>
+          </div>
+        )}
 
-          <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
+        {abaAtiva === 'saida' && (
+          <div style={styles.cardSection}>
+            <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída'}</h3>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
+            </div>
+
+            <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
+              <div style={{gridColumn: '1 / -1'}}>
+                <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
+                <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
+                  <input type="text" placeholder="Ex: TEC-001 ou Malha" value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
+                  <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>OK / Buscar</button>
+                </div>
+              </div>
+
+              <div style={{gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Quantidade Utilizada *</label>
+                  <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Unidade</label>
+                  <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
+                    <option value="m">Metros (m)</option>
+                    <option value="kg">Quilos (kg)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.6)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                <span style={{fontSize: '11px', color: '#2563EB', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados Carregados do Cadastro:</span>
+                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
+                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
+                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
+                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
+              </div>
+
+              <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
+                <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)', color: '#fff'}}>
+                  {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Confirmar Saída no Servidor')}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {abaAtiva === 'historico' && (
+          <div style={styles.cardSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
-              <span style={{ fontSize: '12px', color: '#64748B' }}>Total de OPs: <strong>{opsFiltradas.length}</strong></span>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico, OPs e Galpões</h3>
+              <span style={{ fontSize: '12px', color: '#64748B' }}>Total de registros: <strong>{movFiltradas.length}</strong></span>
             </div>
 
             <input 
               type="text" 
-              placeholder="Pesquisar OP por número, código ou nome do tecido..." 
-              value={buscaOp} 
-              onChange={(e) => setBuscaOp(e.target.value)} 
+              placeholder="Pesquisar por nome, código, fornecedor, nota fiscal ou galpão..." 
+              value={busca} 
+              onChange={(e) => setBusca(e.target.value)} 
               style={styles.inputFull}
             />
 
@@ -776,38 +1008,80 @@ const SunnyWearTecidos = () => {
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.thTr}>
-                    <th style={styles.th}>Nº da OP</th>
+                    <th style={styles.th}>Foto</th>
+                    <th style={styles.th}>Tipo</th>
                     <th style={styles.th}>Código</th>
                     <th style={styles.th}>Tecido / Cor</th>
-                    <th style={styles.th}>Qtd Reservada</th>
+                    <th style={styles.th}>Fornecedor & NF</th>
+                    <th style={styles.th}>Localização</th>
+                    <th style={styles.th}>Qtd & Custos</th>
                     <th style={styles.th}>Data</th>
                     <th style={styles.th}>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {opsFiltradas.length === 0 ? (
+                  {movFiltradas.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={styles.empty}>Nenhuma Ordem de Produção encontrada.</td>
+                      <td colSpan="9" style={styles.empty}>Nenhum registro encontrado no banco de dados.</td>
                     </tr>
                   ) : (
-                    opsFiltradas.map((item) => {
+                    movFiltradas.map((item) => {
+                      const precoUnit = Number(item.preco) || 0;
                       const qtd = Number(item.metros || item.quantidade || 0);
                       const unidade = item.unidademedida || item.unidadeMedida || 'm';
-                      const numOp = item.notafiscal || item.notaFiscal || 'N/D';
+                      const tipoMovimentoNoBanco = obterTipo(item);
+                      
+                      const minimo = obterMinimo(item);
+                      const custoTotal = qtd * precoUnit;
+                      const nf = item.notafiscal || item.notaFiscal || '';
+                      const fornecedor = item.fornecedor || '';
+
+                      let badgeBg = '#DEF7EC';
+                      let badgeColor = '#03543F';
+                      let badgeText = '📥 Entrada';
+                      if (tipoMovimentoNoBanco === 'saida') {
+                        badgeBg = '#FDE8E8';
+                        badgeColor = '#9B1C1C';
+                        badgeText = '📤 Saída';
+                      } else if (tipoMovimentoNoBanco === 'op') {
+                        badgeBg = '#FEF3C7';
+                        badgeColor = '#92400E';
+                        badgeText = `📋 OP: ${nf}`;
+                      }
 
                       return (
                         <tr key={item.id} style={styles.tr}>
-                          <td style={styles.td}><strong style={{ color: '#2563EB' }}>{numOp}</strong></td>
-                          <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
+                          <td style={styles.td}>
+                            {item.foto ? (
+                              <img src={item.foto} alt="Tecido" style={styles.tableImgClickable} title="Clique para ampliar" onClick={() => setFotoSelecionada(item.foto)} />
+                            ) : (
+                              <span style={styles.noFoto}>Sem foto</span>
+                            )}
+                          </td>
+                          <td style={styles.td}>
+                            <span style={{...styles.badge, background: badgeBg, color: badgeColor}}>{badgeText}</span>
+                          </td>
+                          <td style={styles.td}><strong style={{color: '#0F172A'}}>{item.codigo}</strong></td>
                           <td style={styles.td}>
                             <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
-                            {item.largura ? <div style={{fontSize: '11px', color: '#64748B'}}>Largura: {item.largura}m</div> : null}
+                            {item.largura ? <div style={{fontSize: '11px', color: '#2563EB', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
                           </td>
-                          <td style={styles.td}><strong style={{ color: '#D97706' }}>{qtd} {unidade}</strong></td>
+                          <td style={styles.td}>
+                            <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || 'Não informado'}</div>
+                            <div style={{fontSize: '11px', color: '#64748B'}}>NF: {nf || 'N/D'}</div>
+                          </td>
+                          <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
+                          <td style={styles.td}>
+                            <strong style={{ color: '#0F172A' }}>{qtd} {unidade}</strong>
+                            <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
+                            <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
+                              R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
+                            </div>
+                          </td>
                           <td style={styles.td}><span style={{color: '#64748B'}}>{item.data}</span></td>
                           <td style={styles.td}>
-                            <button onClick={() => iniciarEdicaoOp(item)} style={styles.btnEditar} title="Editar OP">✏️</button>
-                            <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Excluir OP">🗑️</button>
+                            <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
+                            <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
                           </td>
                         </tr>
                       );
@@ -817,241 +1091,8 @@ const SunnyWearTecidos = () => {
               </table>
             </div>
           </div>
-        </div>
-      )}
-
-      {abaAtiva === 'entrada' && (
-        <div style={styles.cardSection}>
-          <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
-            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Atualizar Dados de Entrada' : '📥 Cadastro de Nova Entrada / Compra'}</h3>
-            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os campos abaixo para registrar novos tecidos ou lotes no sistema.</p>
-          </div>
-          
-          <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Código do Tecido *</label>
-              <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Nome do Tecido *</label>
-              <input type="text" placeholder="Ex: Malha Canelada" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} style={styles.input} required />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Cor do Tecido *</label>
-              <input type="text" placeholder="Ex: Azul Marinho" value={form.cor} onChange={(e) => setForm({...form, cor: e.target.value})} style={styles.input} required />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Largura (m)</label>
-              <input type="number" step="0.01" placeholder="Ex: 1.50" value={form.largura} onChange={(e) => setForm({...form, largura: e.target.value})} style={styles.input} />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Localização / Galpão *</label>
-              <input type="text" placeholder="Ex: Galpão A - Setor 2" value={form.localizacao} onChange={(e) => setForm({...form, localizacao: e.target.value})} style={styles.input} required />
-            </div>
-            <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Quantidade *</label>
-                <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Unidade</label>
-                <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
-                  <option value="m">Metros (m)</option>
-                  <option value="kg">Quilos (kg)</option>
-                </select>
-              </div>
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
-              <input type="number" step="0.01" placeholder="Ex: 180" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Valor Unitário (R$)</label>
-              <input type="number" step="0.01" placeholder="Ex: 15.90" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Número da Nota Fiscal</label>
-              <input type="text" placeholder="Ex: 45892" value={form.notaFiscal} onChange={(e) => setForm({...form, notaFiscal: e.target.value})} style={styles.input} />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Nome do Fornecedor</label>
-              <input type="text" placeholder="Ex: Têxtil Exemplo S.A." value={form.fornecedor} onChange={(e) => setForm({...form, fornecedor: e.target.value})} style={styles.input} />
-            </div>
-            
-            <div style={{gridColumn: '1 / -1'}}>
-              <label style={styles.formLabel}>Anexar Imagem / Foto do Tecido (Opcional)</label>
-              <input type="file" accept="image/*" capture="environment" onChange={handleFotoChange} style={styles.inputFile} />
-            </div>
-
-            {form.foto && (
-              <div style={{gridColumn: '1 / -1', ...styles.previewContainer}}>
-                <img src={form.foto} alt="Prévia" style={styles.previewImg} onClick={() => setFotoSelecionada(form.foto)} />
-                <div>
-                  <strong style={{display: 'block', color: '#065F46', fontSize: '13px'}}>Imagem anexada com sucesso</strong>
-                  <span style={{color: '#64748B', fontSize: '11px', cursor: 'pointer'}} onClick={() => setFotoSelecionada(form.foto)}>Clique na miniatura para ampliar</span>
-                </div>
-              </div>
-            )}
-
-            <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: '#fff'}}>
-                {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Salvar Entrada no Servidor')}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {abaAtiva === 'saida' && (
-        <div style={styles.cardSection}>
-          <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
-            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída'}</h3>
-            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
-          </div>
-
-          <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
-            <div style={{gridColumn: '1 / -1'}}>
-              <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
-              <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
-                <input type="text" placeholder="Ex: TEC-001 ou Malha" value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
-                <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>OK / Buscar</button>
-              </div>
-            </div>
-
-            <div style={{gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Quantidade Utilizada *</label>
-                <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Unidade</label>
-                <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
-                  <option value="m">Metros (m)</option>
-                  <option value="kg">Quilos (kg)</option>
-                </select>
-              </div>
-            </div>
-
-            <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.6)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-              <span style={{fontSize: '11px', color: '#2563EB', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados Carregados do Cadastro:</span>
-              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
-              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
-              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
-              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
-            </div>
-
-            <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)', color: '#fff'}}>
-                {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Confirmar Saída no Servidor')}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {abaAtiva === 'historico' && (
-        <div style={styles.cardSection}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico, OPs e Galpões</h3>
-            <span style={{ fontSize: '12px', color: '#64748B' }}>Total de registros: <strong>{movFiltradas.length}</strong></span>
-          </div>
-
-          <input 
-            type="text" 
-            placeholder="Pesquisar por nome, código, fornecedor, nota fiscal ou galpão..." 
-            value={busca} 
-            onChange={(e) => setBusca(e.target.value)} 
-            style={styles.inputFull}
-          />
-
-          <div style={styles.tableResponsive}>
-            <table style={styles.table}>
-              <thead>
-                <tr style={styles.thTr}>
-                  <th style={styles.th}>Foto</th>
-                  <th style={styles.th}>Tipo</th>
-                  <th style={styles.th}>Código</th>
-                  <th style={styles.th}>Tecido / Cor</th>
-                  <th style={styles.th}>Fornecedor & NF</th>
-                  <th style={styles.th}>Localização</th>
-                  <th style={styles.th}>Qtd & Custos</th>
-                  <th style={styles.th}>Data</th>
-                  <th style={styles.th}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movFiltradas.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" style={styles.empty}>Nenhum registro encontrado no banco de dados.</td>
-                  </tr>
-                ) : (
-                  movFiltradas.map((item) => {
-                    const precoUnit = Number(item.preco) || 0;
-                    const qtd = Number(item.metros || item.quantidade || 0);
-                    const unidade = item.unidademedida || item.unidadeMedida || 'm';
-                    const tipoMovimentoNoBanco = obterTipo(item);
-                    
-                    const minimo = obterMinimo(item);
-                    const custoTotal = qtd * precoUnit;
-                    const nf = item.notafiscal || item.notaFiscal || '';
-                    const fornecedor = item.fornecedor || '';
-
-                    let badgeBg = '#DEF7EC';
-                    let badgeColor = '#03543F';
-                    let badgeText = '📥 Entrada';
-                    if (tipoMovimentoNoBanco === 'saida') {
-                      badgeBg = '#FDE8E8';
-                      badgeColor = '#9B1C1C';
-                      badgeText = '📤 Saída';
-                    } else if (tipoMovimentoNoBanco === 'op') {
-                      badgeBg = '#FEF3C7';
-                      badgeColor = '#92400E';
-                      badgeText = `📋 OP: ${nf}`;
-                    }
-
-                    return (
-                      <tr key={item.id} style={styles.tr}>
-                        <td style={styles.td}>
-                          {item.foto ? (
-                            <img src={item.foto} alt="Tecido" style={styles.tableImgClickable} title="Clique para ampliar" onClick={() => setFotoSelecionada(item.foto)} />
-                          ) : (
-                            <span style={styles.noFoto}>Sem foto</span>
-                          )}
-                        </td>
-                        <td style={styles.td}>
-                          <span style={{...styles.badge, background: badgeBg, color: badgeColor}}>{badgeText}</span>
-                        </td>
-                        <td style={styles.td}><strong style={{color: '#0F172A'}}>{item.codigo}</strong></td>
-                        <td style={styles.td}>
-                          <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
-                          {item.largura ? <div style={{fontSize: '11px', color: '#2563EB', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
-                        </td>
-                        <td style={styles.td}>
-                          <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || 'Não informado'}</div>
-                          <div style={{fontSize: '11px', color: '#64748B'}}>NF: {nf || 'N/D'}</div>
-                        </td>
-                        <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                        <td style={styles.td}>
-                          <strong style={{ color: '#0F172A' }}>{qtd} {unidade}</strong>
-                          <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
-                          <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
-                            R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
-                          </div>
-                        </td>
-                        <td style={styles.td}><span style={{color: '#64748B'}}>{item.data}</span></td>
-                        <td style={styles.td}>
-                          <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
-                          <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        )}
+      </main>
 
       {fotoSelecionada && (
         <div style={styles.modalOverlay} onClick={() => setFotoSelecionada(null)}>
@@ -1076,7 +1117,7 @@ const styles = {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   loginCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     backdropFilter: 'blur(16px)',
     WebkitBackdropFilter: 'blur(16px)',
     padding: '40px',
@@ -1121,23 +1162,137 @@ const styles = {
     marginTop: '6px',
     transition: 'all 0.2s'
   },
-  container: {
-    width: '100%',
-    margin: '0',
-    padding: '28px',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    backgroundColor: '#F4F7FC',
-    backgroundImage: 'radial-gradient(circle at 10% 10%, rgba(37, 99, 235, 0.04) 0%, transparent 40%), radial-gradient(circle at 90% 90%, rgba(147, 51, 234, 0.03) 0%, transparent 40%)',
+  appLayout: {
+    display: 'flex',
     minHeight: '100vh',
-    boxSizing: 'border-box',
-    color: '#0F172A'
+    backgroundColor: '#F4F7FC',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
-  header: { 
-    marginBottom: '24px', 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    flexWrap: 'wrap', 
+  sidebar: {
+    width: '260px',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderRight: '1px solid rgba(226, 232, 240, 0.8)',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '24px 16px',
+    boxSizing: 'border-box',
+    position: 'sticky',
+    top: 0,
+    height: '100vh',
+    zIndex: 100,
+  },
+  sidebarHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '32px',
+    paddingLeft: '4px',
+  },
+  sidebarTitle: {
+    fontSize: '16px',
+    fontWeight: '800',
+    color: '#0F172A',
+    margin: 0,
+    letterSpacing: '-0.3px',
+  },
+  versionBadge: {
+    fontSize: '10px',
+    fontWeight: '700',
+    color: '#2563EB',
+    backgroundColor: 'rgba(37,99,235,0.08)',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    border: '1px solid rgba(37,99,235,0.2)',
+  },
+  logoBadge: {
+    width: '38px',
+    height: '38px',
+    background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+    borderRadius: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#ffffff',
+    fontSize: '15px',
+    fontWeight: '900',
+    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+    flexShrink: 0
+  },
+  sidebarNavGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    flex: 1,
+  },
+  sidebarLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    width: '100%',
+    padding: '12px 14px',
+    backgroundColor: 'transparent',
+    color: '#64748B',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: 'all 0.2s',
+  },
+  sidebarLinkActive: {
+    backgroundColor: '#2563EB',
+    color: '#ffffff',
+    boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
+    fontWeight: '700',
+  },
+  sidebarUserCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '12px',
+    backgroundColor: '#F8FAFC',
+    borderRadius: '12px',
+    border: '1px solid #E2E8F0',
+    marginTop: 'auto',
+  },
+  userAvatar: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '8px',
+    backgroundColor: '#2563EB',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '12px',
+    fontWeight: '800',
+    flexShrink: 0,
+  },
+  sidebarLogoutBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#DC2626',
+    cursor: 'pointer',
+    fontSize: '16px',
+    padding: '4px',
+    fontWeight: 'bold',
+  },
+  mainContent: {
+    flex: 1,
+    padding: '32px',
+    boxSizing: 'border-box',
+    maxWidth: 'calc(100vw - 260px)',
+    overflowX: 'auto',
+  },
+  topbar: {
+    marginBottom: '28px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: '16px',
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
@@ -1147,33 +1302,8 @@ const styles = {
     boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1)',
     border: '1px solid rgba(255, 255, 255, 0.9)'
   },
-  logoBadge: {
-    width: '44px',
-    height: '44px',
-    background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#ffffff',
-    fontSize: '18px',
-    fontWeight: '900',
-    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
-    flexShrink: 0
-  },
-  versionBadge: {
-    color: '#2563EB',
-    fontSize: '11px',
-    fontWeight: '700',
-    border: '1px solid rgba(37, 99, 235, 0.3)',
-    padding: '2px 8px',
-    borderRadius: '6px',
-    marginLeft: '8px',
-    backgroundColor: 'rgba(37, 99, 235, 0.06)',
-    letterSpacing: '0.5px'
-  },
-  title: { fontSize: '22px', color: '#0F172A', margin: '0 0 2px 0', fontWeight: '900', letterSpacing: '-0.5px' },
-  subtitle: { fontSize: '12px', color: '#64748B', margin: 0, fontWeight: '500' },
+  topbarGreeting: { fontSize: '20px', color: '#0F172A', margin: '0 0 2px 0', fontWeight: '800', letterSpacing: '-0.5px' },
+  topbarSub: { fontSize: '13px', color: '#64748B', margin: 0, fontWeight: '500' },
   statusBadgeContainer: { 
     display: 'flex', 
     alignItems: 'center', 
@@ -1186,17 +1316,6 @@ const styles = {
   },
   pulseDot: { width: '8px', height: '8px', backgroundColor: '#059669', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 6px #059669' },
   statusText: { fontSize: '12px', color: '#047857', fontWeight: '700', letterSpacing: '0.3px' },
-  logoutBtn: {
-    padding: '8px 16px',
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    color: '#DC2626',
-    border: '1px solid rgba(239, 68, 68, 0.25)',
-    borderRadius: '8px',
-    fontSize: '12px',
-    fontWeight: '700',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
   alertaContainer: {
     backgroundColor: 'rgba(254, 242, 242, 0.9)',
     backdropFilter: 'blur(10px)',
@@ -1206,33 +1325,26 @@ const styles = {
     marginBottom: '24px',
     boxShadow: '0 10px 25px rgba(220, 38, 38, 0.06)'
   },
-  navTabs: {
-    display: 'flex',
-    gap: '12px',
+  metricsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '16px',
     marginBottom: '24px',
-    overflowX: 'auto',
-    paddingBottom: '6px',
   },
-  tabBtn: {
-    padding: '12px 20px',
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
-    backdropFilter: 'blur(10px)',
-    color: '#475569',
+  metricCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    backdropFilter: 'blur(12px)',
+    padding: '18px 20px',
+    borderRadius: '14px',
+    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.04)',
     border: '1px solid rgba(255, 255, 255, 0.9)',
-    borderRadius: '10px',
-    fontSize: '13px',
-    fontWeight: '700',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)',
-    transition: 'all 0.2s'
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
-  tabActive: {
-    backgroundColor: '#2563EB',
-    color: '#ffffff',
-    borderColor: '#2563EB',
-    boxShadow: '0 6px 20px rgba(37, 99, 235, 0.35)',
-  },
+  metricLabel: { fontSize: '11px', color: '#64748B', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
+  metricVal: { fontSize: '22px', fontWeight: '900', letterSpacing: '-0.5px', marginBottom: '2px' },
+  metricSub: { fontSize: '11px', color: '#94A3B8' },
   carrosselContainer: {
     display: 'flex',
     gap: '16px',
@@ -1255,22 +1367,12 @@ const styles = {
   },
   cardsContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
     gap: '16px',
-  },
-  card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.75)',
-    backdropFilter: 'blur(12px)',
-    padding: '22px',
-    borderRadius: '14px',
-    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.04)',
-    border: '1px solid rgba(255, 255, 255, 0.9)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
+    marginBottom: '24px',
   },
   cardLabel: { fontSize: '11px', color: '#64748B', marginBottom: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' },
-  cardValue: { fontSize: '26px', fontWeight: '900', letterSpacing: '-0.5px' },
+  cardValue: { fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px' },
   cardSection: {
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
