@@ -428,8 +428,9 @@ const SunnyWearTecidos = () => {
     return acc;
   }, {});
 
+  // EXCLUI AS OPS DO HISTÓRICO AQUI (Filtro ajustado)
   const movFiltradas = listaSeguraCalculos.filter(m => {
-    if (!m) return false;
+    if (!m || obterTipo(m) === 'op') return false; 
     const termo = busca.toLowerCase();
     const codigo = (m.codigo || '').toLowerCase();
     const nome = (m.nome || '').toLowerCase();
@@ -759,7 +760,7 @@ const SunnyWearTecidos = () => {
             </div>
           </form>
 
-          {/* LISTAGEM E PESQUISA DE OPS CADASTRADAS (LOGADA EMBAIXO) */}
+          {/* LISTAGEM E PESQUISA DE OPS CADASTRADAS */}
           <div style={{ marginTop: '36px', borderTop: '2px solid #E2E8F0', paddingTop: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
