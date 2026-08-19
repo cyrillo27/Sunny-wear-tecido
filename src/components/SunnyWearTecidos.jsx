@@ -15,6 +15,7 @@ const SunnyWearTecidos = () => {
 
   const [fotoSelecionada, setFotoSelecionada] = useState(null);
   const [idEditando, setIdEditando] = useState(null);
+  const [unidadeGrafico, setUnidadeGrafico] = useState('Metros (m)');
 
   const [form, setForm] = useState({
     tipoMovimento: 'entrada',
@@ -417,6 +418,54 @@ const SunnyWearTecidos = () => {
   const estoqueMetros = entradasMetros - saidasMetros;
   const estoqueKg = entradasKg - saidasKg;
 
+  // LÓGICA DINÂMICA DA EVOLUÇÃO DO ESTOQUE (ÚLTIMOS 7 DIAS)
+  const diasEvolucao = [];
+  const dadosEvolucaoMetros = [];
+  const dadosEvolucaoKg = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dataStrYYYYMMDD = d.toISOString().split('T')[0];
+    const diaMesFormatado = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    diasEvolucao.push(diaMesFormatado);
+
+    let mTotal = 0;
+    let kgTotal = 0;
+
+    listaSeguraCalculos.forEach(m => {
+      const mData = (m.data || '').split('T')[0];
+      if (mData && mData <= dataStrYYYYMMDD) {
+        const qtd = Number(m.metros || m.quantidade || 0);
+        const un = (m.unidademedida || m.unidadeMedida || 'm').toLowerCase();
+        const tipoM = obterTipo(m);
+
+        if (tipoM === 'entrada') {
+          if (un === 'kg') kgTotal += qtd;
+          else mTotal += qtd;
+        } else if (tipoM === 'saida' || tipoM === 'op') {
+          if (un === 'kg') kgTotal -= qtd;
+          else mTotal -= qtd;
+        }
+      }
+    });
+
+    dadosEvolucaoMetros.push(mTotal);
+    dadosEvolucaoKg.push(kgTotal);
+  }
+
+  const valoresGraficoAtual = unidadeGrafico.includes('Quilos') ? dadosEvolucaoKg : dadosEvolucaoMetros;
+  const maxValGrafico = Math.max(...valoresGraficoAtual, 10);
+  const getX = (idx) => 50 + idx * 80;
+  const getY = (val) => {
+    const minY = 20;
+    const maxY = 140;
+    const ratio = val / maxValGrafico;
+    return maxY - ratio * (maxY - minY);
+  };
+  const pontosPath = valoresGraficoAtual.map((val, idx) => `${idx === 0 ? 'M' : 'L'} ${getX(idx)},${getY(val)}`).join(' ');
+  const areaPath = `${pontosPath} L ${getX(6)},160 L ${getX(0)},160 Z`;
+
   const porLocalizacao = listaSeguraCalculos.reduce((acc, m) => {
     if (!m) return acc;
     const loc = m.localizacao || 'Não definido';
@@ -550,15 +599,10 @@ const SunnyWearTecidos = () => {
 
       {/* CONTEÚDO PRINCIPAL */}
       <main style={styles.mainContent}>
-        {/* TOPBAR SUPERIOR (SEM O "OLÁ LEANDRO") */}
         <header style={styles.topbar}>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
             <span style={styles.statusText}>Quantum Link Ativo</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={styles.topbarIconBtn}>🔔</span>
-            <span style={styles.topbarIconBtn}>⚙️</span>
           </div>
         </header>
 
@@ -580,7 +624,6 @@ const SunnyWearTecidos = () => {
 
         {abaAtiva === 'dashboard' && (
           <div>
-            {/* CARDS SUPERIORES DE MÉTRICAS */}
             <div style={styles.metricsGrid}>
               <div style={styles.metricCard}>
                 <span style={styles.metricLabel}>Metragem Total</span>
@@ -609,9 +652,8 @@ const SunnyWearTecidos = () => {
               </div>
             </div>
 
-            {/* SEÇÃO PRINCIPAL DE GRÁFICOS (TOP 5 TECIDOS & EVOLUÇÃO DO ESTOQUE) */}
+            {/* SEÇÃO PRINCIPAL DE GRÁFICOS (TOP 5 TECIDOS & EVOLUÇÃO DO ESTOQUE DINÂMICA) */}
             <div style={styles.chartsRow}>
-              {/* TOP 5 TECIDOS MAIS UTILIZADOS (ESTILO REFERÊNCIA) */}
               <div style={styles.chartBoxWide}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
@@ -653,11 +695,15 @@ const SunnyWearTecidos = () => {
                 )}
               </div>
 
-              {/* EVOLUÇÃO DO ESTOQUE (GRÁFICO DE LINHA IDÊNTICO À REFERÊNCIA) */}
+              {/* GRÁFICO DINÂMICO DE EVOLUÇÃO DO ESTOQUE */}
               <div style={styles.chartBoxWide}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Evolução do Estoque <span style={{fontSize: '11px', color: '#64748B', fontWeight: '500'}}>(Últimos 7 dias)</span></h3>
-                  <select style={styles.chartSelect}>
+                  <select 
+                    style={styles.chartSelect}
+                    value={unidadeGrafico}
+                    onChange={(e) => setUnidadeGrafico(e.target.value)}
+                  >
                     <option>Metros (m)</option>
                     <option>Quilos (kg)</option>
                   </select>
@@ -671,40 +717,27 @@ const SunnyWearTecidos = () => {
                         <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
                       </linearGradient>
                     </defs>
-                    {/* Linhas de grade horizontais */}
                     <line x1="0" y1="0" x2="600" y2="0" stroke="#E2E8F0" strokeDasharray="4" />
                     <line x1="0" y1="50" x2="600" y2="50" stroke="#E2E8F0" strokeDasharray="4" />
                     <line x1="0" y1="100" x2="600" y2="100" stroke="#E2E8F0" strokeDasharray="4" />
                     <line x1="0" y1="150" x2="600" y2="150" stroke="#E2E8F0" strokeDasharray="4" />
 
-                    {/* Área preenchida */}
-                    <path d="M 50,110 Q 150,130 250,95 T 450,60 T 550,75 L 550,160 L 50,160 Z" fill="url(#gradEstoque)" />
+                    <path d={areaPath} fill="url(#gradEstoque)" />
+                    <path d={pontosPath} fill="none" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" />
 
-                    {/* Linha principal */}
-                    <path d="M 50,110 Q 150,130 250,95 T 450,60 T 550,75" fill="none" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" />
-
-                    {/* Pontos de dados */}
-                    <circle cx="50" cy="110" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
-                    <circle cx="150" cy="122" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
-                    <circle cx="250" cy="95" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
-                    <circle cx="350" cy="80" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
-                    <circle cx="450" cy="60" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
-                    <circle cx="550" cy="75" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
+                    {valoresGraficoAtual.map((val, idx) => (
+                      <circle key={idx} cx={getX(idx)} cy={getY(val)} r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
+                    ))}
                   </svg>
                   <div style={styles.chartXAxis}>
-                    <span>02/06</span>
-                    <span>03/06</span>
-                    <span>04/06</span>
-                    <span>05/06</span>
-                    <span>06/06</span>
-                    <span>07/06</span>
-                    <span>08/06</span>
+                    {diasEvolucao.map((dia, idx) => (
+                      <span key={idx}>{dia}</span>
+                    ))}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* CARDS DE FLUXO E PESO COM MINI-ONDAS IDÊNTICOS À REFERÊNCIA */}
             <div style={styles.cardsWaveGrid}>
               <div style={styles.cardWave}>
                 <div>
@@ -746,7 +779,6 @@ const SunnyWearTecidos = () => {
               </div>
             </div>
 
-            {/* GALPÕES */}
             <div style={styles.cardSection}>
               <h3 style={styles.sectionTitle}>🏢 Logística e Distribuição por Galpão</h3>
               <div style={styles.chartContainer}>
@@ -1336,7 +1368,7 @@ const styles = {
   topbar: {
     marginBottom: '28px',
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: '16px',
@@ -1347,17 +1379,6 @@ const styles = {
     borderRadius: '16px',
     boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1)',
     border: '1px solid rgba(255, 255, 255, 0.9)'
-  },
-  topbarIconBtn: {
-    fontSize: '16px',
-    cursor: 'pointer',
-    padding: '6px',
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    borderRadius: '8px',
-    border: '1px solid #E2E8F0',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   statusBadgeContainer: { 
     display: 'flex', 
