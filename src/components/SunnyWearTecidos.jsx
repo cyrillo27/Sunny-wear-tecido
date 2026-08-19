@@ -396,6 +396,8 @@ const SunnyWearTecidos = () => {
     .sort((a, b) => b.totalUso - a.totalUso)
     .slice(0, 5);
 
+  const maxUsoTop = topTecidosMaisUsados.length > 0 ? Math.max(...topTecidosMaisUsados.map(t => t.totalUso)) : 100;
+
   const entradasMetros = listaSeguraCalculos
     .filter(m => obterTipo(m) === 'entrada' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
@@ -538,30 +540,25 @@ const SunnyWearTecidos = () => {
           </button>
         </div>
 
-        {/* PERFIL DO USUÁRIO NA BASE DA SIDEBAR */}
-        <div style={styles.sidebarUserCard}>
-          <div style={styles.userAvatar}>LC</div>
-          <div style={{flex: 1, overflow: 'hidden'}}>
-            <strong style={{display: 'block', fontSize: '13px', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>Leandro Cyrillo</strong>
-            <span style={{fontSize: '11px', color: '#64748B'}}>Administrador</span>
-          </div>
-          <button onClick={handleLogout} style={styles.sidebarLogoutBtn} title="Sair">⏏</button>
+        {/* BOTÃO DE FINALIZAR SESSÃO NA BASE DA SIDEBAR */}
+        <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
+          <button onClick={handleLogout} style={styles.sidebarLogoutFullBtn}>
+            🚪 Finalizar Sessão
+          </button>
         </div>
       </aside>
 
       {/* CONTEÚDO PRINCIPAL */}
       <main style={styles.mainContent}>
-        {/* TOPBAR SUPERIOR */}
+        {/* TOPBAR SUPERIOR (SEM O "OLÁ LEANDRO") */}
         <header style={styles.topbar}>
-          <div>
-            <h1 style={styles.topbarGreeting}>Olá, Leandro! 👋</h1>
-            <p style={styles.topbarSub}>Aqui está o resumo do seu estoque hoje.</p>
+          <div style={styles.statusBadgeContainer}>
+            <span style={styles.pulseDot}></span>
+            <span style={styles.statusText}>Quantum Link Ativo</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={styles.statusBadgeContainer}>
-              <span style={styles.pulseDot}></span>
-              <span style={styles.statusText}>Quantum Link Ativo</span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={styles.topbarIconBtn}>🔔</span>
+            <span style={styles.topbarIconBtn}>⚙️</span>
           </div>
         </header>
 
@@ -612,74 +609,139 @@ const SunnyWearTecidos = () => {
               </div>
             </div>
 
-            {/* TOP TECIDOS */}
-            <div style={styles.cardSection}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
-                <span style={styles.liveMetricsBadge}>LIVE METRICS</span>
-              </div>
-              
-              {topTecidosMaisUsados.length === 0 ? (
-                <p style={styles.empty}>Aguardando registros de saída ou OPs para análise de consumo.</p>
-              ) : (
-                <div style={styles.carrosselContainer}>
-                  {topTecidosMaisUsados.map((tecido, index) => {
-                    const posicoesNomes = ['1º Posição', '2º Posição', '3º Posição', '4º Posição', '5º Posição'];
-                    const coresBordas = ['#2563EB', '#059669', '#D97706', '#DC2626', '#9333EA'];
-                    return (
-                      <div 
-                        key={index} 
-                        style={{ 
-                          ...styles.carrosselCard, 
-                          borderTop: `3px solid ${coresBordas[index] || '#2563EB'}` 
-                        }}
-                      >
-                        <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px', display: 'block', letterSpacing: '0.5px' }}>
-                          {posicoesNomes[index] || `${index + 1}º Lugar`}
-                        </span>
-                        <strong style={{ fontSize: '14px', color: '#0F172A', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
-                          {tecido.nome}
-                        </strong>
-                        <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '12px' }}>
-                          Cor: {tecido.cor || 'N/D'} • Cód: {tecido.codigo}
-                        </span>
-                        <div style={{ fontSize: '16px', fontWeight: '800', color: coresBordas[index] || '#2563EB', marginTop: 'auto' }}>
-                          {tecido.totalUso.toLocaleString()} {tecido.unidade}
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* SEÇÃO PRINCIPAL DE GRÁFICOS (TOP 5 TECIDOS & EVOLUÇÃO DO ESTOQUE) */}
+            <div style={styles.chartsRow}>
+              {/* TOP 5 TECIDOS MAIS UTILIZADOS (ESTILO REFERÊNCIA) */}
+              <div style={styles.chartBoxWide}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
+                  <button style={styles.verTodosBtn}>Ver todos</button>
                 </div>
-              )}
+
+                {topTecidosMaisUsados.length === 0 ? (
+                  <p style={styles.empty}>Aguardando registros de saída ou OPs para análise de consumo.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {topTecidosMaisUsados.map((tecido, index) => {
+                      const porcentagem = Math.min(100, Math.max(12, (tecido.totalUso / maxUsoTop) * 100));
+                      const badgeCores = ['#2563EB', '#059669', '#D97706', '#475569', '#64748B'];
+                      return (
+                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <span style={{ ...styles.rankBadge, backgroundColor: badgeCores[index] || '#2563EB' }}>
+                            {index + 1}º
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                              <strong style={{ fontSize: '13px', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {tecido.nome}
+                              </strong>
+                              <strong style={{ fontSize: '13px', color: '#0F172A', whiteSpace: 'nowrap' }}>
+                                {tecido.totalUso.toLocaleString()} {tecido.unidade}
+                              </strong>
+                            </div>
+                            <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '6px' }}>
+                              Cor: {tecido.cor || 'N/D'} • Cód: {tecido.codigo}
+                            </span>
+                            <div style={styles.progressBarBg}>
+                              <div style={{ ...styles.progressBarFill, width: `${porcentagem}%`, backgroundColor: badgeCores[index] || '#2563EB' }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* EVOLUÇÃO DO ESTOQUE (GRÁFICO DE LINHA IDÊNTICO À REFERÊNCIA) */}
+              <div style={styles.chartBoxWide}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Evolução do Estoque <span style={{fontSize: '11px', color: '#64748B', fontWeight: '500'}}>(Últimos 7 dias)</span></h3>
+                  <select style={styles.chartSelect}>
+                    <option>Metros (m)</option>
+                    <option>Quilos (kg)</option>
+                  </select>
+                </div>
+
+                <div style={styles.svgChartContainer}>
+                  <svg viewBox="0 0 600 200" style={{ width: '100%', height: '150px', overflow: 'visible' }}>
+                    <defs>
+                      <linearGradient id="gradEstoque" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#2563EB" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    {/* Linhas de grade horizontais */}
+                    <line x1="0" y1="0" x2="600" y2="0" stroke="#E2E8F0" strokeDasharray="4" />
+                    <line x1="0" y1="50" x2="600" y2="50" stroke="#E2E8F0" strokeDasharray="4" />
+                    <line x1="0" y1="100" x2="600" y2="100" stroke="#E2E8F0" strokeDasharray="4" />
+                    <line x1="0" y1="150" x2="600" y2="150" stroke="#E2E8F0" strokeDasharray="4" />
+
+                    {/* Área preenchida */}
+                    <path d="M 50,110 Q 150,130 250,95 T 450,60 T 550,75 L 550,160 L 50,160 Z" fill="url(#gradEstoque)" />
+
+                    {/* Linha principal */}
+                    <path d="M 50,110 Q 150,130 250,95 T 450,60 T 550,75" fill="none" stroke="#2563EB" strokeWidth="3" strokeLinecap="round" />
+
+                    {/* Pontos de dados */}
+                    <circle cx="50" cy="110" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
+                    <circle cx="150" cy="122" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
+                    <circle cx="250" cy="95" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
+                    <circle cx="350" cy="80" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
+                    <circle cx="450" cy="60" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
+                    <circle cx="550" cy="75" r="5" fill="#2563EB" stroke="#FFFFFF" strokeWidth="2" />
+                  </svg>
+                  <div style={styles.chartXAxis}>
+                    <span>02/06</span>
+                    <span>03/06</span>
+                    <span>04/06</span>
+                    <span>05/06</span>
+                    <span>06/06</span>
+                    <span>07/06</span>
+                    <span>08/06</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* FLUXOS E SALDOS */}
-            <div style={styles.cardsContainer}>
-              <div style={styles.cardSection}>
-                <h3 style={styles.sectionTitle}>📥 Fluxo de Entradas</h3>
-                <div style={{display: 'flex', gap: '16px'}}>
-                  <div style={{flex: 1}}>
-                    <span style={styles.cardLabel}>Metragem Adquirida</span>
-                    <strong style={{...styles.cardValue, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
-                  </div>
-                  <div style={{flex: 1}}>
-                    <span style={styles.cardLabel}>Peso Adquirido</span>
-                    <strong style={{...styles.cardValue, color: '#059669'}}>{entradasKg.toLocaleString()} kg</strong>
-                  </div>
+            {/* CARDS DE FLUXO E PESO COM MINI-ONDAS IDÊNTICOS À REFERÊNCIA */}
+            <div style={styles.cardsWaveGrid}>
+              <div style={styles.cardWave}>
+                <div>
+                  <span style={styles.cardWaveLabel}>📥 Fluxo de Entradas <span style={{fontSize: '10px', color: '#64748B'}}>(Aquisições Totais)</span></span>
+                  <strong style={{...styles.cardWaveVal, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
+                  <span style={styles.cardWaveSub}>METRAGEM ADQUIRIDA</span>
+                </div>
+                <div style={styles.waveSvgWrapper}>
+                  <svg viewBox="0 0 150 40" style={{ width: '100%', height: '35px' }}>
+                    <path d="M 0,30 Q 37,10 75,25 T 150,10" fill="none" stroke="#059669" strokeWidth="2.5" />
+                  </svg>
                 </div>
               </div>
 
-              <div style={styles.cardSection}>
-                <h3 style={styles.sectionTitle}>📤 Fluxo de Saídas & OPs</h3>
-                <div style={{display: 'flex', gap: '16px'}}>
-                  <div style={{flex: 1}}>
-                    <span style={styles.cardLabel}>Metragem Baixada</span>
-                    <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
-                  </div>
-                  <div style={{flex: 1}}>
-                    <span style={styles.cardLabel}>Peso Baixado</span>
-                    <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasKg.toLocaleString()} kg</strong>
-                  </div>
+              <div style={styles.cardWave}>
+                <div>
+                  <span style={styles.cardWaveLabel}>📤 Fluxo de Saídas <span style={{fontSize: '10px', color: '#64748B'}}>(Consumo e Reservas)</span></span>
+                  <strong style={{...styles.cardWaveVal, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
+                  <span style={styles.cardWaveSub}>METRAGEM BAIXADA / RESERVADA</span>
+                </div>
+                <div style={styles.waveSvgWrapper}>
+                  <svg viewBox="0 0 150 40" style={{ width: '100%', height: '35px' }}>
+                    <path d="M 0,25 Q 40,35 75,20 T 150,5" fill="none" stroke="#DC2626" strokeWidth="2.5" />
+                  </svg>
+                </div>
+              </div>
+
+              <div style={styles.cardWave}>
+                <div>
+                  <span style={styles.cardWaveLabel}>⚖️ Peso Total</span>
+                  <strong style={{...styles.cardWaveVal, color: '#059669'}}>{entradasKg.toLocaleString()} kg</strong>
+                  <span style={styles.cardWaveSub}>PESO ADQUIRIDO</span>
+                </div>
+                <div style={styles.waveSvgWrapper}>
+                  <svg viewBox="0 0 150 40" style={{ width: '100%', height: '35px' }}>
+                    <path d="M 0,20 Q 50,30 100,15 T 150,25" fill="none" stroke="#059669" strokeWidth="2.5" />
+                  </svg>
                 </div>
               </div>
             </div>
@@ -1248,37 +1310,21 @@ const styles = {
     boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
     fontWeight: '700',
   },
-  sidebarUserCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '12px',
-    backgroundColor: '#F8FAFC',
-    borderRadius: '12px',
-    border: '1px solid #E2E8F0',
-    marginTop: 'auto',
-  },
-  userAvatar: {
-    width: '34px',
-    height: '34px',
-    borderRadius: '8px',
-    backgroundColor: '#2563EB',
-    color: '#fff',
+  sidebarLogoutFullBtn: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '12px',
-    fontWeight: '800',
-    flexShrink: 0,
-  },
-  sidebarLogoutBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#DC2626',
+    gap: '8px',
+    width: '100%',
+    padding: '12px 14px',
+    backgroundColor: '#FEE2E2',
+    color: '#991B1B',
+    border: '1px solid #FCA5A5',
+    borderRadius: '10px',
+    fontSize: '13px',
+    fontWeight: '700',
     cursor: 'pointer',
-    fontSize: '16px',
-    padding: '4px',
-    fontWeight: 'bold',
+    transition: 'all 0.2s',
   },
   mainContent: {
     flex: 1,
@@ -1297,13 +1343,22 @@ const styles = {
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
-    padding: '20px 28px',
+    padding: '16px 28px',
     borderRadius: '16px',
     boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1)',
     border: '1px solid rgba(255, 255, 255, 0.9)'
   },
-  topbarGreeting: { fontSize: '20px', color: '#0F172A', margin: '0 0 2px 0', fontWeight: '800', letterSpacing: '-0.5px' },
-  topbarSub: { fontSize: '13px', color: '#64748B', margin: 0, fontWeight: '500' },
+  topbarIconBtn: {
+    fontSize: '16px',
+    cursor: 'pointer',
+    padding: '6px',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: '8px',
+    border: '1px solid #E2E8F0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   statusBadgeContainer: { 
     display: 'flex', 
     alignItems: 'center', 
@@ -1345,34 +1400,100 @@ const styles = {
   metricLabel: { fontSize: '11px', color: '#64748B', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
   metricVal: { fontSize: '22px', fontWeight: '900', letterSpacing: '-0.5px', marginBottom: '2px' },
   metricSub: { fontSize: '11px', color: '#94A3B8' },
-  carrosselContainer: {
-    display: 'flex',
-    gap: '16px',
-    overflowX: 'auto',
-    paddingBottom: '8px',
-    WebkitOverflowScrolling: 'touch',
+  chartsRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1.3fr',
+    gap: '24px',
+    marginBottom: '24px',
   },
-  carrosselCard: {
+  chartBoxWide: {
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    padding: '24px',
+    borderRadius: '16px',
+    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1)',
     border: '1px solid rgba(255, 255, 255, 0.9)',
-    borderRadius: '14px',
-    padding: '18px',
-    minWidth: '220px',
-    maxWidth: '220px',
-    flexShrink: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.04)',
+    boxSizing: 'border-box',
   },
-  cardsContainer: {
+  verTodosBtn: {
+    backgroundColor: '#F1F5F9',
+    color: '#475569',
+    border: '1px solid #CBD5E1',
+    padding: '4px 10px',
+    borderRadius: '6px',
+    fontSize: '11px',
+    fontWeight: '700',
+    cursor: 'pointer',
+  },
+  rankBadge: {
+    width: '26px',
+    height: '26px',
+    borderRadius: '6px',
+    color: '#FFFFFF',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '11px',
+    fontWeight: '800',
+    flexShrink: 0,
+  },
+  progressBarBg: {
+    width: '100%',
+    height: '6px',
+    backgroundColor: '#E2E8F0',
+    borderRadius: '3px',
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: '3px',
+  },
+  chartSelect: {
+    padding: '4px 8px',
+    borderRadius: '6px',
+    border: '1px solid #CBD5E1',
+    backgroundColor: '#FFFFFF',
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#0F172A',
+    outline: 'none',
+  },
+  svgChartContainer: {
+    paddingTop: '10px',
+  },
+  chartXAxis: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '11px',
+    color: '#64748B',
+    paddingTop: '8px',
+    borderTop: '1px solid #E2E8F0',
+  },
+  cardsWaveGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
     gap: '16px',
     marginBottom: '24px',
   },
-  cardLabel: { fontSize: '11px', color: '#64748B', marginBottom: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' },
-  cardValue: { fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px' },
+  cardWave: {
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    backdropFilter: 'blur(12px)',
+    padding: '22px',
+    borderRadius: '16px',
+    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.9)',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardWaveLabel: { fontSize: '12px', color: '#0F172A', display: 'block', fontWeight: '700', marginBottom: '8px' },
+  cardWaveVal: { fontSize: '24px', fontWeight: '900', display: 'block', letterSpacing: '-0.5px', marginBottom: '4px' },
+  cardWaveSub: { fontSize: '9px', color: '#64748B', fontWeight: '700', letterSpacing: '0.8px', display: 'block' },
+  waveSvgWrapper: {
+    width: '100px',
+    flexShrink: 0,
+  },
   cardSection: {
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
@@ -1383,8 +1504,7 @@ const styles = {
     border: '1px solid rgba(255, 255, 255, 0.9)',
     marginBottom: '24px',
   },
-  sectionTitle: { fontSize: '16px', color: '#0F172A', marginBottom: '16px', marginTop: 0, fontWeight: '800', letterSpacing: '-0.3px' },
-  liveMetricsBadge: { fontSize: '10px', color: '#2563EB', backgroundColor: 'rgba(37,99,235,0.08)', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(37,99,235,0.2)' },
+  sectionTitle: { fontSize: '15px', color: '#0F172A', marginBottom: '16px', marginTop: 0, fontWeight: '800', letterSpacing: '-0.3px' },
   formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' },
   formGroup: { display: 'flex', flexDirection: 'column' },
   formLabel: { fontSize: '11px', color: '#475569', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
