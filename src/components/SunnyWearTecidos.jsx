@@ -33,7 +33,6 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
-  // Estados específicos para o módulo de OPs
   const [formOp, setFormOp] = useState({
     numeroOp: '',
     termoBusca: '',
@@ -167,7 +166,6 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Função para cadastrar ou atualizar OP (Removido localizacao)
   const salvarOp = async (e) => {
     e.preventDefault();
     if (!formOp.numeroOp || !formOp.termoBusca || !formOp.quantidade) {
@@ -194,7 +192,7 @@ const SunnyWearTecidos = () => {
       codigo: codigoFinal,
       nome: nomeFinal,
       cor: corFinal,
-      localizacao: '', // Vazio para OPs
+      localizacao: '',
       quantidade: formOp.quantidade,
       metros: formOp.quantidade,
       unidadeMedida: unidadeFinal,
@@ -458,13 +456,13 @@ const SunnyWearTecidos = () => {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{ width: '48px', height: '48px', backgroundColor: '#2563EB', borderRadius: '10px', margin: '0 auto 16px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '20px', fontWeight: 'bold' }}>SW</div>
-            <h1 style={{ color: '#0F172A', margin: '0 0 6px 0', fontSize: '22px', fontWeight: '700', letterSpacing: '-0.3px' }}>Sunny Wear</h1>
-            <p style={{ color: '#64748B', fontSize: '13px', margin: 0, fontWeight: '500' }}>Sistema de Gestão de Estoque Têxtil</p>
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+            <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)', borderRadius: '14px', margin: '0 auto 16px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0A0F1D', fontSize: '22px', fontWeight: '900', boxShadow: '0 0 20px rgba(0,240,255,0.4)' }}>SW</div>
+            <h1 style={{ color: '#F8FAFC', margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' }}>Sunny Wear</h1>
+            <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0, fontWeight: '500' }}>Next-Gen Textile Intelligence System</p>
           </div>
           
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
             <div>
               <label style={styles.loginLabel}>Identificação de Usuário</label>
               <input 
@@ -477,7 +475,7 @@ const SunnyWearTecidos = () => {
               />
             </div>
             <div>
-              <label style={styles.loginLabel}>Senha de Segurança</label>
+              <label style={styles.loginLabel}>Chave de Acesso</label>
               <input 
                 type="password" 
                 placeholder="••••••••" 
@@ -488,7 +486,7 @@ const SunnyWearTecidos = () => {
               />
             </div>
             {erroLogin && <div style={styles.errorBox}>{erroLogin}</div>}
-            <button type="submit" style={{ ...styles.button, backgroundColor: '#2563EB', marginTop: '4px' }}>Acessar Plataforma</button>
+            <button type="submit" style={styles.loginButton}>Inicializar Sistema</button>
           </form>
         </div>
       </div>
@@ -498,32 +496,32 @@ const SunnyWearTecidos = () => {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '36px', height: '36px', backgroundColor: '#2563EB', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '15px', fontWeight: 'bold' }}>SW</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0A0F1D', fontSize: '18px', fontWeight: '900', boxShadow: '0 0 15px rgba(0,240,255,0.3)' }}>SW</div>
           <div>
-            <h1 style={styles.title}>Sunny Wear</h1>
-            <p style={styles.subtitle}>Painel Executivo de Controle e Logística de Tecidos</p>
+            <h1 style={styles.title}>Sunny Wear <span style={{color: '#00F0FF', fontSize: '12px', fontWeight: '600', border: '1px solid rgba(0,240,255,0.3)', padding: '2px 8px', borderRadius: '4px', marginLeft: '8px'}}>v2.5 AI</span></h1>
+            <p style={styles.subtitle}>Painel Executivo Cyber-Industrial de Controle Têxtil</p>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Servidor Sincronizado</span>
+            <span style={styles.statusText}>Quantum Link Ativo</span>
           </div>
-          <button onClick={handleLogout} style={styles.logoutBtn}>Sair do Sistema</button>
+          <button onClick={handleLogout} style={styles.logoutBtn}>Desconectar</button>
         </div>
       </header>
 
       {alertasEstoqueBaixo.length > 0 && (
         <div style={styles.alertaContainer}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ fontSize: '16px' }}>🚨</span>
-            <strong style={{ color: '#991B1B', fontSize: '14px' }}>Alerta de Estoque Crítico Abaixo do Mínimo</strong>
+            <span style={{ fontSize: '16px' }}>⚡</span>
+            <strong style={{ color: '#FEE2E2', fontSize: '14px', letterSpacing: '0.3px' }}>ALERTA CRÍTICO: ESTOQUE ABAIXO DO MÍNIMO</strong>
           </div>
-          <ul style={{ margin: '4px 0 0 24px', padding: 0, fontSize: '13px', color: '#7F1D1D' }}>
+          <ul style={{ margin: '6px 0 0 24px', padding: 0, fontSize: '13px', color: '#FECACA' }}>
             {alertasEstoqueBaixo.map((alt, idx) => (
-              <li key={idx} style={{ marginBottom: '3px' }}>
-                <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Estoque Atual: <strong>{alt.total} {alt.unidade}</strong> | Mínimo Recomendado: {alt.minimo} {alt.unidade}
+              <li key={idx} style={{ marginBottom: '4px' }}>
+                <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Atual: <strong>{alt.total} {alt.unidade}</strong> | Mínimo: {alt.minimo} {alt.unidade}
               </li>
             ))}
           </ul>
@@ -535,25 +533,25 @@ const SunnyWearTecidos = () => {
           onClick={() => setAbaAtiva('dashboard')} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'dashboard' ? styles.tabActive : {}) }}
         >
-          📊 Visão Geral (Dashboard)
+          📊 Visão Geral
         </button>
         <button 
           onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('entrada'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'entrada' ? styles.tabActive : {}) }}
         >
-          📥 Registrar Entrada (Compra)
+          📥 Registrar Entrada
         </button>
         <button 
           onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); setAbaAtiva('op'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'op' ? styles.tabActive : {}) }}
         >
-          📋 Ordens de Produção (OPs)
+          📋 Ordens de Produção
         </button>
         <button 
           onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'saida' ? styles.tabActive : {}) }}
         >
-          📤 Registrar Saída (Baixa)
+          📤 Registrar Saída
         </button>
         <button 
           onClick={() => setAbaAtiva('historico')} 
@@ -567,8 +565,8 @@ const SunnyWearTecidos = () => {
         <div>
           <div style={styles.cardSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados na Produção</h3>
-              <span style={{ fontSize: '11px', color: '#2563EB', backgroundColor: '#EFF6FF', padding: '4px 10px', borderRadius: '6px', fontWeight: '600', letterSpacing: '0.3px' }}>EM TEMPO REAL</span>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
+              <span style={{ fontSize: '10px', color: '#00F0FF', backgroundColor: 'rgba(0,240,255,0.1)', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(0,240,255,0.3)' }}>LIVE METRICS</span>
             </div>
             
             {topTecidosMaisUsados.length === 0 ? (
@@ -577,25 +575,25 @@ const SunnyWearTecidos = () => {
               <div style={styles.carrosselContainer}>
                 {topTecidosMaisUsados.map((tecido, index) => {
                   const posicoesNomes = ['1º Posição', '2º Posição', '3º Posição', '4º Posição', '5º Posição'];
-                  const coresBordas = ['#2563EB', '#059669', '#D97706', '#DC2626', '#7C3AED'];
+                  const coresBordas = ['#00F0FF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
                   return (
                     <div 
                       key={index} 
                       style={{ 
                         ...styles.carrosselCard, 
-                        borderTop: `3px solid ${coresBordas[index] || '#2563EB'}` 
+                        borderTop: `3px solid ${coresBordas[index] || '#00F0FF'}` 
                       }}
                     >
-                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px', display: 'block', letterSpacing: '0.5px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', marginBottom: '6px', display: 'block', letterSpacing: '0.5px' }}>
                         {posicoesNomes[index] || `${index + 1}º Lugar`}
                       </span>
-                      <strong style={{ fontSize: '14px', color: '#0F172A', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
+                      <strong style={{ fontSize: '14px', color: '#F8FAFC', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
                         {tecido.nome}
                       </strong>
-                      <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block', marginBottom: '12px' }}>
                         Cor: {tecido.cor || 'N/D'} • Cód: {tecido.codigo}
                       </span>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: coresBordas[index] || '#2563EB', marginTop: 'auto' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: coresBordas[index] || '#00F0FF', marginTop: 'auto' }}>
                         {tecido.totalUso.toLocaleString()} {tecido.unidade}
                       </div>
                     </div>
@@ -608,13 +606,13 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <h3 style={styles.sectionTitle}>📥 Fluxo de Entradas (Aquisições Totais)</h3>
             <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #10B981'}}>
                 <span style={styles.cardLabel}>Metragem Adquirida</span>
-                <strong style={{...styles.cardValue, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
+                <strong style={{...styles.cardValue, color: '#34D399'}}>{entradasMetros.toLocaleString()} m</strong>
               </div>
-              <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #10B981'}}>
                 <span style={styles.cardLabel}>Peso Adquirido</span>
-                <strong style={{...styles.cardValue, color: '#059669'}}>{entradasKg.toLocaleString()} kg</strong>
+                <strong style={{...styles.cardValue, color: '#34D399'}}>{entradasKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
@@ -622,13 +620,13 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <h3 style={styles.sectionTitle}>📤 Saídas & OPs (Consumo e Reservas)</h3>
             <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #EF4444'}}>
                 <span style={styles.cardLabel}>Metragem Baixada / Reservada</span>
-                <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
+                <strong style={{...styles.cardValue, color: '#F87171'}}>{saidasMetros.toLocaleString()} m</strong>
               </div>
-              <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #EF4444'}}>
                 <span style={styles.cardLabel}>Peso Baixado / Reservado</span>
-                <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasKg.toLocaleString()} kg</strong>
+                <strong style={{...styles.cardValue, color: '#F87171'}}>{saidasKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
@@ -636,13 +634,13 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <h3 style={styles.sectionTitle}>📦 Saldo Disponível em Estoque (Livre de OPs)</h3>
             <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #2563EB'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #00F0FF'}}>
                 <span style={styles.cardLabel}>Saldo em Metros</span>
-                <strong style={{...styles.cardValue, color: '#2563EB'}}>{estoqueMetros.toLocaleString()} m</strong>
+                <strong style={{...styles.cardValue, color: '#00F0FF'}}>{estoqueMetros.toLocaleString()} m</strong>
               </div>
-              <div style={{...styles.card, borderLeft: '4px solid #D97706'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #F59E0B'}}>
                 <span style={styles.cardLabel}>Saldo em Quilos</span>
-                <strong style={{...styles.cardValue, color: '#D97706'}}>{estoqueKg.toLocaleString()} kg</strong>
+                <strong style={{...styles.cardValue, color: '#FBBF24'}}>{estoqueKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
@@ -654,11 +652,11 @@ const SunnyWearTecidos = () => {
                 <p style={styles.empty}>Nenhum local cadastrado até o momento.</p>
               ) : (
                 Object.entries(porLocalizacao).map(([local, vals]) => (
-                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: '#F8FAFC', padding: '14px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                    <span style={{fontWeight: '600', color: '#0F172A', fontSize: '14px'}}>📍 {local}</span>
+                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: 'rgba(255,255,255,0.02)', padding: '14px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <span style={{fontWeight: '600', color: '#F8FAFC', fontSize: '14px'}}>📍 {local}</span>
                     <div style={{display: 'flex', gap: '24px', fontSize: '13px'}}>
-                      <span style={{color: '#2563EB'}}>Metros livres: <strong style={{fontWeight: '700'}}>{vals.m} m</strong></span>
-                      <span style={{color: '#D97706'}}>Quilos livres: <strong style={{fontWeight: '700'}}>{vals.kg} kg</strong></span>
+                      <span style={{color: '#94A3B8'}}>Metros livres: <strong style={{color: '#00F0FF', fontWeight: '700'}}>{vals.m} m</strong></span>
+                      <span style={{color: '#94A3B8'}}>Quilos livres: <strong style={{color: '#FBBF24', fontWeight: '700'}}>{vals.kg} kg</strong></span>
                     </div>
                   </div>
                 ))
@@ -668,12 +666,11 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {/* ABA DE GESTÃO DE OPS (LOCALIZAÇÃO REMOVIDA) */}
       {abaAtiva === 'op' && (
         <div style={styles.cardSection}>
-          <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '20px' }}>
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
             <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditandoOp ? '✏️ Editar Ordem de Produção (OP)' : '📋 Cadastro e Gestão de Ordens de Produção (OPs)'}</h3>
-            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre o número da OP e o tecido necessário. O sistema reserva o material imediatamente, deduzindo do estoque disponível.</p>
+            <p style={{ color: '#94A3B8', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre o número da OP e o tecido necessário. O sistema reserva o material imediatamente.</p>
           </div>
 
           <form onSubmit={salvarOp} style={styles.formGrid}>
@@ -713,10 +710,9 @@ const SunnyWearTecidos = () => {
               />
             </div>
 
-            {/* PRÉVIA EM TEMPO REAL DO TECIDO PUXADO (SEM LOCALIZAÇÃO) */}
             {formOp.termoBusca && (
-              <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-                <span style={{fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados do Tecido Localizados na Hora:</span>
+              <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                <span style={{fontSize: '11px', color: '#00F0FF', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados do Tecido Localizados na Hora:</span>
                 {(() => {
                   const termo = formOp.termoBusca.toLowerCase().trim();
                   const tecidoMatch = movimentacoes.find(
@@ -726,14 +722,14 @@ const SunnyWearTecidos = () => {
                   if (tecidoMatch) {
                     return (
                       <>
-                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {tecidoMatch.codigo} - {tecidoMatch.nome} ({tecidoMatch.cor})</div>
-                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {tecidoMatch.largura ? `${tecidoMatch.largura}m` : 'Não informada'}</div>
-                        <div style={{fontSize: '13px', color: '#059669', fontWeight: '600'}}>✅ Tecido encontrado no sistema! Pronto para reserva.</div>
+                        <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Tecido:</strong> {tecidoMatch.codigo} - {tecidoMatch.nome} ({tecidoMatch.cor})</div>
+                        <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Largura:</strong> {tecidoMatch.largura ? `${tecidoMatch.largura}m` : 'Não informada'}</div>
+                        <div style={{fontSize: '13px', color: '#34D399', fontWeight: '600'}}>✅ Tecido encontrado no sistema! Pronto para reserva.</div>
                       </>
                     );
                   } else {
                     return (
-                      <div style={{fontSize: '13px', color: '#D97706'}}>
+                      <div style={{fontSize: '13px', color: '#FBBF24'}}>
                         ⚠️ Nenhum tecido exato cadastrado com este termo. Um registro temporário será criado para esta OP.
                       </div>
                     );
@@ -742,19 +738,19 @@ const SunnyWearTecidos = () => {
               </div>
             )}
 
-            <div style={{gridColumn: '1 / -1', background: '#FEF3C7', padding: '12px 16px', borderRadius: '8px', border: '1px solid #FCD34D', fontSize: '13px', color: '#92400E'}}>
-              ⚠️ O tecido desta OP será separado e deduzido do estoque total para evitar que seja utilizado em outras demandas.
+            <div style={{gridColumn: '1 / -1', background: 'rgba(245,158,11,0.08)', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.2)', fontSize: '13px', color: '#FCD34D'}}>
+              ⚠️ O tecido desta OP será separado e deduzido do estoque total para evitar duplicação de uso.
             </div>
 
             <div style={{gridColumn: '1 / -1', display: 'flex', gap: '10px'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditandoOp ? '#D97706' : '#2563EB', flex: 1}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoOp ? '#D97706' : 'linear-gradient(135deg, #00F0FF 0%, #2563EB 100%)', color: idEditandoOp ? '#fff' : '#0A0F1D', flex: 1}}>
                 {carregando ? 'Salvando OP...' : (idEditandoOp ? 'Atualizar OP' : 'Cadastrar OP e Reservar Estoque')}
               </button>
               {idEditandoOp && (
                 <button 
                   type="button" 
                   onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); }}
-                  style={{padding: '12px 20px', backgroundColor: '#64748B', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer'}}
+                  style={{padding: '12px 20px', backgroundColor: '#334155', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer'}}
                 >
                   Cancelar
                 </button>
@@ -762,11 +758,10 @@ const SunnyWearTecidos = () => {
             </div>
           </form>
 
-          {/* LISTAGEM E PESQUISA DE OPS CADASTRADAS (SEM COLUNA DE LOCALIZAÇÃO) */}
-          <div style={{ marginTop: '36px', borderTop: '2px solid #E2E8F0', paddingTop: '24px' }}>
+          <div style={{ marginTop: '36px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
-              <span style={{ fontSize: '12px', color: '#64748B' }}>Total de OPs: <strong>{opsFiltradas.length}</strong></span>
+              <h4 style={{ margin: 0, fontSize: '15px', color: '#F8FAFC', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
+              <span style={{ fontSize: '12px', color: '#94A3B8' }}>Total de OPs: <strong>{opsFiltradas.length}</strong></span>
             </div>
 
             <input 
@@ -802,29 +797,17 @@ const SunnyWearTecidos = () => {
 
                       return (
                         <tr key={item.id} style={styles.tr}>
-                          <td style={styles.td}><strong style={{ color: '#2563EB' }}>{numOp}</strong></td>
-                          <td style={styles.td}><strong>{item.codigo}</strong></td>
+                          <td style={styles.td}><strong style={{ color: '#00F0FF' }}>{numOp}</strong></td>
+                          <td style={styles.td}><strong style={{ color: '#F8FAFC' }}>{item.codigo}</strong></td>
                           <td style={styles.td}>
-                            <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
-                            {item.largura ? <div style={{fontSize: '11px', color: '#64748B'}}>Largura: {item.largura}m</div> : null}
+                            <div style={{ fontWeight: '600', color: '#F8FAFC' }}>{item.nome} ({item.cor})</div>
+                            {item.largura ? <div style={{fontSize: '11px', color: '#94A3B8'}}>Largura: {item.largura}m</div> : null}
                           </td>
-                          <td style={styles.td}><strong style={{ color: '#D97706' }}>{qtd} {unidade}</strong></td>
-                          <td style={styles.td}>{item.data}</td>
+                          <td style={styles.td}><strong style={{ color: '#FBBF24' }}>{qtd} {unidade}</strong></td>
+                          <td style={styles.td}><span style={{color: '#94A3B8'}}>{item.data}</span></td>
                           <td style={styles.td}>
-                            <button 
-                              onClick={() => iniciarEdicaoOp(item)} 
-                              style={styles.btnEditar} 
-                              title="Editar OP"
-                            >
-                              ✏️
-                            </button>
-                            <button 
-                              onClick={() => deletarItem(item.id)} 
-                              style={styles.btnDeletar} 
-                              title="Excluir OP e liberar estoque"
-                            >
-                              🗑️
-                            </button>
+                            <button onClick={() => iniciarEdicaoOp(item)} style={styles.btnEditar} title="Editar OP">✏️</button>
+                            <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Excluir OP">🗑️</button>
                           </td>
                         </tr>
                       );
@@ -839,137 +822,64 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'entrada' && (
         <div style={styles.cardSection}>
-          <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '20px' }}>
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
             <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Atualizar Dados de Entrada' : '📥 Cadastro de Nova Entrada / Compra'}</h3>
-            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os campos abaixo para registrar novos tecidos ou lotes no sistema.</p>
+            <p style={{ color: '#94A3B8', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os campos abaixo para registrar novos tecidos ou lotes no sistema.</p>
           </div>
           
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Código do Tecido *</label>
-              <input 
-                type="text" 
-                placeholder="Ex: TEC-001" 
-                value={form.codigo} 
-                onChange={(e) => setForm({...form, codigo: e.target.value})} 
-                style={styles.input}
-                required
-              />
+              <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
             </div>
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Nome do Tecido *</label>
-              <input 
-                type="text" 
-                placeholder="Ex: Malha Canelada" 
-                value={form.nome} 
-                onChange={(e) => setForm({...form, nome: e.target.value})} 
-                style={styles.input}
-                required
-              />
+              <input type="text" placeholder="Ex: Malha Canelada" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} style={styles.input} required />
             </div>
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Cor do Tecido *</label>
-              <input 
-                type="text" 
-                placeholder="Ex: Azul Marinho" 
-                value={form.cor} 
-                onChange={(e) => setForm({...form, cor: e.target.value})} 
-                style={styles.input}
-                required
-              />
+              <input type="text" placeholder="Ex: Azul Marinho" value={form.cor} onChange={(e) => setForm({...form, cor: e.target.value})} style={styles.input} required />
             </div>
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Largura (m)</label>
-              <input 
-                type="number" 
-                step="0.01"
-                placeholder="Ex: 1.50" 
-                value={form.largura} 
-                onChange={(e) => setForm({...form, largura: e.target.value})} 
-                style={styles.input}
-              />
+              <input type="number" step="0.01" placeholder="Ex: 1.50" value={form.largura} onChange={(e) => setForm({...form, largura: e.target.value})} style={styles.input} />
             </div>
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Localização / Galpão *</label>
-              <input 
-                type="text" 
-                placeholder="Ex: Galpão A - Setor 2" 
-                value={form.localizacao} 
-                onChange={(e) => setForm({...form, localizacao: e.target.value})} 
-                style={styles.input}
-                required
-              />
+              <input type="text" placeholder="Ex: Galpão A - Setor 2" value={form.localizacao} onChange={(e) => setForm({...form, localizacao: e.target.value})} style={styles.input} required />
             </div>
             <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Quantidade *</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  placeholder="0.00" 
-                  value={form.quantidade} 
-                  onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} 
-                  style={styles.input}
-                  required
-                />
+                <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Unidade</label>
-                <select 
-                  value={form.unidadeMedida} 
-                  onChange={(e) => setForm({...form, unidadeMedida: e.target.value})}
-                  style={styles.input}
-                >
-                  <option value="m">Metros (m)</option>
-                  <option value="kg">Quilos (kg)</option>
+                <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
+                  <option value="m" style={{background: '#0F172A'}}>Metros (m)</option>
+                  <option value="kg" style={{background: '#0F172A'}}>Quilos (kg)</option>
                 </select>
               </div>
             </div>
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
-              <input 
-                type="number" 
-                step="0.01"
-                placeholder="Ex: 180" 
-                value={form.estoqueMinimo} 
-                onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} 
-                style={styles.input}
-              />
+              <input type="number" step="0.01" placeholder="Ex: 180" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
             </div>
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Valor Unitário (R$)</label>
-              <input 
-                type="number" 
-                step="0.01"
-                placeholder="Ex: 15.90" 
-                value={form.preco} 
-                onChange={(e) => setForm({...form, preco: e.target.value})} 
-                style={styles.input}
-              />
+              <input type="number" step="0.01" placeholder="Ex: 15.90" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
             </div>
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Número da Nota Fiscal</label>
-              <input 
-                type="text" 
-                placeholder="Ex: 45892" 
-                value={form.notaFiscal} 
-                onChange={(e) => setForm({...form, notaFiscal: e.target.value})} 
-                style={styles.input}
-              />
+              <input type="text" placeholder="Ex: 45892" value={form.notaFiscal} onChange={(e) => setForm({...form, notaFiscal: e.target.value})} style={styles.input} />
             </div>
             <div style={styles.formGroup}>
               <label style={styles.formLabel}>Nome do Fornecedor</label>
-              <input 
-                type="text" 
-                placeholder="Ex: Têxtil Exemplo S.A." 
-                value={form.fornecedor} 
-                onChange={(e) => setForm({...form, fornecedor: e.target.value})} 
-                style={styles.input}
-              />
+              <input type="text" placeholder="Ex: Têxtil Exemplo S.A." value={form.fornecedor} onChange={(e) => setForm({...form, fornecedor: e.target.value})} style={styles.input} />
             </div>
             
             <div style={{gridColumn: '1 / -1'}}>
-              <label style={styles.fileLabel}>Anexar Imagem / Foto do Tecido (Opcional)</label>
+              <label style={styles.formLabel}>Anexar Imagem / Foto do Tecido (Opcional)</label>
               <input type="file" accept="image/*" capture="environment" onChange={handleFotoChange} style={styles.inputFile} />
             </div>
 
@@ -977,14 +887,14 @@ const SunnyWearTecidos = () => {
               <div style={{gridColumn: '1 / -1', ...styles.previewContainer}}>
                 <img src={form.foto} alt="Prévia" style={styles.previewImg} onClick={() => setFotoSelecionada(form.foto)} />
                 <div>
-                  <strong style={{display: 'block', color: '#065F46', fontSize: '13px'}}>Imagem anexada com sucesso</strong>
-                  <span style={{color: '#047857', fontSize: '11px', cursor: 'pointer'}} onClick={() => setFotoSelecionada(form.foto)}>Clique na miniatura para ampliar</span>
+                  <strong style={{display: 'block', color: '#34D399', fontSize: '13px'}}>Imagem anexada com sucesso</strong>
+                  <span style={{color: '#94A3B8', fontSize: '11px', cursor: 'pointer'}} onClick={() => setFotoSelecionada(form.foto)}>Clique na miniatura para ampliar</span>
                 </div>
               </div>
             )}
 
             <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#D97706' : '#059669'}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #10B981 0%, #059669 100%)', color: '#fff'}}>
                 {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Salvar Entrada no Servidor')}
               </button>
             </div>
@@ -994,68 +904,44 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'saida' && (
         <div style={styles.cardSection}>
-          <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '20px' }}>
+          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
             <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída'}</h3>
-            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
+            <p style={{ color: '#94A3B8', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
           </div>
 
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
             <div style={{gridColumn: '1 / -1'}}>
               <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
               <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-                <input 
-                  type="text" 
-                  placeholder="Ex: TEC-001 ou Malha" 
-                  value={termoBuscaSaida} 
-                  onChange={(e) => setTermoBuscaSaida(e.target.value)} 
-                  style={{...styles.input, flex: 1}}
-                />
-                <button 
-                  type="button"
-                  onClick={executarBuscaSaida}
-                  style={{padding: '12px 24px', backgroundColor: '#2563EB', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '14px'}}
-                >
-                  OK / Buscar
-                </button>
+                <input type="text" placeholder="Ex: TEC-001 ou Malha" value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1}} />
+                <button type="button" onClick={executarBuscaSaida} style={{padding: '11px 20px', background: 'linear-gradient(135deg, #00F0FF 0%, #2563EB 100%)', color: '#0A0F1D', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>OK / Buscar</button>
               </div>
             </div>
 
             <div style={{gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Quantidade Utilizada *</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  placeholder="0.00" 
-                  value={form.quantidade} 
-                  onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} 
-                  style={styles.input}
-                  required
-                />
+                <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Unidade</label>
-                <select 
-                  value={form.unidadeMedida} 
-                  onChange={(e) => setForm({...form, unidadeMedida: e.target.value})}
-                  style={styles.input}
-                >
-                  <option value="m">Metros (m)</option>
-                  <option value="kg">Quilos (kg)</option>
+                <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
+                  <option value="m" style={{background: '#0F172A'}}>Metros (m)</option>
+                  <option value="kg" style={{background: '#0F172A'}}>Quilos (kg)</option>
                 </select>
               </div>
             </div>
 
-            <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-              <span style={{fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados Carregados do Cadastro:</span>
-              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
-              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
-              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
-              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
+            <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+              <span style={{fontSize: '11px', color: '#00F0FF', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados Carregados do Cadastro:</span>
+              <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
+              <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
+              <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
+              <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
             </div>
 
             <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#D97706' : '#DC2626'}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)', color: '#fff'}}>
                 {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Confirmar Saída no Servidor')}
               </button>
             </div>
@@ -1067,7 +953,7 @@ const SunnyWearTecidos = () => {
         <div style={styles.cardSection}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico, OPs e Galpões</h3>
-            <span style={{ fontSize: '12px', color: '#64748B' }}>Total de registros: <strong>{movFiltradas.length}</strong></span>
+            <span style={{ fontSize: '12px', color: '#94A3B8' }}>Total de registros: <strong>{movFiltradas.length}</strong></span>
           </div>
 
           <input 
@@ -1110,16 +996,16 @@ const SunnyWearTecidos = () => {
                     const nf = item.notafiscal || item.notaFiscal || '';
                     const fornecedor = item.fornecedor || '';
 
-                    let badgeBg = '#DEF7EC';
-                    let badgeColor = '#03543F';
+                    let badgeBg = 'rgba(16,185,129,0.15)';
+                    let badgeColor = '#34D399';
                     let badgeText = '📥 Entrada';
                     if (tipoMovimentoNoBanco === 'saida') {
-                      badgeBg = '#FDE8E8';
-                      badgeColor = '#9B1C1C';
+                      badgeBg = 'rgba(239,68,68,0.15)';
+                      badgeColor = '#F87171';
                       badgeText = '📤 Saída';
                     } else if (tipoMovimentoNoBanco === 'op') {
-                      badgeBg = '#FEF3C7';
-                      badgeColor = '#92400E';
+                      badgeBg = 'rgba(245,158,11,0.15)';
+                      badgeColor = '#FBBF24';
                       badgeText = `📋 OP: ${nf}`;
                     }
 
@@ -1127,59 +1013,35 @@ const SunnyWearTecidos = () => {
                       <tr key={item.id} style={styles.tr}>
                         <td style={styles.td}>
                           {item.foto ? (
-                            <img 
-                              src={item.foto} 
-                              alt="Tecido" 
-                              style={styles.tableImgClickable} 
-                              title="Clique para ampliar"
-                              onClick={() => setFotoSelecionada(item.foto)} 
-                            />
+                            <img src={item.foto} alt="Tecido" style={styles.tableImgClickable} title="Clique para ampliar" onClick={() => setFotoSelecionada(item.foto)} />
                           ) : (
                             <span style={styles.noFoto}>Sem foto</span>
                           )}
                         </td>
                         <td style={styles.td}>
-                          <span style={{
-                            ...styles.badge, 
-                            background: badgeBg,
-                            color: badgeColor
-                          }}>
-                            {badgeText}
-                          </span>
+                          <span style={{...styles.badge, background: badgeBg, color: badgeColor}}>{badgeText}</span>
                         </td>
-                        <td style={styles.td}><strong>{item.codigo}</strong></td>
+                        <td style={styles.td}><strong style={{color: '#F8FAFC'}}>{item.codigo}</strong></td>
                         <td style={styles.td}>
-                          <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
-                          {item.largura ? <div style={{fontSize: '11px', color: '#2563EB', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
+                          <div style={{ fontWeight: '600', color: '#F8FAFC' }}>{item.nome} ({item.cor})</div>
+                          {item.largura ? <div style={{fontSize: '11px', color: '#00F0FF', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
                         </td>
                         <td style={styles.td}>
-                          <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || 'Não informado'}</div>
-                          <div style={{fontSize: '11px', color: '#64748B'}}>NF: {nf || 'N/D'}</div>
+                          <div style={{fontSize: '13px', fontWeight: '600', color: '#F8FAFC'}}>{fornecedor || 'Não informado'}</div>
+                          <div style={{fontSize: '11px', color: '#94A3B8'}}>NF: {nf || 'N/D'}</div>
                         </td>
                         <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                         <td style={styles.td}>
-                          <strong style={{ color: '#0F172A' }}>{qtd} {unidade}</strong>
-                          <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
-                          <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
+                          <strong style={{ color: '#F8FAFC' }}>{qtd} {unidade}</strong>
+                          <div style={{fontSize: '11px', color: '#94A3B8'}}>Mín: {minimo} {unidade}</div>
+                          <div style={{fontSize: '11px', color: '#34D399', fontWeight: '600'}}>
                             R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
                           </div>
                         </td>
-                        <td style={styles.td}>{item.data}</td>
+                        <td style={styles.td}><span style={{color: '#94A3B8'}}>{item.data}</span></td>
                         <td style={styles.td}>
-                          <button 
-                            onClick={() => iniciarEdicao(item)} 
-                            style={styles.btnEditar} 
-                            title="Editar registro"
-                          >
-                            ✏️
-                          </button>
-                          <button 
-                            onClick={() => deletarItem(item.id)} 
-                            style={styles.btnDeletar} 
-                            title="Remover registro"
-                          >
-                            🗑️
-                          </button>
+                          <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
+                          <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
                         </td>
                       </tr>
                     );
@@ -1209,107 +1071,124 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     height: '100vh',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#070B14',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   loginCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0F172A',
     padding: '40px',
-    borderRadius: '12px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+    borderRadius: '16px',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0,240,255,0.1)',
     width: '100%',
-    maxWidth: '410px',
+    maxWidth: '420px',
     boxSizing: 'border-box',
-    border: '1px solid rgba(255,255,255,0.1)'
+    border: '1px solid rgba(0,240,255,0.2)'
   },
   loginLabel: {
-    fontSize: '12px',
-    color: '#475569',
+    fontSize: '11px',
+    color: '#94A3B8',
     marginBottom: '6px',
     display: 'block',
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: '0.3px'
+    letterSpacing: '0.8px'
   },
   errorBox: {
-    backgroundColor: '#FEF2F2',
-    color: '#DC2626',
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    color: '#F87171',
     padding: '10px',
     borderRadius: '6px',
     fontSize: '13px',
     textAlign: 'center',
     fontWeight: '600',
-    border: '1px solid #FCA5A5'
+    border: '1px solid rgba(239,68,68,0.3)'
+  },
+  loginButton: {
+    width: '100%',
+    padding: '14px',
+    background: 'linear-gradient(135deg, #00F0FF 0%, #2563EB 100%)',
+    color: '#0A0F1D',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '800',
+    cursor: 'pointer',
+    boxShadow: '0 0 20px rgba(0,240,255,0.4)',
+    letterSpacing: '0.5px',
+    marginTop: '6px'
   },
   container: {
     width: '100%',
     margin: '0',
-    padding: '24px',
+    padding: '28px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#070B14',
     minHeight: '100vh',
     boxSizing: 'border-box',
+    color: '#F8FAFC'
   },
   header: { 
-    marginBottom: '20px', 
+    marginBottom: '24px', 
     display: 'flex', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
     flexWrap: 'wrap', 
     gap: '16px',
-    backgroundColor: '#ffffff',
-    padding: '18px 24px',
-    borderRadius: '10px',
-    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
-    border: '1px solid #E2E8F0'
+    backgroundColor: '#0F172A',
+    padding: '20px 28px',
+    borderRadius: '12px',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+    border: '1px solid rgba(255,255,255,0.06)'
   },
-  title: { fontSize: '20px', color: '#0F172A', margin: '0 0 2px 0', fontWeight: '800', letterSpacing: '-0.5px' },
-  subtitle: { fontSize: '12px', color: '#64748B', margin: 0, fontWeight: '500' },
-  statusBadgeContainer: { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#F0FDF4', padding: '6px 12px', borderRadius: '20px', border: '1px solid #BBF7D0' },
-  pulseDot: { width: '8px', height: '8px', backgroundColor: '#059669', borderRadius: '50%', display: 'inline-block' },
-  statusText: { fontSize: '12px', color: '#065F46', fontWeight: '600' },
+  title: { fontSize: '22px', color: '#F8FAFC', margin: '0 0 2px 0', fontWeight: '900', letterSpacing: '-0.5px' },
+  subtitle: { fontSize: '12px', color: '#94A3B8', margin: 0, fontWeight: '500' },
+  statusBadgeContainer: { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(16,185,129,0.1)', padding: '6px 14px', borderRadius: '20px', border: '1px solid rgba(16,185,129,0.3)' },
+  pulseDot: { width: '8px', height: '8px', backgroundColor: '#34D399', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 8px #34D399' },
+  statusText: { fontSize: '12px', color: '#34D399', fontWeight: '700', letterSpacing: '0.3px' },
   logoutBtn: {
     padding: '8px 16px',
-    backgroundColor: '#FEE2E2',
-    color: '#991B1B',
-    border: 'none',
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    color: '#F87171',
+    border: '1px solid rgba(239,68,68,0.3)',
     borderRadius: '6px',
-    fontSize: '13px',
-    fontWeight: '600',
+    fontSize: '12px',
+    fontWeight: '700',
     cursor: 'pointer',
-    transition: 'background 0.2s',
+    transition: 'all 0.2s',
   },
   alertaContainer: {
-    backgroundColor: '#FEF2F2',
-    border: '1px solid #FCA5A5',
-    padding: '16px',
-    borderRadius: '8px',
-    marginBottom: '20px',
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    border: '1px solid rgba(239,68,68,0.3)',
+    padding: '16px 20px',
+    borderRadius: '10px',
+    marginBottom: '24px',
+    boxShadow: '0 0 20px rgba(239,68,68,0.15)'
   },
   navTabs: {
     display: 'flex',
-    gap: '10px',
-    marginBottom: '20px',
+    gap: '12px',
+    marginBottom: '24px',
     overflowX: 'auto',
     paddingBottom: '4px',
   },
   tabBtn: {
-    padding: '12px 20px',
-    backgroundColor: '#FFFFFF',
-    color: '#475569',
-    border: '1px solid #E2E8F0',
+    padding: '12px 22px',
+    backgroundColor: '#0F172A',
+    color: '#94A3B8',
+    border: '1px solid rgba(255,255,255,0.06)',
     borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '600',
+    fontSize: '13px',
+    fontWeight: '700',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
-    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.02)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+    transition: 'all 0.2s'
   },
   tabActive: {
-    backgroundColor: '#2563EB',
-    color: '#ffffff',
-    borderColor: '#2563EB',
-    boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)',
+    backgroundColor: '#1E293B',
+    color: '#00F0FF',
+    borderColor: 'rgba(0,240,255,0.4)',
+    boxShadow: '0 0 15px rgba(0,240,255,0.2)',
   },
   carrosselContainer: {
     display: 'flex',
@@ -1319,16 +1198,16 @@ const styles = {
     WebkitOverflowScrolling: 'touch',
   },
   carrosselCard: {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #E2E8F0',
-    borderRadius: '10px',
-    padding: '16px',
+    backgroundColor: '#0F172A',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '12px',
+    padding: '18px',
     minWidth: '220px',
     maxWidth: '220px',
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
   },
   cardsContainer: {
     display: 'grid',
@@ -1336,122 +1215,124 @@ const styles = {
     gap: '16px',
   },
   card: {
-    backgroundColor: '#ffffff',
-    padding: '20px',
-    borderRadius: '10px',
-    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
-    border: '1px solid #E2E8F0',
+    backgroundColor: '#0F172A',
+    padding: '22px',
+    borderRadius: '12px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+    border: '1px solid rgba(255,255,255,0.06)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
   },
-  cardLabel: { fontSize: '11px', color: '#64748B', marginBottom: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  cardValue: { fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' },
+  cardLabel: { fontSize: '11px', color: '#94A3B8', marginBottom: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
+  cardValue: { fontSize: '26px', fontWeight: '900', letterSpacing: '-0.5px' },
   cardSection: {
-    backgroundColor: '#ffffff',
-    padding: '24px',
-    borderRadius: '10px',
-    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
-    border: '1px solid #E2E8F0',
-    marginBottom: '20px',
+    backgroundColor: '#0F172A',
+    padding: '26px',
+    borderRadius: '14px',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    marginBottom: '24px',
   },
-  sectionTitle: { fontSize: '16px', color: '#0F172A', marginBottom: '16px', marginTop: 0, fontWeight: '700', letterSpacing: '-0.3px' },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
+  sectionTitle: { fontSize: '16px', color: '#F8FAFC', marginBottom: '16px', marginTop: 0, fontWeight: '800', letterSpacing: '-0.3px' },
+  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' },
   formGroup: { display: 'flex', flexDirection: 'column' },
-  formLabel: { fontSize: '12px', color: '#475569', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.3px' },
+  formLabel: { fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
   input: {
     width: '100%',
-    padding: '11px 14px',
-    borderRadius: '6px',
-    border: '1px solid #CBD5E1',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    border: '1px solid rgba(255,255,255,0.1)',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
-    backgroundColor: '#F8FAFC',
-    color: '#0F172A',
+    backgroundColor: '#070B14',
+    color: '#F8FAFC',
   },
   inputFull: {
     width: '100%',
-    padding: '12px 14px',
-    borderRadius: '6px',
-    border: '1px solid #CBD5E1',
+    padding: '12px 16px',
+    borderRadius: '8px',
+    border: '1px solid rgba(255,255,255,0.1)',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
-    backgroundColor: '#F8FAFC',
-    color: '#0F172A',
-    marginBottom: '16px',
+    backgroundColor: '#070B14',
+    color: '#F8FAFC',
+    marginBottom: '18px',
   },
-  previewContainer: { display: 'flex', alignItems: 'center', gap: '12px', background: '#F0FDF4', padding: '12px', borderRadius: '8px', border: '1px solid #BBF7D0' },
-  previewImg: { width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '2px solid #059669' },
+  previewContainer: { display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(52,211,153,0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.3)' },
+  previewImg: { width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '2px solid #34D399' },
   button: {
     width: '100%',
     padding: '14px',
-    color: '#ffffff',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: '8px',
     fontSize: '14px',
-    fontWeight: '700',
+    fontWeight: '800',
     cursor: 'pointer',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
-    letterSpacing: '0.3px'
+    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+    letterSpacing: '0.5px'
   },
   chartContainer: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' },
   tableResponsive: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' },
-  thTr: { borderBottom: '2px solid #E2E8F0', backgroundColor: '#F8FAFC' },
-  th: { padding: '12px 10px', fontSize: '11px', color: '#475569', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' },
-  tr: { borderBottom: '1px solid #E2E8F0' },
-  td: { padding: '14px 10px', fontSize: '13px', color: '#334155', verticalAlign: 'middle' },
-  localBadge: { padding: '4px 8px', borderRadius: '6px', fontSize: '12px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: '600' },
+  thTr: { borderBottom: '2px solid rgba(255,255,255,0.08)', backgroundColor: '#070B14' },
+  th: { padding: '14px 12px', fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.8px' },
+  tr: { borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.2s' },
+  td: { padding: '16px 12px', fontSize: '13px', color: '#CBD5E1', verticalAlign: 'middle' },
+  localBadge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', backgroundColor: 'rgba(0,240,255,0.1)', color: '#00F0FF', fontWeight: '700', border: '1px solid rgba(0,240,255,0.2)' },
+  badge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', display: 'inline-block' },
   btnEditar: {
     padding: '6px 10px',
-    backgroundColor: '#EFF6FF',
-    color: '#1D4ED8',
-    border: 'none',
+    backgroundColor: 'rgba(0,240,255,0.15)',
+    color: '#00F0FF',
+    border: '1px solid rgba(0,240,255,0.3)',
     borderRadius: '6px',
     cursor: 'pointer',
     marginRight: '6px',
-    fontSize: '13px',
-    fontWeight: '600',
+    fontSize: '12px',
+    fontWeight: '700',
   },
   btnDeletar: {
     padding: '6px 10px',
-    backgroundColor: '#FEE2E2',
-    color: '#991B1B',
-    border: 'none',
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    color: '#F87171',
+    border: '1px solid rgba(239,68,68,0.3)',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: '600',
+    fontSize: '12px',
+    fontWeight: '700',
   },
-  empty: { textAlign: 'center', padding: '32px', color: '#94A3B8', fontSize: '14px' },
+  empty: { textAlign: 'center', padding: '36px', color: '#64748B', fontSize: '14px' },
   modalOverlay: {
     position: 'fixed',
     top: 0,
     left: 0,
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    backgroundColor: 'rgba(7, 11, 20, 0.85)',
+    backdropFilter: 'blur(5px)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: '1000',
     padding: '20px',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    padding: '20px',
-    borderRadius: '10px',
+    backgroundColor: '#0F172A',
+    padding: '24px',
+    borderRadius: '16px',
     maxWidth: '90vw',
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-end',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0,240,255,0.2)',
+    border: '1px solid rgba(0,240,255,0.3)'
   },
   modalCloseBtn: {
-    backgroundColor: '#DC2626',
+    backgroundColor: '#EF4444',
     color: '#fff',
     border: 'none',
     padding: '8px 14px',
@@ -1459,14 +1340,16 @@ const styles = {
     fontWeight: '700',
     cursor: 'pointer',
     marginBottom: '12px',
-    fontSize: '13px',
+    fontSize: '12px',
   },
   modalImg: {
     maxWidth: '80vw',
     maxHeight: '75vh',
     objectFit: 'contain',
-    borderRadius: '6px',
-  }
+    borderRadius: '8px',
+  },
+  tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)' },
+  noFoto: { fontSize: '11px', color: '#64748B', fontStyle: 'italic' }
 };
 
 export default SunnyWearTecidos;
