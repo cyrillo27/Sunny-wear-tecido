@@ -457,9 +457,9 @@ const SunnyWearTecidos = () => {
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <div style={{ width: '56px', height: '56px', background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)', borderRadius: '14px', margin: '0 auto 16px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0A0F1D', fontSize: '22px', fontWeight: '900', boxShadow: '0 0 20px rgba(0,240,255,0.4)' }}>SW</div>
-            <h1 style={{ color: '#F8FAFC', margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' }}>Sunny Wear</h1>
-            <p style={{ color: '#94A3B8', fontSize: '13px', margin: 0, fontWeight: '500' }}>Next-Gen Textile Intelligence System</p>
+            <div style={styles.logoBadge}>SW</div>
+            <h1 style={{ color: '#E2E8F0', margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' }}>Sunny Wear</h1>
+            <p style={{ color: '#00F0FF', fontSize: '12px', margin: 0, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>Cyber-Textile Intelligence</p>
           </div>
           
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -497,13 +497,13 @@ const SunnyWearTecidos = () => {
     <div style={styles.container}>
       <header style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0A0F1D', fontSize: '18px', fontWeight: '900', boxShadow: '0 0 15px rgba(0,240,255,0.3)' }}>SW</div>
+          <div style={styles.logoBadge}>SW</div>
           <div>
-            <h1 style={styles.title}>Sunny Wear <span style={{color: '#00F0FF', fontSize: '12px', fontWeight: '600', border: '1px solid rgba(0,240,255,0.3)', padding: '2px 8px', borderRadius: '4px', marginLeft: '8px'}}>v2.5 AI</span></h1>
-            <p style={styles.subtitle}>Painel Executivo Cyber-Industrial de Controle Têxtil</p>
+            <h1 style={styles.title}>Sunny Wear <span style={styles.versionBadge}>v2.5 SCI-FI</span></h1>
+            <p style={styles.subtitle}>Painel Holográfico de Controle de Estoque</p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
             <span style={styles.statusText}>Quantum Link Ativo</span>
@@ -566,7 +566,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
-              <span style={{ fontSize: '10px', color: '#00F0FF', backgroundColor: 'rgba(0,240,255,0.1)', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(0,240,255,0.3)' }}>LIVE METRICS</span>
+              <span style={styles.liveMetricsBadge}>LIVE METRICS</span>
             </div>
             
             {topTecidosMaisUsados.length === 0 ? (
@@ -575,7 +575,7 @@ const SunnyWearTecidos = () => {
               <div style={styles.carrosselContainer}>
                 {topTecidosMaisUsados.map((tecido, index) => {
                   const posicoesNomes = ['1º Posição', '2º Posição', '3º Posição', '4º Posição', '5º Posição'];
-                  const coresBordas = ['#00F0FF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+                  const coresBordas = ['#00F0FF', '#10B981', '#F59E0B', '#EF4444', '#D946EF'];
                   return (
                     <div 
                       key={index} 
@@ -652,7 +652,7 @@ const SunnyWearTecidos = () => {
                 <p style={styles.empty}>Nenhum local cadastrado até o momento.</p>
               ) : (
                 Object.entries(porLocalizacao).map(([local, vals]) => (
-                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: 'rgba(255,255,255,0.02)', padding: '14px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: 'rgba(255,255,255,0.02)', padding: '14px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
                     <span style={{fontWeight: '600', color: '#F8FAFC', fontSize: '14px'}}>📍 {local}</span>
                     <div style={{display: 'flex', gap: '24px', fontSize: '13px'}}>
                       <span style={{color: '#94A3B8'}}>Metros livres: <strong style={{color: '#00F0FF', fontWeight: '700'}}>{vals.m} m</strong></span>
@@ -711,7 +711,7 @@ const SunnyWearTecidos = () => {
             </div>
 
             {formOp.termoBusca && (
-              <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+              <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(0,240,255,0.2)', display: 'flex', flexDirection: 'column', gap: '6px', boxShadow: '0 0 15px rgba(0,240,255,0.05)'}}>
                 <span style={{fontSize: '11px', color: '#00F0FF', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados do Tecido Localizados na Hora:</span>
                 {(() => {
                   const termo = formOp.termoBusca.toLowerCase().trim();
@@ -742,15 +742,15 @@ const SunnyWearTecidos = () => {
               ⚠️ O tecido desta OP será separado e deduzido do estoque total para evitar duplicação de uso.
             </div>
 
-            <div style={{gridColumn: '1 / -1', display: 'flex', gap: '10px'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoOp ? '#D97706' : 'linear-gradient(135deg, #00F0FF 0%, #2563EB 100%)', color: idEditandoOp ? '#fff' : '#0A0F1D', flex: 1}}>
+            <div style={{gridColumn: '1 / -1', display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoOp ? '#D97706' : 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)', color: idEditandoOp ? '#fff' : '#0A0F1D', flex: 1}}>
                 {carregando ? 'Salvando OP...' : (idEditandoOp ? 'Atualizar OP' : 'Cadastrar OP e Reservar Estoque')}
               </button>
               {idEditandoOp && (
                 <button 
                   type="button" 
                   onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); }}
-                  style={{padding: '12px 20px', backgroundColor: '#334155', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer'}}
+                  style={{padding: '12px 20px', backgroundColor: '#334155', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer'}}
                 >
                   Cancelar
                 </button>
@@ -856,8 +856,8 @@ const SunnyWearTecidos = () => {
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Unidade</label>
                 <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
-                  <option value="m" style={{background: '#0F172A'}}>Metros (m)</option>
-                  <option value="kg" style={{background: '#0F172A'}}>Quilos (kg)</option>
+                  <option value="m" style={{background: '#0B0F19'}}>Metros (m)</option>
+                  <option value="kg" style={{background: '#0B0F19'}}>Quilos (kg)</option>
                 </select>
               </div>
             </div>
@@ -912,9 +912,9 @@ const SunnyWearTecidos = () => {
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
             <div style={{gridColumn: '1 / -1'}}>
               <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
-              <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-                <input type="text" placeholder="Ex: TEC-001 ou Malha" value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1}} />
-                <button type="button" onClick={executarBuscaSaida} style={{padding: '11px 20px', background: 'linear-gradient(135deg, #00F0FF 0%, #2563EB 100%)', color: '#0A0F1D', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>OK / Buscar</button>
+              <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
+                <input type="text" placeholder="Ex: TEC-001 ou Malha" value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
+                <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)', color: '#0A0F1D', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>OK / Buscar</button>
               </div>
             </div>
 
@@ -926,8 +926,8 @@ const SunnyWearTecidos = () => {
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Unidade</label>
                 <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
-                  <option value="m" style={{background: '#0F172A'}}>Metros (m)</option>
-                  <option value="kg" style={{background: '#0F172A'}}>Quilos (kg)</option>
+                  <option value="m" style={{background: '#0B0F19'}}>Metros (m)</option>
+                  <option value="kg" style={{background: '#0B0F19'}}>Quilos (kg)</option>
                 </select>
               </div>
             </div>
@@ -1071,33 +1071,36 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     height: '100vh',
-    backgroundColor: '#070B14',
+    backgroundColor: '#05070E',
+    backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(0, 240, 255, 0.08) 0%, transparent 60%)',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   loginCard: {
-    backgroundColor: '#0F172A',
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
     padding: '40px',
-    borderRadius: '16px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0,240,255,0.1)',
+    borderRadius: '20px',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 240, 255, 0.15)',
     width: '100%',
     maxWidth: '420px',
     boxSizing: 'border-box',
-    border: '1px solid rgba(0,240,255,0.2)'
+    border: '1px solid rgba(0, 240, 255, 0.3)'
   },
   loginLabel: {
     fontSize: '11px',
-    color: '#94A3B8',
+    color: '#00F0FF',
     marginBottom: '6px',
     display: 'block',
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: '0.8px'
+    letterSpacing: '1px'
   },
   errorBox: {
     backgroundColor: 'rgba(239,68,68,0.15)',
     color: '#F87171',
     padding: '10px',
-    borderRadius: '6px',
+    borderRadius: '8px',
     fontSize: '13px',
     textAlign: 'center',
     fontWeight: '600',
@@ -1106,23 +1109,25 @@ const styles = {
   loginButton: {
     width: '100%',
     padding: '14px',
-    background: 'linear-gradient(135deg, #00F0FF 0%, #2563EB 100%)',
-    color: '#0A0F1D',
+    background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)',
+    color: '#05070E',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: '10px',
     fontSize: '14px',
-    fontWeight: '800',
+    fontWeight: '900',
     cursor: 'pointer',
     boxShadow: '0 0 20px rgba(0,240,255,0.4)',
     letterSpacing: '0.5px',
-    marginTop: '6px'
+    marginTop: '6px',
+    transition: 'all 0.2s'
   },
   container: {
     width: '100%',
     margin: '0',
     padding: '28px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    backgroundColor: '#070B14',
+    backgroundColor: '#05070E',
+    backgroundImage: 'radial-gradient(circle at 15% 10%, rgba(0, 240, 255, 0.05) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(217, 70, 239, 0.04) 0%, transparent 40%)',
     minHeight: '100vh',
     boxSizing: 'border-box',
     color: '#F8FAFC'
@@ -1134,49 +1139,87 @@ const styles = {
     alignItems: 'center', 
     flexWrap: 'wrap', 
     gap: '16px',
-    backgroundColor: '#0F172A',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
     padding: '20px 28px',
+    borderRadius: '16px',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
+    border: '1px solid rgba(0, 240, 255, 0.2)'
+  },
+  logoBadge: {
+    width: '44px',
+    height: '44px',
+    background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)',
     borderRadius: '12px',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-    border: '1px solid rgba(255,255,255,0.06)'
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#05070E',
+    fontSize: '18px',
+    fontWeight: '900',
+    boxShadow: '0 0 20px rgba(0, 240, 255, 0.5)',
+    flexShrink: 0
+  },
+  versionBadge: {
+    color: '#00F0FF',
+    fontSize: '11px',
+    fontWeight: '700',
+    border: '1px solid rgba(0,240,255,0.4)',
+    padding: '2px 8px',
+    borderRadius: '6px',
+    marginLeft: '8px',
+    backgroundColor: 'rgba(0,240,255,0.08)',
+    letterSpacing: '0.5px'
   },
   title: { fontSize: '22px', color: '#F8FAFC', margin: '0 0 2px 0', fontWeight: '900', letterSpacing: '-0.5px' },
   subtitle: { fontSize: '12px', color: '#94A3B8', margin: 0, fontWeight: '500' },
-  statusBadgeContainer: { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(16,185,129,0.1)', padding: '6px 14px', borderRadius: '20px', border: '1px solid rgba(16,185,129,0.3)' },
-  pulseDot: { width: '8px', height: '8px', backgroundColor: '#34D399', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 8px #34D399' },
+  statusBadgeContainer: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    gap: '8px', 
+    backgroundColor: 'rgba(16,185,129,0.08)', 
+    padding: '6px 14px', 
+    borderRadius: '20px', 
+    border: '1px solid rgba(16,185,129,0.3)',
+    boxShadow: '0 0 10px rgba(16,185,129,0.1)' 
+  },
+  pulseDot: { width: '8px', height: '8px', backgroundColor: '#34D399', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 10px #34D399' },
   statusText: { fontSize: '12px', color: '#34D399', fontWeight: '700', letterSpacing: '0.3px' },
   logoutBtn: {
     padding: '8px 16px',
-    backgroundColor: 'rgba(239,68,68,0.15)',
+    backgroundColor: 'rgba(239,68,68,0.12)',
     color: '#F87171',
     border: '1px solid rgba(239,68,68,0.3)',
-    borderRadius: '6px',
+    borderRadius: '8px',
     fontSize: '12px',
     fontWeight: '700',
     cursor: 'pointer',
     transition: 'all 0.2s',
   },
   alertaContainer: {
-    backgroundColor: 'rgba(239,68,68,0.12)',
-    border: '1px solid rgba(239,68,68,0.3)',
+    backgroundColor: 'rgba(239,68,68,0.1)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid rgba(239,68,68,0.35)',
     padding: '16px 20px',
-    borderRadius: '10px',
+    borderRadius: '12px',
     marginBottom: '24px',
-    boxShadow: '0 0 20px rgba(239,68,68,0.15)'
+    boxShadow: '0 0 25px rgba(239,68,68,0.15)'
   },
   navTabs: {
     display: 'flex',
     gap: '12px',
     marginBottom: '24px',
     overflowX: 'auto',
-    paddingBottom: '4px',
+    paddingBottom: '6px',
   },
   tabBtn: {
-    padding: '12px 22px',
-    backgroundColor: '#0F172A',
+    padding: '12px 20px',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backdropFilter: 'blur(10px)',
     color: '#94A3B8',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '8px',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '10px',
     fontSize: '13px',
     fontWeight: '700',
     cursor: 'pointer',
@@ -1185,10 +1228,10 @@ const styles = {
     transition: 'all 0.2s'
   },
   tabActive: {
-    backgroundColor: '#1E293B',
+    backgroundColor: 'rgba(30, 41, 59, 0.85)',
     color: '#00F0FF',
-    borderColor: 'rgba(0,240,255,0.4)',
-    boxShadow: '0 0 15px rgba(0,240,255,0.2)',
+    borderColor: 'rgba(0, 240, 255, 0.5)',
+    boxShadow: '0 0 20px rgba(0, 240, 255, 0.25)',
   },
   carrosselContainer: {
     display: 'flex',
@@ -1198,16 +1241,17 @@ const styles = {
     WebkitOverflowScrolling: 'touch',
   },
   carrosselCard: {
-    backgroundColor: '#0F172A',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: '12px',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backdropFilter: 'blur(12px)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '14px',
     padding: '18px',
     minWidth: '220px',
     maxWidth: '220px',
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+    boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
   },
   cardsContainer: {
     display: 'grid',
@@ -1215,80 +1259,87 @@ const styles = {
     gap: '16px',
   },
   card: {
-    backgroundColor: '#0F172A',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backdropFilter: 'blur(12px)',
     padding: '22px',
-    borderRadius: '12px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '14px',
+    boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+    border: '1px solid rgba(255,255,255,0.08)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
   },
-  cardLabel: { fontSize: '11px', color: '#94A3B8', marginBottom: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
+  cardLabel: { fontSize: '11px', color: '#94A3B8', marginBottom: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' },
   cardValue: { fontSize: '26px', fontWeight: '900', letterSpacing: '-0.5px' },
   cardSection: {
-    backgroundColor: '#0F172A',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
     padding: '26px',
-    borderRadius: '14px',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '16px',
+    boxShadow: '0 10px 35px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
+    border: '1px solid rgba(0, 240, 255, 0.15)',
     marginBottom: '24px',
   },
   sectionTitle: { fontSize: '16px', color: '#F8FAFC', marginBottom: '16px', marginTop: 0, fontWeight: '800', letterSpacing: '-0.3px' },
+  liveMetricsBadge: { fontSize: '10px', color: '#00F0FF', backgroundColor: 'rgba(0,240,255,0.1)', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(0,240,255,0.3)' },
   formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' },
   formGroup: { display: 'flex', flexDirection: 'column' },
-  formLabel: { fontSize: '11px', color: '#94A3B8', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
+  formLabel: { fontSize: '11px', color: '#00F0FF', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
   input: {
     width: '100%',
     padding: '12px 16px',
-    borderRadius: '8px',
-    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '10px',
+    border: '1px solid rgba(0, 240, 255, 0.25)',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
-    backgroundColor: '#070B14',
+    backgroundColor: 'rgba(5, 7, 14, 0.85)',
     color: '#F8FAFC',
+    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
   },
   inputFull: {
     width: '100%',
     padding: '12px 16px',
-    borderRadius: '8px',
-    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '10px',
+    border: '1px solid rgba(0, 240, 255, 0.25)',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
-    backgroundColor: '#070B14',
+    backgroundColor: 'rgba(5, 7, 14, 0.85)',
     color: '#F8FAFC',
     marginBottom: '18px',
+    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
   },
-  previewContainer: { display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(52,211,153,0.08)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(52,211,153,0.3)' },
+  previewContainer: { display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(52,211,153,0.08)', padding: '14px', borderRadius: '10px', border: '1px solid rgba(52,211,153,0.3)' },
   previewImg: { width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '2px solid #34D399' },
   button: {
     width: '100%',
     padding: '14px',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: '10px',
     fontSize: '14px',
     fontWeight: '800',
     cursor: 'pointer',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-    letterSpacing: '0.5px'
+    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+    letterSpacing: '0.5px',
+    transition: 'all 0.2s'
   },
   chartContainer: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' },
   tableResponsive: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' },
-  thTr: { borderBottom: '2px solid rgba(255,255,255,0.08)', backgroundColor: '#070B14' },
-  th: { padding: '14px 12px', fontSize: '11px', color: '#94A3B8', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.8px' },
+  thTr: { borderBottom: '2px solid rgba(0, 240, 255, 0.2)', backgroundColor: 'rgba(5, 7, 14, 0.5)' },
+  th: { padding: '14px 12px', fontSize: '11px', color: '#00F0FF', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' },
   tr: { borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.2s' },
   td: { padding: '16px 12px', fontSize: '13px', color: '#CBD5E1', verticalAlign: 'middle' },
-  localBadge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', backgroundColor: 'rgba(0,240,255,0.1)', color: '#00F0FF', fontWeight: '700', border: '1px solid rgba(0,240,255,0.2)' },
+  localBadge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', backgroundColor: 'rgba(0,240,255,0.1)', color: '#00F0FF', fontWeight: '700', border: '1px solid rgba(0,240,255,0.3)' },
   badge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', display: 'inline-block' },
   btnEditar: {
     padding: '6px 10px',
     backgroundColor: 'rgba(0,240,255,0.15)',
     color: '#00F0FF',
-    border: '1px solid rgba(0,240,255,0.3)',
-    borderRadius: '6px',
+    border: '1px solid rgba(0,240,255,0.35)',
+    borderRadius: '8px',
     cursor: 'pointer',
     marginRight: '6px',
     fontSize: '12px',
@@ -1298,8 +1349,8 @@ const styles = {
     padding: '6px 10px',
     backgroundColor: 'rgba(239,68,68,0.15)',
     color: '#F87171',
-    border: '1px solid rgba(239,68,68,0.3)',
-    borderRadius: '6px',
+    border: '1px solid rgba(239,68,68,0.35)',
+    borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '12px',
     fontWeight: '700',
@@ -1311,8 +1362,8 @@ const styles = {
     left: 0,
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(7, 11, 20, 0.85)',
-    backdropFilter: 'blur(5px)',
+    backgroundColor: 'rgba(5, 7, 14, 0.88)',
+    backdropFilter: 'blur(8px)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1328,15 +1379,15 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-end',
-    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0,240,255,0.2)',
-    border: '1px solid rgba(0,240,255,0.3)'
+    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0,240,255,0.3)',
+    border: '1px solid rgba(0,240,255,0.4)'
   },
   modalCloseBtn: {
     backgroundColor: '#EF4444',
     color: '#fff',
     border: 'none',
     padding: '8px 14px',
-    borderRadius: '6px',
+    borderRadius: '8px',
     fontWeight: '700',
     cursor: 'pointer',
     marginBottom: '12px',
@@ -1348,7 +1399,7 @@ const styles = {
     objectFit: 'contain',
     borderRadius: '8px',
   },
-  tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)' },
+  tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(0,240,255,0.3)' },
   noFoto: { fontSize: '11px', color: '#64748B', fontStyle: 'italic' }
 };
 
