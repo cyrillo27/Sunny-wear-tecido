@@ -33,19 +33,16 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
-  // Estado separado para o campo de busca manual na saída
   const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
 
   // 🌍 Aponta para a API oficial hospedada no Render
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
 
-  // Função para ler o estoque mínimo de forma limpa
   const obterMinimo = (item) => {
     return Number(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
   };
   
-  // Função blindada para o tipo de movimento
   const obterTipo = (item) => item?.tipomovimento || item?.tipoMovimento || 'entrada';
 
   const carregarDadosDoServidor = async () => {
@@ -115,7 +112,6 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Função disparada ao clicar no botão OK/Buscar na aba de Saída
   const executarBuscaSaida = () => {
     const termo = termoBuscaSaida.toLowerCase().trim();
     if (!termo) {
@@ -461,7 +457,7 @@ const SunnyWearTecidos = () => {
         <div>
           <div style={styles.cardSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔥 Top 5 Tecidos Mais Usados (Arraste para o lado ➔)</h3>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Usados (Arraste para o lado ➔)</h3>
               <span style={{ fontSize: '11px', color: '#1a73e8', backgroundColor: '#e8f0fe', padding: '3px 8px', borderRadius: '12px', fontWeight: '600' }}>● Ao vivo</span>
             </div>
             
@@ -685,7 +681,6 @@ const SunnyWearTecidos = () => {
           <h3 style={styles.sectionTitle}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Registrar Uso / Saída de Tecido'}</h3>
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
             
-            {/* Campo de busca com botão OK/Buscar separado */}
             <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
               <input 
                 type="text" 
@@ -887,8 +882,9 @@ const styles = {
     fontWeight: '500',
   },
   container: {
-    maxWidth: '1050px',
-    margin: '0 auto',
+    width: '100%',
+    maxWidth: '100%',
+    margin: '0',
     padding: '16px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     backgroundColor: '#f8f9fa',
