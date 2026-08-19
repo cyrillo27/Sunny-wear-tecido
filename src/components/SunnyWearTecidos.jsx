@@ -51,7 +51,6 @@ const SunnyWearTecidos = () => {
     return Number(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
   };
   
-  // CORREÇÃO: Força o reconhecimento de OPs antigas salvas como "entrada"
   const obterTipo = (item) => {
     const fornecedor = (item?.fornecedor || '').toLowerCase().trim();
     if (fornecedor === 'ordem de produção') {
@@ -168,7 +167,7 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Função para cadastrar ou atualizar OP
+  // Função para cadastrar ou atualizar OP (Removido localizacao)
   const salvarOp = async (e) => {
     e.preventDefault();
     if (!formOp.numeroOp || !formOp.termoBusca || !formOp.quantidade) {
@@ -186,7 +185,6 @@ const SunnyWearTecidos = () => {
     const codigoFinal = tecidoEncontrado ? tecidoEncontrado.codigo : termo.toUpperCase();
     const nomeFinal = tecidoEncontrado ? tecidoEncontrado.nome : 'Tecido Reservado (OP)';
     const corFinal = tecidoEncontrado ? tecidoEncontrado.cor : 'N/D';
-    const localFinal = tecidoEncontrado ? tecidoEncontrado.localizacao : 'Pendente';
     const larguraFinal = tecidoEncontrado ? tecidoEncontrado.largura : '';
     const unidadeFinal = tecidoEncontrado ? (tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm') : 'm';
     const precoFinal = tecidoEncontrado ? tecidoEncontrado.preco : 0;
@@ -196,7 +194,7 @@ const SunnyWearTecidos = () => {
       codigo: codigoFinal,
       nome: nomeFinal,
       cor: corFinal,
-      localizacao: localFinal,
+      localizacao: '', // Vazio para OPs
       quantidade: formOp.quantidade,
       metros: formOp.quantidade,
       unidadeMedida: unidadeFinal,
@@ -435,7 +433,6 @@ const SunnyWearTecidos = () => {
     return acc;
   }, {});
 
-  // EXCLUI AS OPS DO HISTÓRICO AQUI (Filtro ajustado)
   const movFiltradas = listaSeguraCalculos.filter(m => {
     if (!m || obterTipo(m) === 'op') return false; 
     const termo = busca.toLowerCase();
@@ -448,7 +445,6 @@ const SunnyWearTecidos = () => {
     return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || fornecedor.includes(termo) || notaFiscal.includes(termo);
   });
 
-  // Lista filtrada específica para a aba de OPs
   const opsFiltradas = listaSeguraCalculos.filter(m => {
     if (!m || obterTipo(m) !== 'op') return false;
     const termo = buscaOp.toLowerCase();
@@ -672,7 +668,7 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {/* ABA DE GESTÃO DE OPS COM PRÉVIA EM TEMPO REAL */}
+      {/* ABA DE GESTÃO DE OPS (LOCALIZAÇÃO REMOVIDA) */}
       {abaAtiva === 'op' && (
         <div style={styles.cardSection}>
           <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '20px' }}>
@@ -717,7 +713,7 @@ const SunnyWearTecidos = () => {
               />
             </div>
 
-            {/* PRÉVIA EM TEMPO REAL DO TECIDO PUXADO */}
+            {/* PRÉVIA EM TEMPO REAL DO TECIDO PUXADO (SEM LOCALIZAÇÃO) */}
             {formOp.termoBusca && (
               <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '6px'}}>
                 <span style={{fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados do Tecido Localizados na Hora:</span>
@@ -732,7 +728,6 @@ const SunnyWearTecidos = () => {
                       <>
                         <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {tecidoMatch.codigo} - {tecidoMatch.nome} ({tecidoMatch.cor})</div>
                         <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {tecidoMatch.largura ? `${tecidoMatch.largura}m` : 'Não informada'}</div>
-                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Localização / Galpão:</strong> {tecidoMatch.localizacao || '-'}</div>
                         <div style={{fontSize: '13px', color: '#059669', fontWeight: '600'}}>✅ Tecido encontrado no sistema! Pronto para reserva.</div>
                       </>
                     );
@@ -767,7 +762,7 @@ const SunnyWearTecidos = () => {
             </div>
           </form>
 
-          {/* LISTAGEM E PESQUISA DE OPS CADASTRADAS */}
+          {/* LISTAGEM E PESQUISA DE OPS CADASTRADAS (SEM COLUNA DE LOCALIZAÇÃO) */}
           <div style={{ marginTop: '36px', borderTop: '2px solid #E2E8F0', paddingTop: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
@@ -789,7 +784,6 @@ const SunnyWearTecidos = () => {
                     <th style={styles.th}>Nº da OP</th>
                     <th style={styles.th}>Código</th>
                     <th style={styles.th}>Tecido / Cor</th>
-                    <th style={styles.th}>Localização</th>
                     <th style={styles.th}>Qtd Reservada</th>
                     <th style={styles.th}>Data</th>
                     <th style={styles.th}>Ações</th>
@@ -798,7 +792,7 @@ const SunnyWearTecidos = () => {
                 <tbody>
                   {opsFiltradas.length === 0 ? (
                     <tr>
-                      <td colSpan="7" style={styles.empty}>Nenhuma Ordem de Produção encontrada.</td>
+                      <td colSpan="6" style={styles.empty}>Nenhuma Ordem de Produção encontrada.</td>
                     </tr>
                   ) : (
                     opsFiltradas.map((item) => {
@@ -814,7 +808,6 @@ const SunnyWearTecidos = () => {
                             <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
                             {item.largura ? <div style={{fontSize: '11px', color: '#64748B'}}>Largura: {item.largura}m</div> : null}
                           </td>
-                          <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                           <td style={styles.td}><strong style={{ color: '#D97706' }}>{qtd} {unidade}</strong></td>
                           <td style={styles.td}>{item.data}</td>
                           <td style={styles.td}>
