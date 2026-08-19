@@ -458,8 +458,8 @@ const SunnyWearTecidos = () => {
         <div style={styles.loginCard}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <div style={styles.logoBadge}>SW</div>
-            <h1 style={{ color: '#E2E8F0', margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' }}>Sunny Wear</h1>
-            <p style={{ color: '#00F0FF', fontSize: '12px', margin: 0, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '1px' }}>Cyber-Textile Intelligence</p>
+            <h1 style={{ color: '#0F172A', margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' }}>Sunny Wear</h1>
+            <p style={{ color: '#2563EB', fontSize: '12px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Cyber-Textile Intelligence</p>
           </div>
           
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
@@ -499,7 +499,7 @@ const SunnyWearTecidos = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={styles.logoBadge}>SW</div>
           <div>
-            <h1 style={styles.title}>Sunny Wear <span style={styles.versionBadge}>v2.5 SCI-FI</span></h1>
+            <h1 style={styles.title}>Sunny Wear <span style={styles.versionBadge}>v2.5 GLASS</span></h1>
             <p style={styles.subtitle}>Painel Holográfico de Controle de Estoque</p>
           </div>
         </div>
@@ -516,9 +516,9 @@ const SunnyWearTecidos = () => {
         <div style={styles.alertaContainer}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
             <span style={{ fontSize: '16px' }}>⚡</span>
-            <strong style={{ color: '#FEE2E2', fontSize: '14px', letterSpacing: '0.3px' }}>ALERTA CRÍTICO: ESTOQUE ABAIXO DO MÍNIMO</strong>
+            <strong style={{ color: '#991B1B', fontSize: '14px', letterSpacing: '0.3px' }}>ALERTA CRÍTICO: ESTOQUE ABAIXO DO MÍNIMO</strong>
           </div>
-          <ul style={{ margin: '6px 0 0 24px', padding: 0, fontSize: '13px', color: '#FECACA' }}>
+          <ul style={{ margin: '6px 0 0 24px', padding: 0, fontSize: '13px', color: '#7F1D1D' }}>
             {alertasEstoqueBaixo.map((alt, idx) => (
               <li key={idx} style={{ marginBottom: '4px' }}>
                 <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Atual: <strong>{alt.total} {alt.unidade}</strong> | Mínimo: {alt.minimo} {alt.unidade}
@@ -575,25 +575,25 @@ const SunnyWearTecidos = () => {
               <div style={styles.carrosselContainer}>
                 {topTecidosMaisUsados.map((tecido, index) => {
                   const posicoesNomes = ['1º Posição', '2º Posição', '3º Posição', '4º Posição', '5º Posição'];
-                  const coresBordas = ['#00F0FF', '#10B981', '#F59E0B', '#EF4444', '#D946EF'];
+                  const coresBordas = ['#2563EB', '#059669', '#D97706', '#DC2626', '#9333EA'];
                   return (
                     <div 
                       key={index} 
                       style={{ 
                         ...styles.carrosselCard, 
-                        borderTop: `3px solid ${coresBordas[index] || '#00F0FF'}` 
+                        borderTop: `3px solid ${coresBordas[index] || '#2563EB'}` 
                       }}
                     >
-                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', marginBottom: '6px', display: 'block', letterSpacing: '0.5px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px', display: 'block', letterSpacing: '0.5px' }}>
                         {posicoesNomes[index] || `${index + 1}º Lugar`}
                       </span>
-                      <strong style={{ fontSize: '14px', color: '#F8FAFC', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
+                      <strong style={{ fontSize: '14px', color: '#0F172A', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
                         {tecido.nome}
                       </strong>
-                      <span style={{ fontSize: '11px', color: '#94A3B8', display: 'block', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '12px' }}>
                         Cor: {tecido.cor || 'N/D'} • Cód: {tecido.codigo}
                       </span>
-                      <div style={{ fontSize: '16px', fontWeight: '800', color: coresBordas[index] || '#00F0FF', marginTop: 'auto' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '800', color: coresBordas[index] || '#2563EB', marginTop: 'auto' }}>
                         {tecido.totalUso.toLocaleString()} {tecido.unidade}
                       </div>
                     </div>
@@ -606,13 +606,13 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <h3 style={styles.sectionTitle}>📥 Fluxo de Entradas (Aquisições Totais)</h3>
             <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #10B981'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
                 <span style={styles.cardLabel}>Metragem Adquirida</span>
-                <strong style={{...styles.cardValue, color: '#34D399'}}>{entradasMetros.toLocaleString()} m</strong>
+                <strong style={{...styles.cardValue, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
               </div>
-              <div style={{...styles.card, borderLeft: '4px solid #10B981'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
                 <span style={styles.cardLabel}>Peso Adquirido</span>
-                <strong style={{...styles.cardValue, color: '#34D399'}}>{entradasKg.toLocaleString()} kg</strong>
+                <strong style={{...styles.cardValue, color: '#059669'}}>{entradasKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
@@ -620,13 +620,13 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <h3 style={styles.sectionTitle}>📤 Saídas & OPs (Consumo e Reservas)</h3>
             <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #EF4444'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
                 <span style={styles.cardLabel}>Metragem Baixada / Reservada</span>
-                <strong style={{...styles.cardValue, color: '#F87171'}}>{saidasMetros.toLocaleString()} m</strong>
+                <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
               </div>
-              <div style={{...styles.card, borderLeft: '4px solid #EF4444'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
                 <span style={styles.cardLabel}>Peso Baixado / Reservado</span>
-                <strong style={{...styles.cardValue, color: '#F87171'}}>{saidasKg.toLocaleString()} kg</strong>
+                <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
@@ -634,13 +634,13 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <h3 style={styles.sectionTitle}>📦 Saldo Disponível em Estoque (Livre de OPs)</h3>
             <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #00F0FF'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #2563EB'}}>
                 <span style={styles.cardLabel}>Saldo em Metros</span>
-                <strong style={{...styles.cardValue, color: '#00F0FF'}}>{estoqueMetros.toLocaleString()} m</strong>
+                <strong style={{...styles.cardValue, color: '#2563EB'}}>{estoqueMetros.toLocaleString()} m</strong>
               </div>
-              <div style={{...styles.card, borderLeft: '4px solid #F59E0B'}}>
+              <div style={{...styles.card, borderLeft: '4px solid #D97706'}}>
                 <span style={styles.cardLabel}>Saldo em Quilos</span>
-                <strong style={{...styles.cardValue, color: '#FBBF24'}}>{estoqueKg.toLocaleString()} kg</strong>
+                <strong style={{...styles.cardValue, color: '#D97706'}}>{estoqueKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
@@ -652,11 +652,11 @@ const SunnyWearTecidos = () => {
                 <p style={styles.empty}>Nenhum local cadastrado até o momento.</p>
               ) : (
                 Object.entries(porLocalizacao).map(([local, vals]) => (
-                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: 'rgba(255,255,255,0.02)', padding: '14px 18px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
-                    <span style={{fontWeight: '600', color: '#F8FAFC', fontSize: '14px'}}>📍 {local}</span>
+                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: 'rgba(255,255,255,0.6)', padding: '14px 18px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
+                    <span style={{fontWeight: '700', color: '#0F172A', fontSize: '14px'}}>📍 {local}</span>
                     <div style={{display: 'flex', gap: '24px', fontSize: '13px'}}>
-                      <span style={{color: '#94A3B8'}}>Metros livres: <strong style={{color: '#00F0FF', fontWeight: '700'}}>{vals.m} m</strong></span>
-                      <span style={{color: '#94A3B8'}}>Quilos livres: <strong style={{color: '#FBBF24', fontWeight: '700'}}>{vals.kg} kg</strong></span>
+                      <span style={{color: '#64748B'}}>Metros livres: <strong style={{color: '#2563EB', fontWeight: '700'}}>{vals.m} m</strong></span>
+                      <span style={{color: '#64748B'}}>Quilos livres: <strong style={{color: '#D97706', fontWeight: '700'}}>{vals.kg} kg</strong></span>
                     </div>
                   </div>
                 ))
@@ -668,9 +668,9 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'op' && (
         <div style={styles.cardSection}>
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
+          <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
             <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditandoOp ? '✏️ Editar Ordem de Produção (OP)' : '📋 Cadastro e Gestão de Ordens de Produção (OPs)'}</h3>
-            <p style={{ color: '#94A3B8', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre o número da OP e o tecido necessário. O sistema reserva o material imediatamente.</p>
+            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre o número da OP e o tecido necessário. O sistema reserva o material imediatamente.</p>
           </div>
 
           <form onSubmit={salvarOp} style={styles.formGrid}>
@@ -711,8 +711,8 @@ const SunnyWearTecidos = () => {
             </div>
 
             {formOp.termoBusca && (
-              <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(0,240,255,0.2)', display: 'flex', flexDirection: 'column', gap: '6px', boxShadow: '0 0 15px rgba(0,240,255,0.05)'}}>
-                <span style={{fontSize: '11px', color: '#00F0FF', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados do Tecido Localizados na Hora:</span>
+              <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.8)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', flexDirection: 'column', gap: '6px', boxShadow: '0 0 15px rgba(37,99,235,0.05)'}}>
+                <span style={{fontSize: '11px', color: '#2563EB', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados do Tecido Localizados na Hora:</span>
                 {(() => {
                   const termo = formOp.termoBusca.toLowerCase().trim();
                   const tecidoMatch = movimentacoes.find(
@@ -722,14 +722,14 @@ const SunnyWearTecidos = () => {
                   if (tecidoMatch) {
                     return (
                       <>
-                        <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Tecido:</strong> {tecidoMatch.codigo} - {tecidoMatch.nome} ({tecidoMatch.cor})</div>
-                        <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Largura:</strong> {tecidoMatch.largura ? `${tecidoMatch.largura}m` : 'Não informada'}</div>
-                        <div style={{fontSize: '13px', color: '#34D399', fontWeight: '600'}}>✅ Tecido encontrado no sistema! Pronto para reserva.</div>
+                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {tecidoMatch.codigo} - {tecidoMatch.nome} ({tecidoMatch.cor})</div>
+                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {tecidoMatch.largura ? `${tecidoMatch.largura}m` : 'Não informada'}</div>
+                        <div style={{fontSize: '13px', color: '#059669', fontWeight: '600'}}>✅ Tecido encontrado no sistema! Pronto para reserva.</div>
                       </>
                     );
                   } else {
                     return (
-                      <div style={{fontSize: '13px', color: '#FBBF24'}}>
+                      <div style={{fontSize: '13px', color: '#D97706'}}>
                         ⚠️ Nenhum tecido exato cadastrado com este termo. Um registro temporário será criado para esta OP.
                       </div>
                     );
@@ -738,19 +738,19 @@ const SunnyWearTecidos = () => {
               </div>
             )}
 
-            <div style={{gridColumn: '1 / -1', background: 'rgba(245,158,11,0.08)', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.2)', fontSize: '13px', color: '#FCD34D'}}>
+            <div style={{gridColumn: '1 / -1', background: '#FEF3C7', padding: '12px 16px', borderRadius: '10px', border: '1px solid #FCD34D', fontSize: '13px', color: '#92400E'}}>
               ⚠️ O tecido desta OP será separado e deduzido do estoque total para evitar duplicação de uso.
             </div>
 
             <div style={{gridColumn: '1 / -1', display: 'flex', gap: '10px', flexWrap: 'wrap'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoOp ? '#D97706' : 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)', color: idEditandoOp ? '#fff' : '#0A0F1D', flex: 1}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoOp ? '#D97706' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', flex: 1}}>
                 {carregando ? 'Salvando OP...' : (idEditandoOp ? 'Atualizar OP' : 'Cadastrar OP e Reservar Estoque')}
               </button>
               {idEditandoOp && (
                 <button 
                   type="button" 
                   onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); }}
-                  style={{padding: '12px 20px', backgroundColor: '#334155', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer'}}
+                  style={{padding: '12px 20px', backgroundColor: '#64748B', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: 'pointer'}}
                 >
                   Cancelar
                 </button>
@@ -758,10 +758,10 @@ const SunnyWearTecidos = () => {
             </div>
           </form>
 
-          <div style={{ marginTop: '36px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '24px' }}>
+          <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h4 style={{ margin: 0, fontSize: '15px', color: '#F8FAFC', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
-              <span style={{ fontSize: '12px', color: '#94A3B8' }}>Total de OPs: <strong>{opsFiltradas.length}</strong></span>
+              <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
+              <span style={{ fontSize: '12px', color: '#64748B' }}>Total de OPs: <strong>{opsFiltradas.length}</strong></span>
             </div>
 
             <input 
@@ -797,14 +797,14 @@ const SunnyWearTecidos = () => {
 
                       return (
                         <tr key={item.id} style={styles.tr}>
-                          <td style={styles.td}><strong style={{ color: '#00F0FF' }}>{numOp}</strong></td>
-                          <td style={styles.td}><strong style={{ color: '#F8FAFC' }}>{item.codigo}</strong></td>
+                          <td style={styles.td}><strong style={{ color: '#2563EB' }}>{numOp}</strong></td>
+                          <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
                           <td style={styles.td}>
-                            <div style={{ fontWeight: '600', color: '#F8FAFC' }}>{item.nome} ({item.cor})</div>
-                            {item.largura ? <div style={{fontSize: '11px', color: '#94A3B8'}}>Largura: {item.largura}m</div> : null}
+                            <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
+                            {item.largura ? <div style={{fontSize: '11px', color: '#64748B'}}>Largura: {item.largura}m</div> : null}
                           </td>
-                          <td style={styles.td}><strong style={{ color: '#FBBF24' }}>{qtd} {unidade}</strong></td>
-                          <td style={styles.td}><span style={{color: '#94A3B8'}}>{item.data}</span></td>
+                          <td style={styles.td}><strong style={{ color: '#D97706' }}>{qtd} {unidade}</strong></td>
+                          <td style={styles.td}><span style={{color: '#64748B'}}>{item.data}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => iniciarEdicaoOp(item)} style={styles.btnEditar} title="Editar OP">✏️</button>
                             <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Excluir OP">🗑️</button>
@@ -822,9 +822,9 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'entrada' && (
         <div style={styles.cardSection}>
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
+          <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
             <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Atualizar Dados de Entrada' : '📥 Cadastro de Nova Entrada / Compra'}</h3>
-            <p style={{ color: '#94A3B8', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os campos abaixo para registrar novos tecidos ou lotes no sistema.</p>
+            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os campos abaixo para registrar novos tecidos ou lotes no sistema.</p>
           </div>
           
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
@@ -856,8 +856,8 @@ const SunnyWearTecidos = () => {
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Unidade</label>
                 <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
-                  <option value="m" style={{background: '#0B0F19'}}>Metros (m)</option>
-                  <option value="kg" style={{background: '#0B0F19'}}>Quilos (kg)</option>
+                  <option value="m">Metros (m)</option>
+                  <option value="kg">Quilos (kg)</option>
                 </select>
               </div>
             </div>
@@ -887,14 +887,14 @@ const SunnyWearTecidos = () => {
               <div style={{gridColumn: '1 / -1', ...styles.previewContainer}}>
                 <img src={form.foto} alt="Prévia" style={styles.previewImg} onClick={() => setFotoSelecionada(form.foto)} />
                 <div>
-                  <strong style={{display: 'block', color: '#34D399', fontSize: '13px'}}>Imagem anexada com sucesso</strong>
-                  <span style={{color: '#94A3B8', fontSize: '11px', cursor: 'pointer'}} onClick={() => setFotoSelecionada(form.foto)}>Clique na miniatura para ampliar</span>
+                  <strong style={{display: 'block', color: '#065F46', fontSize: '13px'}}>Imagem anexada com sucesso</strong>
+                  <span style={{color: '#64748B', fontSize: '11px', cursor: 'pointer'}} onClick={() => setFotoSelecionada(form.foto)}>Clique na miniatura para ampliar</span>
                 </div>
               </div>
             )}
 
             <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #10B981 0%, #059669 100%)', color: '#fff'}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: '#fff'}}>
                 {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Salvar Entrada no Servidor')}
               </button>
             </div>
@@ -904,9 +904,9 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'saida' && (
         <div style={styles.cardSection}>
-          <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
+          <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
             <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída'}</h3>
-            <p style={{ color: '#94A3B8', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
+            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
           </div>
 
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
@@ -914,7 +914,7 @@ const SunnyWearTecidos = () => {
               <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
               <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
                 <input type="text" placeholder="Ex: TEC-001 ou Malha" value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
-                <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)', color: '#0A0F1D', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>OK / Buscar</button>
+                <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>OK / Buscar</button>
               </div>
             </div>
 
@@ -926,22 +926,22 @@ const SunnyWearTecidos = () => {
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Unidade</label>
                 <select value={form.unidadeMedida} onChange={(e) => setForm({...form, unidadeMedida: e.target.value})} style={styles.input}>
-                  <option value="m" style={{background: '#0B0F19'}}>Metros (m)</option>
-                  <option value="kg" style={{background: '#0B0F19'}}>Quilos (kg)</option>
+                  <option value="m">Metros (m)</option>
+                  <option value="kg">Quilos (kg)</option>
                 </select>
               </div>
             </div>
 
-            <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-              <span style={{fontSize: '11px', color: '#00F0FF', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados Carregados do Cadastro:</span>
-              <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
-              <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
-              <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
-              <div style={{fontSize: '13px', color: '#F8FAFC'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
+            <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.6)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+              <span style={{fontSize: '11px', color: '#2563EB', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados Carregados do Cadastro:</span>
+              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
+              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
+              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
+              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
             </div>
 
             <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)', color: '#fff'}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)', color: '#fff'}}>
                 {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Confirmar Saída no Servidor')}
               </button>
             </div>
@@ -953,7 +953,7 @@ const SunnyWearTecidos = () => {
         <div style={styles.cardSection}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
             <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico, OPs e Galpões</h3>
-            <span style={{ fontSize: '12px', color: '#94A3B8' }}>Total de registros: <strong>{movFiltradas.length}</strong></span>
+            <span style={{ fontSize: '12px', color: '#64748B' }}>Total de registros: <strong>{movFiltradas.length}</strong></span>
           </div>
 
           <input 
@@ -996,16 +996,16 @@ const SunnyWearTecidos = () => {
                     const nf = item.notafiscal || item.notaFiscal || '';
                     const fornecedor = item.fornecedor || '';
 
-                    let badgeBg = 'rgba(16,185,129,0.15)';
-                    let badgeColor = '#34D399';
+                    let badgeBg = '#DEF7EC';
+                    let badgeColor = '#03543F';
                     let badgeText = '📥 Entrada';
                     if (tipoMovimentoNoBanco === 'saida') {
-                      badgeBg = 'rgba(239,68,68,0.15)';
-                      badgeColor = '#F87171';
+                      badgeBg = '#FDE8E8';
+                      badgeColor = '#9B1C1C';
                       badgeText = '📤 Saída';
                     } else if (tipoMovimentoNoBanco === 'op') {
-                      badgeBg = 'rgba(245,158,11,0.15)';
-                      badgeColor = '#FBBF24';
+                      badgeBg = '#FEF3C7';
+                      badgeColor = '#92400E';
                       badgeText = `📋 OP: ${nf}`;
                     }
 
@@ -1021,24 +1021,24 @@ const SunnyWearTecidos = () => {
                         <td style={styles.td}>
                           <span style={{...styles.badge, background: badgeBg, color: badgeColor}}>{badgeText}</span>
                         </td>
-                        <td style={styles.td}><strong style={{color: '#F8FAFC'}}>{item.codigo}</strong></td>
+                        <td style={styles.td}><strong style={{color: '#0F172A'}}>{item.codigo}</strong></td>
                         <td style={styles.td}>
-                          <div style={{ fontWeight: '600', color: '#F8FAFC' }}>{item.nome} ({item.cor})</div>
-                          {item.largura ? <div style={{fontSize: '11px', color: '#00F0FF', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
+                          <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
+                          {item.largura ? <div style={{fontSize: '11px', color: '#2563EB', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
                         </td>
                         <td style={styles.td}>
-                          <div style={{fontSize: '13px', fontWeight: '600', color: '#F8FAFC'}}>{fornecedor || 'Não informado'}</div>
-                          <div style={{fontSize: '11px', color: '#94A3B8'}}>NF: {nf || 'N/D'}</div>
+                          <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || 'Não informado'}</div>
+                          <div style={{fontSize: '11px', color: '#64748B'}}>NF: {nf || 'N/D'}</div>
                         </td>
                         <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                         <td style={styles.td}>
-                          <strong style={{ color: '#F8FAFC' }}>{qtd} {unidade}</strong>
-                          <div style={{fontSize: '11px', color: '#94A3B8'}}>Mín: {minimo} {unidade}</div>
-                          <div style={{fontSize: '11px', color: '#34D399', fontWeight: '600'}}>
+                          <strong style={{ color: '#0F172A' }}>{qtd} {unidade}</strong>
+                          <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
+                          <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
                             R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
                           </div>
                         </td>
-                        <td style={styles.td}><span style={{color: '#94A3B8'}}>{item.data}</span></td>
+                        <td style={styles.td}><span style={{color: '#64748B'}}>{item.data}</span></td>
                         <td style={styles.td}>
                           <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
                           <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
@@ -1071,25 +1071,25 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     height: '100vh',
-    backgroundColor: '#05070E',
-    backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(0, 240, 255, 0.08) 0%, transparent 60%)',
+    backgroundColor: '#F1F5F9',
+    backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(37, 99, 235, 0.08) 0%, transparent 70%)',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   loginCard: {
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     backdropFilter: 'blur(16px)',
     WebkitBackdropFilter: 'blur(16px)',
     padding: '40px',
     borderRadius: '20px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 35px rgba(0, 240, 255, 0.15)',
+    boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.1), 0 0 25px rgba(37, 99, 235, 0.1)',
     width: '100%',
     maxWidth: '420px',
     boxSizing: 'border-box',
-    border: '1px solid rgba(0, 240, 255, 0.3)'
+    border: '1px solid rgba(255, 255, 255, 1)'
   },
   loginLabel: {
     fontSize: '11px',
-    color: '#00F0FF',
+    color: '#475569',
     marginBottom: '6px',
     display: 'block',
     fontWeight: '700',
@@ -1097,26 +1097,26 @@ const styles = {
     letterSpacing: '1px'
   },
   errorBox: {
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    color: '#F87171',
+    backgroundColor: '#FEF2F2',
+    color: '#DC2626',
     padding: '10px',
     borderRadius: '8px',
     fontSize: '13px',
     textAlign: 'center',
     fontWeight: '600',
-    border: '1px solid rgba(239,68,68,0.3)'
+    border: '1px solid #FCA5A5'
   },
   loginButton: {
     width: '100%',
     padding: '14px',
-    background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)',
-    color: '#05070E',
+    background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+    color: '#ffffff',
     border: 'none',
     borderRadius: '10px',
     fontSize: '14px',
-    fontWeight: '900',
+    fontWeight: '800',
     cursor: 'pointer',
-    boxShadow: '0 0 20px rgba(0,240,255,0.4)',
+    boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
     letterSpacing: '0.5px',
     marginTop: '6px',
     transition: 'all 0.2s'
@@ -1126,11 +1126,11 @@ const styles = {
     margin: '0',
     padding: '28px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    backgroundColor: '#05070E',
-    backgroundImage: 'radial-gradient(circle at 15% 10%, rgba(0, 240, 255, 0.05) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(217, 70, 239, 0.04) 0%, transparent 40%)',
+    backgroundColor: '#F4F7FC',
+    backgroundImage: 'radial-gradient(circle at 10% 10%, rgba(37, 99, 235, 0.04) 0%, transparent 40%), radial-gradient(circle at 90% 90%, rgba(147, 51, 234, 0.03) 0%, transparent 40%)',
     minHeight: '100vh',
     boxSizing: 'border-box',
-    color: '#F8FAFC'
+    color: '#0F172A'
   },
   header: { 
     marginBottom: '24px', 
@@ -1139,58 +1139,58 @@ const styles = {
     alignItems: 'center', 
     flexWrap: 'wrap', 
     gap: '16px',
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
     padding: '20px 28px',
     borderRadius: '16px',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
-    border: '1px solid rgba(0, 240, 255, 0.2)'
+    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1)',
+    border: '1px solid rgba(255, 255, 255, 0.9)'
   },
   logoBadge: {
     width: '44px',
     height: '44px',
-    background: 'linear-gradient(135deg, #00F0FF 0%, #3B82F6 100%)',
+    background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
     borderRadius: '12px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#05070E',
+    color: '#ffffff',
     fontSize: '18px',
     fontWeight: '900',
-    boxShadow: '0 0 20px rgba(0, 240, 255, 0.5)',
+    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
     flexShrink: 0
   },
   versionBadge: {
-    color: '#00F0FF',
+    color: '#2563EB',
     fontSize: '11px',
     fontWeight: '700',
-    border: '1px solid rgba(0,240,255,0.4)',
+    border: '1px solid rgba(37, 99, 235, 0.3)',
     padding: '2px 8px',
     borderRadius: '6px',
     marginLeft: '8px',
-    backgroundColor: 'rgba(0,240,255,0.08)',
+    backgroundColor: 'rgba(37, 99, 235, 0.06)',
     letterSpacing: '0.5px'
   },
-  title: { fontSize: '22px', color: '#F8FAFC', margin: '0 0 2px 0', fontWeight: '900', letterSpacing: '-0.5px' },
-  subtitle: { fontSize: '12px', color: '#94A3B8', margin: 0, fontWeight: '500' },
+  title: { fontSize: '22px', color: '#0F172A', margin: '0 0 2px 0', fontWeight: '900', letterSpacing: '-0.5px' },
+  subtitle: { fontSize: '12px', color: '#64748B', margin: 0, fontWeight: '500' },
   statusBadgeContainer: { 
     display: 'flex', 
     alignItems: 'center', 
     gap: '8px', 
-    backgroundColor: 'rgba(16,185,129,0.08)', 
+    backgroundColor: 'rgba(16, 185, 129, 0.08)', 
     padding: '6px 14px', 
     borderRadius: '20px', 
-    border: '1px solid rgba(16,185,129,0.3)',
-    boxShadow: '0 0 10px rgba(16,185,129,0.1)' 
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)' 
   },
-  pulseDot: { width: '8px', height: '8px', backgroundColor: '#34D399', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 10px #34D399' },
-  statusText: { fontSize: '12px', color: '#34D399', fontWeight: '700', letterSpacing: '0.3px' },
+  pulseDot: { width: '8px', height: '8px', backgroundColor: '#059669', borderRadius: '50%', display: 'inline-block', boxShadow: '0 0 6px #059669' },
+  statusText: { fontSize: '12px', color: '#047857', fontWeight: '700', letterSpacing: '0.3px' },
   logoutBtn: {
     padding: '8px 16px',
-    backgroundColor: 'rgba(239,68,68,0.12)',
-    color: '#F87171',
-    border: '1px solid rgba(239,68,68,0.3)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    color: '#DC2626',
+    border: '1px solid rgba(239, 68, 68, 0.25)',
     borderRadius: '8px',
     fontSize: '12px',
     fontWeight: '700',
@@ -1198,13 +1198,13 @@ const styles = {
     transition: 'all 0.2s',
   },
   alertaContainer: {
-    backgroundColor: 'rgba(239,68,68,0.1)',
+    backgroundColor: 'rgba(254, 242, 242, 0.9)',
     backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(239,68,68,0.35)',
+    border: '1px solid #FCA5A5',
     padding: '16px 20px',
     borderRadius: '12px',
     marginBottom: '24px',
-    boxShadow: '0 0 25px rgba(239,68,68,0.15)'
+    boxShadow: '0 10px 25px rgba(220, 38, 38, 0.06)'
   },
   navTabs: {
     display: 'flex',
@@ -1215,23 +1215,23 @@ const styles = {
   },
   tabBtn: {
     padding: '12px 20px',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
     backdropFilter: 'blur(10px)',
-    color: '#94A3B8',
-    border: '1px solid rgba(255,255,255,0.08)',
+    color: '#475569',
+    border: '1px solid rgba(255, 255, 255, 0.9)',
     borderRadius: '10px',
     fontSize: '13px',
     fontWeight: '700',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)',
     transition: 'all 0.2s'
   },
   tabActive: {
-    backgroundColor: 'rgba(30, 41, 59, 0.85)',
-    color: '#00F0FF',
-    borderColor: 'rgba(0, 240, 255, 0.5)',
-    boxShadow: '0 0 20px rgba(0, 240, 255, 0.25)',
+    backgroundColor: '#2563EB',
+    color: '#ffffff',
+    borderColor: '#2563EB',
+    boxShadow: '0 6px 20px rgba(37, 99, 235, 0.35)',
   },
   carrosselContainer: {
     display: 'flex',
@@ -1241,9 +1241,9 @@ const styles = {
     WebkitOverflowScrolling: 'touch',
   },
   carrosselCard: {
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255, 255, 255, 0.9)',
     borderRadius: '14px',
     padding: '18px',
     minWidth: '220px',
@@ -1251,7 +1251,7 @@ const styles = {
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.04)',
   },
   cardsContainer: {
     display: 'grid',
@@ -1259,60 +1259,60 @@ const styles = {
     gap: '16px',
   },
   card: {
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
     padding: '22px',
     borderRadius: '14px',
-    boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    boxShadow: '0 8px 25px rgba(0, 0, 0, 0.04)',
+    border: '1px solid rgba(255, 255, 255, 0.9)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
   },
-  cardLabel: { fontSize: '11px', color: '#94A3B8', marginBottom: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' },
+  cardLabel: { fontSize: '11px', color: '#64748B', marginBottom: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' },
   cardValue: { fontSize: '26px', fontWeight: '900', letterSpacing: '-0.5px' },
   cardSection: {
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
     padding: '26px',
     borderRadius: '16px',
-    boxShadow: '0 10px 35px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
-    border: '1px solid rgba(0, 240, 255, 0.15)',
+    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1)',
+    border: '1px solid rgba(255, 255, 255, 0.9)',
     marginBottom: '24px',
   },
-  sectionTitle: { fontSize: '16px', color: '#F8FAFC', marginBottom: '16px', marginTop: 0, fontWeight: '800', letterSpacing: '-0.3px' },
-  liveMetricsBadge: { fontSize: '10px', color: '#00F0FF', backgroundColor: 'rgba(0,240,255,0.1)', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(0,240,255,0.3)' },
+  sectionTitle: { fontSize: '16px', color: '#0F172A', marginBottom: '16px', marginTop: 0, fontWeight: '800', letterSpacing: '-0.3px' },
+  liveMetricsBadge: { fontSize: '10px', color: '#2563EB', backgroundColor: 'rgba(37,99,235,0.08)', padding: '4px 10px', borderRadius: '6px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(37,99,235,0.2)' },
   formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' },
   formGroup: { display: 'flex', flexDirection: 'column' },
-  formLabel: { fontSize: '11px', color: '#00F0FF', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
+  formLabel: { fontSize: '11px', color: '#475569', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' },
   input: {
     width: '100%',
     padding: '12px 16px',
     borderRadius: '10px',
-    border: '1px solid rgba(0, 240, 255, 0.25)',
+    border: '1px solid #CBD5E1',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
-    backgroundColor: 'rgba(5, 7, 14, 0.85)',
-    color: '#F8FAFC',
-    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    color: '#0F172A',
+    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
   },
   inputFull: {
     width: '100%',
     padding: '12px 16px',
     borderRadius: '10px',
-    border: '1px solid rgba(0, 240, 255, 0.25)',
+    border: '1px solid #CBD5E1',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
-    backgroundColor: 'rgba(5, 7, 14, 0.85)',
-    color: '#F8FAFC',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    color: '#0F172A',
     marginBottom: '18px',
-    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
   },
-  previewContainer: { display: 'flex', alignItems: 'center', gap: '14px', background: 'rgba(52,211,153,0.08)', padding: '14px', borderRadius: '10px', border: '1px solid rgba(52,211,153,0.3)' },
-  previewImg: { width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '2px solid #34D399' },
+  previewContainer: { display: 'flex', alignItems: 'center', gap: '14px', background: '#ECFDF5', padding: '14px', borderRadius: '10px', border: '1px solid #A7F3D0' },
+  previewImg: { width: '52px', height: '52px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '2px solid #059669' },
   button: {
     width: '100%',
     padding: '14px',
@@ -1321,24 +1321,24 @@ const styles = {
     fontSize: '14px',
     fontWeight: '800',
     cursor: 'pointer',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
     letterSpacing: '0.5px',
     transition: 'all 0.2s'
   },
   chartContainer: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' },
   tableResponsive: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' },
-  thTr: { borderBottom: '2px solid rgba(0, 240, 255, 0.2)', backgroundColor: 'rgba(5, 7, 14, 0.5)' },
-  th: { padding: '14px 12px', fontSize: '11px', color: '#00F0FF', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' },
-  tr: { borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.2s' },
-  td: { padding: '16px 12px', fontSize: '13px', color: '#CBD5E1', verticalAlign: 'middle' },
-  localBadge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', backgroundColor: 'rgba(0,240,255,0.1)', color: '#00F0FF', fontWeight: '700', border: '1px solid rgba(0,240,255,0.3)' },
+  thTr: { borderBottom: '2px solid #E2E8F0', backgroundColor: 'rgba(248, 250, 252, 0.8)' },
+  th: { padding: '14px 12px', fontSize: '11px', color: '#475569', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' },
+  tr: { borderBottom: '1px solid #E2E8F0', transition: 'background 0.2s' },
+  td: { padding: '16px 12px', fontSize: '13px', color: '#334155', verticalAlign: 'middle' },
+  localBadge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: '700', border: '1px solid #BFDBFE' },
   badge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', display: 'inline-block' },
   btnEditar: {
     padding: '6px 10px',
-    backgroundColor: 'rgba(0,240,255,0.15)',
-    color: '#00F0FF',
-    border: '1px solid rgba(0,240,255,0.35)',
+    backgroundColor: '#EFF6FF',
+    color: '#1D4ED8',
+    border: '1px solid #BFDBFE',
     borderRadius: '8px',
     cursor: 'pointer',
     marginRight: '6px',
@@ -1347,23 +1347,23 @@ const styles = {
   },
   btnDeletar: {
     padding: '6px 10px',
-    backgroundColor: 'rgba(239,68,68,0.15)',
-    color: '#F87171',
-    border: '1px solid rgba(239,68,68,0.35)',
+    backgroundColor: '#FEE2E2',
+    color: '#991B1B',
+    border: '1px solid #FCA5A5',
     borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '12px',
     fontWeight: '700',
   },
-  empty: { textAlign: 'center', padding: '36px', color: '#64748B', fontSize: '14px' },
+  empty: { textAlign: 'center', padding: '36px', color: '#94A3B8', fontSize: '14px' },
   modalOverlay: {
     position: 'fixed',
     top: 0,
     left: 0,
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(5, 7, 14, 0.88)',
-    backdropFilter: 'blur(8px)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backdropFilter: 'blur(6px)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1371,7 +1371,7 @@ const styles = {
     padding: '20px',
   },
   modalContent: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#ffffff',
     padding: '24px',
     borderRadius: '16px',
     maxWidth: '90vw',
@@ -1379,11 +1379,11 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-end',
-    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0,240,255,0.3)',
-    border: '1px solid rgba(0,240,255,0.4)'
+    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
+    border: '1px solid #E2E8F0'
   },
   modalCloseBtn: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#DC2626',
     color: '#fff',
     border: 'none',
     padding: '8px 14px',
@@ -1399,8 +1399,8 @@ const styles = {
     objectFit: 'contain',
     borderRadius: '8px',
   },
-  tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(0,240,255,0.3)' },
-  noFoto: { fontSize: '11px', color: '#64748B', fontStyle: 'italic' }
+  tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '1px solid #CBD5E1' },
+  noFoto: { fontSize: '11px', color: '#94A3B8', fontStyle: 'italic' }
 };
 
 export default SunnyWearTecidos;
