@@ -664,7 +664,7 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {/* ABA DE GESTÃO DE OPS (CADASTRO, PESQUISA, EDIÇÃO E EXCLUSÃO) */}
+      {/* ABA DE GESTÃO DE OPS COM PRÉVIA EM TEMPO REAL */}
       {abaAtiva === 'op' && (
         <div style={styles.cardSection}>
           <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '20px' }}>
@@ -695,6 +695,7 @@ const SunnyWearTecidos = () => {
                 required
               />
             </div>
+
             <div style={{gridColumn: '1 / -1'}}>
               <label style={styles.formLabel}>Quantidade Necessária *</label>
               <input 
@@ -707,6 +708,36 @@ const SunnyWearTecidos = () => {
                 required
               />
             </div>
+
+            {/* PRÉVIA EM TEMPO REAL DO TECIDO PUXADO */}
+            {formOp.termoBusca && (
+              <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+                <span style={{fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados do Tecido Localizados na Hora:</span>
+                {(() => {
+                  const termo = formOp.termoBusca.toLowerCase().trim();
+                  const tecidoMatch = movimentacoes.find(
+                    m => (m?.codigo && m.codigo.toLowerCase().includes(termo)) || 
+                         (m?.nome && m.nome.toLowerCase().includes(termo))
+                  );
+                  if (tecidoMatch) {
+                    return (
+                      <>
+                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {tecidoMatch.codigo} - {tecidoMatch.nome} ({tecidoMatch.cor})</div>
+                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {tecidoMatch.largura ? `${tecidoMatch.largura}m` : 'Não informada'}</div>
+                        <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Localização / Galpão:</strong> {tecidoMatch.localizacao || '-'}</div>
+                        <div style={{fontSize: '13px', color: '#059669', fontWeight: '600'}}>✅ Tecido encontrado no sistema! Pronto para reserva.</div>
+                      </>
+                    );
+                  } else {
+                    return (
+                      <div style={{fontSize: '13px', color: '#D97706'}}>
+                        ⚠️ Nenhum tecido exato cadastrado com este termo. Um registro temporário será criado para esta OP.
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
+            )}
 
             <div style={{gridColumn: '1 / -1', background: '#FEF3C7', padding: '12px 16px', borderRadius: '8px', border: '1px solid #FCD34D', fontSize: '13px', color: '#92400E'}}>
               ⚠️ O tecido desta OP será separado e deduzido do estoque total para evitar que seja utilizado em outras demandas.
@@ -728,7 +759,7 @@ const SunnyWearTecidos = () => {
             </div>
           </form>
 
-          {/* LISTAGEM E PESQUISA DE OPS CADASTRADAS */}
+          {/* LISTAGEM E PESQUISA DE OPS CADASTRADAS (LOGADA EMBAIXO) */}
           <div style={{ marginTop: '36px', borderTop: '2px solid #E2E8F0', paddingTop: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
@@ -1365,7 +1396,6 @@ const styles = {
     letterSpacing: '0.3px'
   },
   chartContainer: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' },
-  chartBarWrapper: { display: 'flex', flexDirection: 'column', gap: '4px' },
   tableResponsive: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' },
   thTr: { borderBottom: '2px solid #E2E8F0', backgroundColor: '#F8FAFC' },
