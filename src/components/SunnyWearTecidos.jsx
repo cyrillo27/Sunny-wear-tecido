@@ -33,6 +33,10 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
+  // Campos específicos para cadastro rápido de OP
+  const [termoBuscaOp, setTermoBuscaOp] = useState('');
+  const [qtdOp, setQtdOp] = useState('');
+
   const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
 
@@ -152,6 +156,73 @@ const SunnyWearTecidos = () => {
     }
   };
 
+  // Função exclusiva para registrar a OP e reservar o estoque imediatamente
+  const registrarOp = async (e) => {
+    e.preventDefault();
+    const termo = termoBuscaOp.toLowerCase().trim();
+    if (!termo || !qtdOp) {
+      alert('Informe o código/nome do tecido e a quantidade necessária para a OP.');
+      return;
+    }
+
+    const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
+    const tecidoEncontrado = listaSegura.find(
+      m => (m?.codigo && m.codigo.toLowerCase().includes(termo)) || 
+           (m?.nome && m.nome.toLowerCase().includes(termo))
+    );
+
+    const codigoFinal = tecidoEncontrado ? tecidoEncontrado.codigo : termo.toUpperCase();
+    const nomeFinal = tecidoEncontrado ? tecidoEncontrado.nome : 'Tecido Reservado (OP)';
+    const corFinal = tecidoEncontrado ? tecidoEncontrado.cor : 'N/D';
+    const localFinal = tecidoEncontrado ? tecidoEncontrado.localizacao : 'Pendente';
+    const larguraFinal = tecidoEncontrado ? tecidoEncontrado.largura : '';
+    const unidadeFinal = tecidoEncontrado ? (tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm') : 'm';
+    const precoFinal = tecidoEncontrado ? tecidoEncontrado.preco : 0;
+
+    const dadosOp = {
+      tipoMovimento: 'op', // Tipo OP para reservar e separar do estoque geral
+      codigo: codigoFinal,
+      nome: nomeFinal,
+      cor: corFinal,
+      localizacao: localFinal,
+      quantidade: qtdOp,
+      metros: qtdOp,
+      unidadeMedida: unidadeFinal,
+      preco: precoFinal,
+      estoqueMinimo: 0,
+      estoqueminimo: 0,
+      notaFiscal: 'OP-PENDENTE',
+      fornecedor: 'Ordem de Produção',
+      foto: tecidoEncontrado ? tecidoEncontrado.foto : '',
+      largura: larguraFinal,
+      data: new Date().toISOString().split('T')[0]
+    };
+
+    setCarregando(true);
+    try {
+      const resposta = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dadosOp)
+      });
+
+      if (resposta.ok) {
+        alert('📋 OP cadastrada com sucesso! O tecido foi separado e deduzido do estoque disponível.');
+        setTermoBuscaOp('');
+        setQtdOp('');
+        await carregarDadosDoServidor();
+        setAbaAtiva('historico');
+      } else {
+        alert('Erro ao salvar a OP no servidor.');
+      }
+    } catch (erro) {
+      console.error('Erro de conexão:', erro);
+      alert('Erro de conexão com o servidor central.');
+    } finally {
+      setCarregando(false);
+    }
+  };
+
   const registrarOuAtualizarMovimento = async (e) => {
     e.preventDefault();
     const qtdValida = form.quantidade || form.metros;
@@ -159,24 +230,6 @@ const SunnyWearTecidos = () => {
 
     const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
     let minFinal = form.estoqueMinimo !== '' && form.estoqueMinimo !== null ? Number(form.estoqueMinimo) : 0;
-    const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
-
-    if (tipoFinal === 'saida') {
-      const entradasTotais = listaSegura.filter(m => {
-        return m?.codigo && m.codigo.toLowerCase() === form.codigo.toLowerCase() && obterTipo(m) === 'entrada';
-      }).reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
-      
-      const saidasTotais = listaSegura.filter(m => {
-        return m?.codigo && m.codigo.toLowerCase() === form.codigo.toLowerCase() && obterTipo(m) === 'saida';
-      }).reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
-      
-      const saldoAtual = entradasTotais - saidasTotais;
-      const qtdSaida = Number(qtdValida);
-
-      if (minFinal > 0 && (saldoAtual - qtdSaida) < minFinal) {
-        alert(`⚠️ ALERTA DE ESTOQUE MÍNIMO!\n\nAtenção: Esta saída deixará o tecido "${form.nome}" com saldo ${(saldoAtual - qtdSaida).toFixed(2)}, ficando abaixo do limite seguro estabelecido (${minFinal}).`);
-      }
-    }
 
     const dadosParaEnviar = {
       ...form,
@@ -250,7 +303,7 @@ const SunnyWearTecidos = () => {
       largura: item.largura || ''
     });
     setTermoBuscaSaida(item.codigo || '');
-    setAbaAtiva(tipoItem === 'saida' ? 'saida' : 'entrada');
+    setAbaAtiva(tipoItem === 'saida' || tipoItem === 'op' ? 'saida' : 'entrada');
   };
 
   const deletarItem = async (id) => {
@@ -294,16 +347,17 @@ const SunnyWearTecidos = () => {
       };
     }
 
+    // Tanto 'saida' quanto 'op' reduzem o estoque disponível para evitar uso indevido
     if (tipoM === 'entrada') {
       tecidosConsolidados[cod].total += qtd;
-    } else {
+    } else if (tipoM === 'saida' || tipoM === 'op') {
       tecidosConsolidados[cod].total -= qtd;
     }
 
     if (!usoTecidos[cod]) {
       usoTecidos[cod] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
     }
-    if (tipoM === 'saida') {
+    if (tipoM === 'saida' || tipoM === 'op') {
       usoTecidos[cod].totalUso += qtd;
     }
 
@@ -326,11 +380,11 @@ const SunnyWearTecidos = () => {
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
   const saidasMetros = listaSeguraCalculos
-    .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
+    .filter(m => (obterTipo(m) === 'saida' || obterTipo(m) === 'op') && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
   const saidasKg = listaSeguraCalculos
-    .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'kg' || m?.unidadeMedida === 'kg'))
+    .filter(m => (obterTipo(m) === 'saida' || obterTipo(m) === 'op') && (m?.unidademedida === 'kg' || m?.unidadeMedida === 'kg'))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
   const estoqueMetros = entradasMetros - saidasMetros;
@@ -346,7 +400,7 @@ const SunnyWearTecidos = () => {
     
     if (tipoM === 'entrada') {
       acc[loc][unidade] += qtd;
-    } else if (tipoM === 'saida') {
+    } else if (tipoM === 'saida' || tipoM === 'op') {
       acc[loc][unidade] -= qtd;
     }
     return acc;
@@ -454,6 +508,12 @@ const SunnyWearTecidos = () => {
           📥 Registrar Entrada (Compra)
         </button>
         <button 
+          onClick={() => setAbaAtiva('op')} 
+          style={{ ...styles.tabBtn, ...(abaAtiva === 'op' ? styles.tabActive : {}) }}
+        >
+          📋 Registrar OP (Reserva)
+        </button>
+        <button 
           onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'saida' ? styles.tabActive : {}) }}
         >
@@ -476,7 +536,7 @@ const SunnyWearTecidos = () => {
             </div>
             
             {topTecidosMaisUsados.length === 0 ? (
-              <p style={styles.empty}>Aguardando registros de saída para análise de consumo.</p>
+              <p style={styles.empty}>Aguardando registros de saída ou OPs para análise de consumo.</p>
             ) : (
               <div style={styles.carrosselContainer}>
                 {topTecidosMaisUsados.map((tecido, index) => {
@@ -524,21 +584,21 @@ const SunnyWearTecidos = () => {
           </div>
 
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📤 Fluxo de Saídas (Consumo na Produção)</h3>
+            <h3 style={styles.sectionTitle}>📤 Saídas & OPs (Consumo e Reservas)</h3>
             <div style={styles.cardsContainer}>
               <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
-                <span style={styles.cardLabel}>Metragem Consumida</span>
+                <span style={styles.cardLabel}>Metragem Baixada / Reservada</span>
                 <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
               </div>
               <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
-                <span style={styles.cardLabel}>Peso Consumido</span>
+                <span style={styles.cardLabel}>Peso Baixado / Reservado</span>
                 <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
 
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📦 Saldo Líquido Consolidado em Estoque</h3>
+            <h3 style={styles.sectionTitle}>📦 Saldo Disponível em Estoque (Livre de OPs)</h3>
             <div style={styles.cardsContainer}>
               <div style={{...styles.card, borderLeft: '4px solid #2563EB'}}>
                 <span style={styles.cardLabel}>Saldo em Metros</span>
@@ -561,14 +621,61 @@ const SunnyWearTecidos = () => {
                   <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: '#F8FAFC', padding: '14px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                     <span style={{fontWeight: '600', color: '#0F172A', fontSize: '14px'}}>📍 {local}</span>
                     <div style={{display: 'flex', gap: '24px', fontSize: '13px'}}>
-                      <span style={{color: '#2563EB'}}>Metros: <strong style={{fontWeight: '700'}}>{vals.m} m</strong></span>
-                      <span style={{color: '#D97706'}}>Quilos: <strong style={{fontWeight: '700'}}>{vals.kg} kg</strong></span>
+                      <span style={{color: '#2563EB'}}>Metros livres: <strong style={{fontWeight: '700'}}>{vals.m} m</strong></span>
+                      <span style={{color: '#D97706'}}>Quilos livres: <strong style={{fontWeight: '700'}}>{vals.kg} kg</strong></span>
                     </div>
                   </div>
                 ))
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ABA DE CADASTRO RÁPIDO DE OP */}
+      {abaAtiva === 'op' && (
+        <div style={styles.cardSection}>
+          <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '20px' }}>
+            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📋 Registrar Ordem de Produção (OP - Reserva de Estoque)</h3>
+            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Digite o código ou nome do tecido e a quantidade necessária. O sistema separará o material imediatamente do estoque total.</p>
+          </div>
+
+          <form onSubmit={registrarOp} style={styles.formGrid}>
+            <div style={{gridColumn: '1 / -1'}}>
+              <label style={styles.formLabel}>Código ou Nome do Tecido *</label>
+              <input 
+                type="text" 
+                placeholder="Ex: TEC-001 ou Malha Canelada" 
+                value={termoBuscaOp} 
+                onChange={(e) => setTermoBuscaOp(e.target.value)} 
+                style={styles.input}
+                required
+              />
+            </div>
+
+            <div style={{gridColumn: '1 / -1'}}>
+              <label style={styles.formLabel}>Quantidade Necessária para a OP *</label>
+              <input 
+                type="number" 
+                step="0.01"
+                placeholder="Ex: 150" 
+                value={qtdOp} 
+                onChange={(e) => setQtdOp(e.target.value)} 
+                style={styles.input}
+                required
+              />
+            </div>
+
+            <div style={{gridColumn: '1 / -1', background: '#FEF3C7', padding: '14px', borderRadius: '8px', border: '1px solid #FCD34D', fontSize: '13px', color: '#92400E'}}>
+              ⚠️ <strong>Atenção:</strong> Ao registrar esta OP, a quantidade informada será descontada imediatamente do saldo geral para garantir que fique separada e não seja utilizada por outras ordens.
+            </div>
+
+            <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: '#D97706'}}>
+                {carregando ? 'Registrando OP...' : 'Cadastrar OP e Reservar Estoque'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -801,7 +908,7 @@ const SunnyWearTecidos = () => {
       {abaAtiva === 'historico' && (
         <div style={styles.cardSection}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico e Galpões</h3>
+            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico, OPs e Galpões</h3>
             <span style={{ fontSize: '12px', color: '#64748B' }}>Total de registros: <strong>{movFiltradas.length}</strong></span>
           </div>
 
@@ -845,6 +952,20 @@ const SunnyWearTecidos = () => {
                     const nf = item.notafiscal || item.notaFiscal || '';
                     const fornecedor = item.fornecedor || '';
 
+                    // Cores e rótulos para diferenciar Entrada, Saída e OP
+                    let badgeBg = '#DEF7EC';
+                    let badgeColor = '#03543F';
+                    let badgeText = '📥 Entrada';
+                    if (tipoMovimentoNoBanco === 'saida') {
+                      badgeBg = '#FDE8E8';
+                      badgeColor = '#9B1C1C';
+                      badgeText = '📤 Saída';
+                    } else if (tipoMovimentoNoBanco === 'op') {
+                      badgeBg = '#FEF3C7';
+                      badgeColor = '#92400E';
+                      badgeText = '📋 OP Pendente';
+                    }
+
                     return (
                       <tr key={item.id} style={styles.tr}>
                         <td style={styles.td}>
@@ -863,10 +984,10 @@ const SunnyWearTecidos = () => {
                         <td style={styles.td}>
                           <span style={{
                             ...styles.badge, 
-                            background: tipoMovimentoNoBanco === 'entrada' ? '#DEF7EC' : '#FDE8E8',
-                            color: tipoMovimentoNoBanco === 'entrada' ? '#03543F' : '#9B1C1C'
+                            background: badgeBg,
+                            color: badgeColor
                           }}>
-                            {tipoMovimentoNoBanco === 'entrada' ? '📥 Entrada' : '📤 Saída'}
+                            {badgeText}
                           </span>
                         </td>
                         <td style={styles.td}><strong>{item.codigo}</strong></td>
