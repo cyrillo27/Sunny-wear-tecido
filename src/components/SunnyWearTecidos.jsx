@@ -12,6 +12,7 @@ const SunnyWearTecidos = () => {
   const [abaAtiva, setAbaAtiva] = useState('dashboard');
   const [movimentacoes, setMovimentacoes] = useState([]);
   const [carregando, setCarregando] = useState(false);
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
 
   const [fotoSelecionada, setFotoSelecionada] = useState(null);
   const [idEditando, setIdEditando] = useState(null);
@@ -418,7 +419,6 @@ const SunnyWearTecidos = () => {
   const estoqueMetros = entradasMetros - saidasMetros;
   const estoqueKg = entradasKg - saidasKg;
 
-  // LÓGICA DINÂMICA DA EVOLUÇÃO DO ESTOQUE (ÚLTIMOS 7 DIAS)
   const diasEvolucao = [];
   const dadosEvolucaoMetros = [];
   const dadosEvolucaoKg = [];
@@ -545,8 +545,49 @@ const SunnyWearTecidos = () => {
   }
 
   return (
-    <div style={styles.appLayout}>
-      {/* SIDEBAR ESQUERDA ESTILIZADA */}
+    <div style={styles.appLayout} className="app-layout-container">
+      {/* CSS RESPONSIVO PARA DISPOSITIVOS MÓVEIS */}
+      <style>{`
+        @media (max-width: 900px) {
+          .app-layout-container {
+            flex-direction: column !important;
+          }
+          aside {
+            position: fixed !important;
+            left: ${menuMobileAberto ? '0' : '-100%'} !important;
+            top: 0 !important;
+            height: 100vh !important;
+            z-index: 1000 !important;
+            transition: left 0.3s ease-in-out !important;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.15) !important;
+            width: 280px !important;
+          }
+          main {
+            padding: 16px !important;
+            max-width: 100vw !important;
+          }
+          .charts-row-responsive {
+            grid-template-columns: 1fr !important;
+          }
+          .form-grid-responsive {
+            grid-template-columns: 1fr !important;
+          }
+          .menu-toggle-btn {
+            display: flex !important;
+          }
+        }
+      `}</style>
+
+      {/* OVERLAY PARA FECHAR O MENU NO CELULAR */}
+      {menuMobileAberto && (
+        <div 
+          onClick={() => setMenuMobileAberto(false)} 
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 999, display: 'none' }}
+          className="mobile-overlay"
+        />
+      )}
+
+      {/* SIDEBAR */}
       <aside style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
           <div style={styles.logoBadge}>SW</div>
@@ -558,38 +599,37 @@ const SunnyWearTecidos = () => {
 
         <div style={styles.sidebarNavGroup}>
           <button 
-            onClick={() => setAbaAtiva('dashboard')} 
+            onClick={() => { setAbaAtiva('dashboard'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'dashboard' ? styles.sidebarLinkActive : {}) }}
           >
             📊 Visão Geral
           </button>
           <button 
-            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('entrada'); }} 
+            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('entrada'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'entrada' ? styles.sidebarLinkActive : {}) }}
           >
             📥 Registrar Entrada
           </button>
           <button 
-            onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); setAbaAtiva('op'); }} 
+            onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); setAbaAtiva('op'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'op' ? styles.sidebarLinkActive : {}) }}
           >
             📋 Ordens de Produção
           </button>
           <button 
-            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); }} 
+            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'saida' ? styles.sidebarLinkActive : {}) }}
           >
             📤 Registrar Saída
           </button>
           <button 
-            onClick={() => setAbaAtiva('historico')} 
+            onClick={() => { setAbaAtiva('historico'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'historico' ? styles.sidebarLinkActive : {}) }}
           >
             🔍 Consulta & Galpões
           </button>
         </div>
 
-        {/* BOTÃO DE FINALIZAR SESSÃO NA BASE DA SIDEBAR */}
         <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
           <button onClick={handleLogout} style={styles.sidebarLogoutFullBtn}>
             🚪 Finalizar Sessão
@@ -600,6 +640,13 @@ const SunnyWearTecidos = () => {
       {/* CONTEÚDO PRINCIPAL */}
       <main style={styles.mainContent}>
         <header style={styles.topbar}>
+          <button 
+            style={{ display: 'none', alignItems: 'center', gap: '6px', background: '#2563EB', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}
+            className="menu-toggle-btn"
+            onClick={() => setMenuMobileAberto(!menuMobileAberto)}
+          >
+            ☰ Menu
+          </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
             <span style={styles.statusText}>Quantum Link Ativo</span>
@@ -652,8 +699,7 @@ const SunnyWearTecidos = () => {
               </div>
             </div>
 
-            {/* SEÇÃO PRINCIPAL DE GRÁFICOS (TOP 5 TECIDOS & EVOLUÇÃO DO ESTOQUE DINÂMICA) */}
-            <div style={styles.chartsRow}>
+            <div style={styles.chartsRow} className="charts-row-responsive">
               <div style={styles.chartBoxWide}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
@@ -695,9 +741,8 @@ const SunnyWearTecidos = () => {
                 )}
               </div>
 
-              {/* GRÁFICO DINÂMICO DE EVOLUÇÃO DO ESTOQUE */}
               <div style={styles.chartBoxWide}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
                   <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Evolução do Estoque <span style={{fontSize: '11px', color: '#64748B', fontWeight: '500'}}>(Últimos 7 dias)</span></h3>
                   <select 
                     style={styles.chartSelect}
@@ -807,7 +852,7 @@ const SunnyWearTecidos = () => {
               <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre o número da OP e o tecido necessário. O sistema reserva o material imediatamente.</p>
             </div>
 
-            <form onSubmit={salvarOp} style={styles.formGrid}>
+            <form onSubmit={salvarOp} style={styles.formGrid} className="form-grid-responsive">
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Número da OP *</label>
                 <input 
@@ -961,7 +1006,7 @@ const SunnyWearTecidos = () => {
               <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os campos abaixo para registrar novos tecidos ou lotes no sistema.</p>
             </div>
             
-            <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
+            <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
                 <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
@@ -1043,7 +1088,7 @@ const SunnyWearTecidos = () => {
               <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
             </div>
 
-            <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
+            <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
               <div style={{gridColumn: '1 / -1'}}>
                 <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
                 <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
@@ -1209,6 +1254,7 @@ const styles = {
     backgroundColor: '#F1F5F9',
     backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(37, 99, 235, 0.08) 0%, transparent 70%)',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    padding: '16px',
   },
   loginCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -1264,7 +1310,7 @@ const styles = {
   },
   sidebar: {
     width: '260px',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
     borderRight: '1px solid rgba(226, 232, 240, 0.8)',
@@ -1368,7 +1414,7 @@ const styles = {
   topbar: {
     marginBottom: '28px',
     display: 'flex',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: '16px',
@@ -1403,7 +1449,7 @@ const styles = {
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
     gap: '16px',
     marginBottom: '24px',
   },
@@ -1493,7 +1539,7 @@ const styles = {
   },
   cardsWaveGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
     gap: '16px',
     marginBottom: '24px',
   },
