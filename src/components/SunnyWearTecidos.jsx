@@ -33,9 +33,14 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
-  // Campos específicos para cadastro rápido de OP
-  const [termoBuscaOp, setTermoBuscaOp] = useState('');
-  const [qtdOp, setQtdOp] = useState('');
+  // Estados específicos para o módulo de OPs
+  const [formOp, setFormOp] = useState({
+    numeroOp: '',
+    termoBusca: '',
+    quantidade: ''
+  });
+  const [idEditandoOp, setIdEditandoOp] = useState(null);
+  const [buscaOp, setBuscaOp] = useState('');
 
   const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
@@ -156,15 +161,15 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Função exclusiva para registrar a OP e reservar o estoque imediatamente
-  const registrarOp = async (e) => {
+  // Função para cadastrar ou atualizar OP
+  const salvarOp = async (e) => {
     e.preventDefault();
-    const termo = termoBuscaOp.toLowerCase().trim();
-    if (!termo || !qtdOp) {
-      alert('Informe o código/nome do tecido e a quantidade necessária para a OP.');
+    if (!formOp.numeroOp || !formOp.termoBusca || !formOp.quantidade) {
+      alert('Preencha o Número da OP, o Tecido e a Quantidade.');
       return;
     }
 
+    const termo = formOp.termoBusca.toLowerCase().trim();
     const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
     const tecidoEncontrado = listaSegura.find(
       m => (m?.codigo && m.codigo.toLowerCase().includes(termo)) || 
@@ -180,18 +185,19 @@ const SunnyWearTecidos = () => {
     const precoFinal = tecidoEncontrado ? tecidoEncontrado.preco : 0;
 
     const dadosOp = {
-      tipoMovimento: 'op', // Tipo OP para reservar e separar do estoque geral
+      tipoMovimento: 'op',
       codigo: codigoFinal,
       nome: nomeFinal,
       cor: corFinal,
       localizacao: localFinal,
-      quantidade: qtdOp,
-      metros: qtdOp,
+      quantidade: formOp.quantidade,
+      metros: formOp.quantidade,
       unidadeMedida: unidadeFinal,
       preco: precoFinal,
       estoqueMinimo: 0,
       estoqueminimo: 0,
-      notaFiscal: 'OP-PENDENTE',
+      notaFiscal: formOp.numeroOp,
+      notafiscal: formOp.numeroOp,
       fornecedor: 'Ordem de Produção',
       foto: tecidoEncontrado ? tecidoEncontrado.foto : '',
       largura: larguraFinal,
@@ -200,18 +206,26 @@ const SunnyWearTecidos = () => {
 
     setCarregando(true);
     try {
-      const resposta = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosOp)
-      });
+      let resposta;
+      if (idEditandoOp) {
+        resposta = await fetch(`${API_URL}/${encodeURIComponent(idEditandoOp)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dadosOp)
+        });
+      } else {
+        resposta = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dadosOp)
+        });
+      }
 
       if (resposta.ok) {
-        alert('📋 OP cadastrada com sucesso! O tecido foi separado e deduzido do estoque disponível.');
-        setTermoBuscaOp('');
-        setQtdOp('');
+        alert(idEditandoOp ? 'OP atualizada com sucesso!' : '📋 OP cadastrada e estoque reservado com sucesso!');
+        setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' });
+        setIdEditandoOp(null);
         await carregarDadosDoServidor();
-        setAbaAtiva('historico');
       } else {
         alert('Erro ao salvar a OP no servidor.');
       }
@@ -221,6 +235,15 @@ const SunnyWearTecidos = () => {
     } finally {
       setCarregando(false);
     }
+  };
+
+  const iniciarEdicaoOp = (item) => {
+    setIdEditandoOp(item.id);
+    setFormOp({
+      numeroOp: item.notafiscal || item.notaFiscal || '',
+      termoBusca: item.codigo || item.nome || '',
+      quantidade: item.quantidade || item.metros || ''
+    });
   };
 
   const registrarOuAtualizarMovimento = async (e) => {
@@ -303,7 +326,7 @@ const SunnyWearTecidos = () => {
       largura: item.largura || ''
     });
     setTermoBuscaSaida(item.codigo || '');
-    setAbaAtiva(tipoItem === 'saida' || tipoItem === 'op' ? 'saida' : 'entrada');
+    setAbaAtiva(tipoItem === 'saida' ? 'saida' : 'entrada');
   };
 
   const deletarItem = async (id) => {
@@ -347,7 +370,6 @@ const SunnyWearTecidos = () => {
       };
     }
 
-    // Tanto 'saida' quanto 'op' reduzem o estoque disponível para evitar uso indevido
     if (tipoM === 'entrada') {
       tecidosConsolidados[cod].total += qtd;
     } else if (tipoM === 'saida' || tipoM === 'op') {
@@ -416,6 +438,16 @@ const SunnyWearTecidos = () => {
     const fornecedor = (m.fornecedor || '').toLowerCase();
     const notaFiscal = (m.notafiscal || m.notaFiscal || '').toLowerCase();
     return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || fornecedor.includes(termo) || notaFiscal.includes(termo);
+  });
+
+  // Lista filtrada específica para a aba de OPs
+  const opsFiltradas = listaSeguraCalculos.filter(m => {
+    if (!m || obterTipo(m) !== 'op') return false;
+    const termo = buscaOp.toLowerCase();
+    const numOp = (m.notafiscal || m.notaFiscal || '').toLowerCase();
+    const codigo = (m.codigo || '').toLowerCase();
+    const nome = (m.nome || '').toLowerCase();
+    return numOp.includes(termo) || codigo.includes(termo) || nome.includes(termo);
   });
 
   if (!autenticado) {
@@ -508,10 +540,10 @@ const SunnyWearTecidos = () => {
           📥 Registrar Entrada (Compra)
         </button>
         <button 
-          onClick={() => setAbaAtiva('op')} 
+          onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); setAbaAtiva('op'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'op' ? styles.tabActive : {}) }}
         >
-          📋 Registrar OP (Reserva)
+          📋 Ordens de Produção (OPs)
         </button>
         <button 
           onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); }} 
@@ -632,50 +664,144 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {/* ABA DE CADASTRO RÁPIDO DE OP */}
+      {/* ABA DE GESTÃO DE OPS (CADASTRO, PESQUISA, EDIÇÃO E EXCLUSÃO) */}
       {abaAtiva === 'op' && (
         <div style={styles.cardSection}>
           <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '20px' }}>
-            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📋 Registrar Ordem de Produção (OP - Reserva de Estoque)</h3>
-            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Digite o código ou nome do tecido e a quantidade necessária. O sistema separará o material imediatamente do estoque total.</p>
+            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditandoOp ? '✏️ Editar Ordem de Produção (OP)' : '📋 Cadastro e Gestão de Ordens de Produção (OPs)'}</h3>
+            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre o número da OP e o tecido necessário. O sistema reserva o material imediatamente, deduzindo do estoque disponível.</p>
           </div>
 
-          <form onSubmit={registrarOp} style={styles.formGrid}>
-            <div style={{gridColumn: '1 / -1'}}>
-              <label style={styles.formLabel}>Código ou Nome do Tecido *</label>
+          <form onSubmit={salvarOp} style={styles.formGrid}>
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>Número da OP *</label>
               <input 
                 type="text" 
-                placeholder="Ex: TEC-001 ou Malha Canelada" 
-                value={termoBuscaOp} 
-                onChange={(e) => setTermoBuscaOp(e.target.value)} 
+                placeholder="Ex: OP-2026-001" 
+                value={formOp.numeroOp} 
+                onChange={(e) => setFormOp({...formOp, numeroOp: e.target.value})} 
                 style={styles.input}
                 required
               />
             </div>
-
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>Código ou Nome do Tecido *</label>
+              <input 
+                type="text" 
+                placeholder="Ex: TEC-001 ou Malha" 
+                value={formOp.termoBusca} 
+                onChange={(e) => setFormOp({...formOp, termoBusca: e.target.value})} 
+                style={styles.input}
+                required
+              />
+            </div>
             <div style={{gridColumn: '1 / -1'}}>
-              <label style={styles.formLabel}>Quantidade Necessária para a OP *</label>
+              <label style={styles.formLabel}>Quantidade Necessária *</label>
               <input 
                 type="number" 
                 step="0.01"
                 placeholder="Ex: 150" 
-                value={qtdOp} 
-                onChange={(e) => setQtdOp(e.target.value)} 
+                value={formOp.quantidade} 
+                onChange={(e) => setFormOp({...formOp, quantidade: e.target.value})} 
                 style={styles.input}
                 required
               />
             </div>
 
-            <div style={{gridColumn: '1 / -1', background: '#FEF3C7', padding: '14px', borderRadius: '8px', border: '1px solid #FCD34D', fontSize: '13px', color: '#92400E'}}>
-              ⚠️ <strong>Atenção:</strong> Ao registrar esta OP, a quantidade informada será descontada imediatamente do saldo geral para garantir que fique separada e não seja utilizada por outras ordens.
+            <div style={{gridColumn: '1 / -1', background: '#FEF3C7', padding: '12px 16px', borderRadius: '8px', border: '1px solid #FCD34D', fontSize: '13px', color: '#92400E'}}>
+              ⚠️ O tecido desta OP será separado e deduzido do estoque total para evitar que seja utilizado em outras demandas.
             </div>
 
-            <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-              <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: '#D97706'}}>
-                {carregando ? 'Registrando OP...' : 'Cadastrar OP e Reservar Estoque'}
+            <div style={{gridColumn: '1 / -1', display: 'flex', gap: '10px'}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditandoOp ? '#D97706' : '#2563EB', flex: 1}}>
+                {carregando ? 'Salvando OP...' : (idEditandoOp ? 'Atualizar OP' : 'Cadastrar OP e Reservar Estoque')}
               </button>
+              {idEditandoOp && (
+                <button 
+                  type="button" 
+                  onClick={() => { setIdEditandoOp(null); setFormOp({ numeroOp: '', termoBusca: '', quantidade: '' }); }}
+                  style={{padding: '12px 20px', backgroundColor: '#64748B', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer'}}
+                >
+                  Cancelar
+                </button>
+              )}
             </div>
           </form>
+
+          {/* LISTAGEM E PESQUISA DE OPS CADASTRADAS */}
+          <div style={{ marginTop: '36px', borderTop: '2px solid #E2E8F0', paddingTop: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 OPs Cadastradas (Pendentes de Produção)</h4>
+              <span style={{ fontSize: '12px', color: '#64748B' }}>Total de OPs: <strong>{opsFiltradas.length}</strong></span>
+            </div>
+
+            <input 
+              type="text" 
+              placeholder="Pesquisar OP por número, código ou nome do tecido..." 
+              value={buscaOp} 
+              onChange={(e) => setBuscaOp(e.target.value)} 
+              style={styles.inputFull}
+            />
+
+            <div style={styles.tableResponsive}>
+              <table style={styles.table}>
+                <thead>
+                  <tr style={styles.thTr}>
+                    <th style={styles.th}>Nº da OP</th>
+                    <th style={styles.th}>Código</th>
+                    <th style={styles.th}>Tecido / Cor</th>
+                    <th style={styles.th}>Localização</th>
+                    <th style={styles.th}>Qtd Reservada</th>
+                    <th style={styles.th}>Data</th>
+                    <th style={styles.th}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {opsFiltradas.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={styles.empty}>Nenhuma Ordem de Produção encontrada.</td>
+                    </tr>
+                  ) : (
+                    opsFiltradas.map((item) => {
+                      const qtd = Number(item.metros || item.quantidade || 0);
+                      const unidade = item.unidademedida || item.unidadeMedida || 'm';
+                      const numOp = item.notafiscal || item.notaFiscal || 'N/D';
+
+                      return (
+                        <tr key={item.id} style={styles.tr}>
+                          <td style={styles.td}><strong style={{ color: '#2563EB' }}>{numOp}</strong></td>
+                          <td style={styles.td}><strong>{item.codigo}</strong></td>
+                          <td style={styles.td}>
+                            <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
+                            {item.largura ? <div style={{fontSize: '11px', color: '#64748B'}}>Largura: {item.largura}m</div> : null}
+                          </td>
+                          <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
+                          <td style={styles.td}><strong style={{ color: '#D97706' }}>{qtd} {unidade}</strong></td>
+                          <td style={styles.td}>{item.data}</td>
+                          <td style={styles.td}>
+                            <button 
+                              onClick={() => iniciarEdicaoOp(item)} 
+                              style={styles.btnEditar} 
+                              title="Editar OP"
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              onClick={() => deletarItem(item.id)} 
+                              style={styles.btnDeletar} 
+                              title="Excluir OP e liberar estoque"
+                            >
+                              🗑️
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
@@ -952,7 +1078,6 @@ const SunnyWearTecidos = () => {
                     const nf = item.notafiscal || item.notaFiscal || '';
                     const fornecedor = item.fornecedor || '';
 
-                    // Cores e rótulos para diferenciar Entrada, Saída e OP
                     let badgeBg = '#DEF7EC';
                     let badgeColor = '#03543F';
                     let badgeText = '📥 Entrada';
@@ -963,7 +1088,7 @@ const SunnyWearTecidos = () => {
                     } else if (tipoMovimentoNoBanco === 'op') {
                       badgeBg = '#FEF3C7';
                       badgeColor = '#92400E';
-                      badgeText = '📋 OP Pendente';
+                      badgeText = `📋 OP: ${nf}`;
                     }
 
                     return (
@@ -1225,9 +1350,6 @@ const styles = {
     color: '#0F172A',
     marginBottom: '16px',
   },
-  fileContainer: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  fileLabel: { fontSize: '12px', color: '#475569', fontWeight: '700', textTransform: 'uppercase' },
-  inputFile: { fontSize: '13px', color: '#475569' },
   previewContainer: { display: 'flex', alignItems: 'center', gap: '12px', background: '#F0FDF4', padding: '12px', borderRadius: '8px', border: '1px solid #BBF7D0' },
   previewImg: { width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '2px solid #059669' },
   button: {
@@ -1250,9 +1372,6 @@ const styles = {
   th: { padding: '12px 10px', fontSize: '11px', color: '#475569', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' },
   tr: { borderBottom: '1px solid #E2E8F0' },
   td: { padding: '14px 10px', fontSize: '13px', color: '#334155', verticalAlign: 'middle' },
-  tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #CBD5E1', cursor: 'pointer' },
-  noFoto: { fontSize: '12px', color: '#94A3B8', fontStyle: 'italic' },
-  badge: { padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', display: 'inline-block' },
   localBadge: { padding: '4px 8px', borderRadius: '6px', fontSize: '12px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: '600' },
   btnEditar: {
     padding: '6px 10px',
