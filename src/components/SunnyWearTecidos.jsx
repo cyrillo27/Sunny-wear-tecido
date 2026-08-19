@@ -36,7 +36,6 @@ const SunnyWearTecidos = () => {
   const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
 
-  // 🌍 Aponta para a API oficial hospedada no Render
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
 
   const obterMinimo = (item) => {
@@ -141,7 +140,7 @@ const SunnyWearTecidos = () => {
         foto: tecidoEncontrado.foto || '',
         largura: tecidoEncontrado.largura || ''
       }));
-      alert(`✅ Tecido encontrado: ${tecidoEncontrado.nome} (${tecidoEncontrado.codigo})!`);
+      alert(`✅ Tecido localizado: ${tecidoEncontrado.nome} (${tecidoEncontrado.codigo})`);
     } else {
       alert('⚠️ Nenhum tecido encontrado com este código ou nome.');
       setForm(prev => ({
@@ -218,7 +217,7 @@ const SunnyWearTecidos = () => {
       }
     } catch (erro) {
       console.error('Erro ao salvar no servidor:', erro);
-      alert('Erro ao conectar com o servidor back-end.');
+      alert('Erro de conexão com o servidor.');
     } finally {
       setCarregando(false);
     }
@@ -255,7 +254,7 @@ const SunnyWearTecidos = () => {
   };
 
   const deletarItem = async (id) => {
-    if (!window.confirm('Tem certeza que deseja apagar este tecido/registro?')) return;
+    if (!window.confirm('Tem certeza que deseja remover este registro permanentemente?')) return;
 
     try {
       const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, {
@@ -263,14 +262,14 @@ const SunnyWearTecidos = () => {
       });
 
       if (resposta.ok) {
-        alert('Registro apagado com sucesso!');
+        alert('Registro removido com sucesso!');
         carregarDadosDoServidor();
       } else {
-        alert('Erro ao apagar o registro no servidor.');
+        alert('Erro ao remover o registro.');
       }
     } catch (erro) {
       console.error('Erro ao deletar:', erro);
-      alert('Erro de conexão com o servidor ao tentar apagar.');
+      alert('Erro de conexão com o servidor.');
     }
   };
 
@@ -369,15 +368,17 @@ const SunnyWearTecidos = () => {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <h1 style={{ color: '#1a73e8', marginBottom: '8px', textAlign: 'center' }}>Sunny Wear</h1>
-          <p style={{ color: '#5f6368', fontSize: '14px', marginBottom: '24px', textAlign: 'center' }}>Controle de Estoque e Galpões de Tecidos</p>
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <h1 style={{ color: '#0F172A', margin: '0 0 4px 0', fontSize: '26px', fontWeight: '700' }}>Sunny Wear</h1>
+            <p style={{ color: '#64748B', fontSize: '14px', margin: 0 }}>Enterprise Resource & Inventory</p>
+          </div>
           
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={styles.loginLabel}>Usuário:</label>
+              <label style={styles.loginLabel}>Usuário corporativo</label>
               <input 
                 type="text" 
-                placeholder="Digite o usuário" 
+                placeholder="Insira seu usuário" 
                 value={usuarioInput} 
                 onChange={(e) => setUsuarioInput(e.target.value)} 
                 style={styles.input}
@@ -385,18 +386,18 @@ const SunnyWearTecidos = () => {
               />
             </div>
             <div>
-              <label style={styles.loginLabel}>Senha:</label>
+              <label style={styles.loginLabel}>Senha de acesso</label>
               <input 
                 type="password" 
-                placeholder="Digite a senha" 
+                placeholder="Insira sua senha" 
                 value={senhaInput} 
                 onChange={(e) => setSenhaInput(e.target.value)} 
                 style={styles.input}
                 required
               />
             </div>
-            {erroLogin && <span style={{ color: '#c5221f', fontSize: '13px', textAlign: 'center' }}>{erroLogin}</span>}
-            <button type="submit" style={{ ...styles.button, backgroundColor: '#1a73e8', marginTop: '8px' }}>Entrar no Sistema</button>
+            {erroLogin && <span style={{ color: '#EF4444', fontSize: '13px', textAlign: 'center', fontWeight: '500' }}>{erroLogin}</span>}
+            <button type="submit" style={{ ...styles.button, backgroundColor: '#2563EB', marginTop: '8px' }}>Acessar Sistema</button>
           </form>
         </div>
       </div>
@@ -405,33 +406,36 @@ const SunnyWearTecidos = () => {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
+      <header style={styles.header}>
         <div>
           <h1 style={styles.title}>Sunny Wear</h1>
-          <p style={styles.subtitle}>Dashboard em Tempo Real 🟢</p>
+          <p style={styles.subtitle}>Painel Corporativo de Gestão de Tecidos & Galpões</p>
         </div>
-        <button onClick={handleLogout} style={styles.logoutBtn}>Sair (Logout)</button>
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={styles.statusBadge}>● Sistema Online</span>
+          <button onClick={handleLogout} style={styles.logoutBtn}>Encerrar Sessão</button>
+        </div>
+      </header>
 
       {alertasEstoqueBaixo.length > 0 && (
         <div style={styles.alertaContainer}>
-          <strong style={{ color: '#c5221f' }}>🚨 ALERTA: Tecidos abaixo do estoque mínimo configurado:</strong>
-          <ul style={{ margin: '6px 0 0 16px', padding: 0, fontSize: '13px', color: '#c5221f' }}>
+          <strong style={{ color: '#DC2626', display: 'block', marginBottom: '4px' }}>⚠️ Alerta Crítico: Tecidos abaixo do estoque mínimo configurado</strong>
+          <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: '13px', color: '#991B1B' }}>
             {alertasEstoqueBaixo.map((alt, idx) => (
               <li key={idx}>
-                <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Atual: <strong>{alt.total} {alt.unidade}</strong> (Mínimo exigido: {alt.minimo} {alt.unidade})
+                <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Saldo Atual: <strong>{alt.total} {alt.unidade}</strong> (Mínimo exigido: {alt.minimo} {alt.unidade})
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      <div style={styles.navTabs}>
+      <nav style={styles.navTabs}>
         <button 
           onClick={() => setAbaAtiva('dashboard')} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'dashboard' ? styles.tabActive : {}) }}
         >
-          📊 Dashboard em Tempo Real
+          📊 Visão Geral (Dashboard)
         </button>
         <button 
           onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('entrada'); }} 
@@ -449,43 +453,43 @@ const SunnyWearTecidos = () => {
           onClick={() => setAbaAtiva('historico')} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'historico' ? styles.tabActive : {}) }}
         >
-          🔍 Localizar & Galpões
+          🔍 Consulta & Galpões
         </button>
-      </div>
+      </nav>
 
       {abaAtiva === 'dashboard' && (
         <div>
           <div style={styles.cardSection}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Usados (Arraste para o lado ➔)</h3>
-              <span style={{ fontSize: '11px', color: '#1a73e8', backgroundColor: '#e8f0fe', padding: '3px 8px', borderRadius: '12px', fontWeight: '600' }}>● Ao vivo</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
+              <span style={{ fontSize: '12px', color: '#2563EB', backgroundColor: '#EFF6FF', padding: '4px 10px', borderRadius: '20px', fontWeight: '600' }}>Tempo Real</span>
             </div>
             
             {topTecidosMaisUsados.length === 0 ? (
-              <p style={styles.empty}>Nenhuma saída registrada ainda para calcular os mais usados.</p>
+              <p style={styles.empty}>Nenhuma movimentação de saída registrada até o momento.</p>
             ) : (
               <div style={styles.carrosselContainer}>
                 {topTecidosMaisUsados.map((tecido, index) => {
-                  const posicoesNomes = ['1º Primeiro', '2º Segundo', '3º Terceiro', '4º Quarto', '5º Quinto'];
-                  const coresBordas = ['#1a73e8', '#137333', '#f9ab00', '#c5221f', '#9334e6'];
+                  const posicoesNomes = ['1º Lugar', '2º Lugar', '3º Lugar', '4º Lugar', '5º Lugar'];
+                  const coresBordas = ['#2563EB', '#059669', '#D97706', '#DC2626', '#7C3AED'];
                   return (
                     <div 
                       key={index} 
                       style={{ 
                         ...styles.carrosselCard, 
-                        borderTop: `4px solid ${coresBordas[index] || '#1a73e8'}` 
+                        borderTop: `4px solid ${coresBordas[index] || '#2563EB'}` 
                       }}
                     >
-                      <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#5f6368', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
-                        {posicoesNomes[index] || `${index + 1}º Lugar`}
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                        {posicoesNomes[index] || `${index + 1}º`}
                       </span>
-                      <strong style={{ fontSize: '15px', color: '#202124', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <strong style={{ fontSize: '15px', color: '#0F172A', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
                         {tecido.nome}
                       </strong>
-                      <span style={{ fontSize: '12px', color: '#5f6368', display: 'block', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', color: '#64748B', display: 'block', marginBottom: '12px' }}>
                         Cor: {tecido.cor || 'N/D'} | Cód: {tecido.codigo}
                       </span>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: coresBordas[index] || '#1a73e8', marginTop: 'auto' }}>
+                      <div style={{ fontSize: '16px', fontWeight: '700', color: coresBordas[index] || '#2563EB', marginTop: 'auto' }}>
                         {tecido.totalUso.toLocaleString()} {tecido.unidade}
                       </div>
                     </div>
@@ -496,64 +500,61 @@ const SunnyWearTecidos = () => {
           </div>
 
           <div style={styles.cardSection}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📥 Total de Entradas (Compras)</h3>
-              <span style={{ fontSize: '12px', color: '#137333', backgroundColor: '#e6f4ea', padding: '3px 8px', borderRadius: '12px', fontWeight: '600' }}>● Tempo real</span>
-            </div>
+            <h3 style={styles.sectionTitle}>📥 Fluxo de Entradas (Aquisições)</h3>
             <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #137333'}}>
-                <span style={styles.cardLabel}>Entradas em Metros</span>
-                <strong style={{...styles.cardValue, color: '#137333'}}>{entradasMetros.toLocaleString()} m</strong>
+              <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
+                <span style={styles.cardLabel}>Metragem Total Adquirida</span>
+                <strong style={{...styles.cardValue, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
               </div>
-              <div style={{...styles.card, borderLeft: '4px solid #137333'}}>
-                <span style={styles.cardLabel}>Entradas em Quilos</span>
-                <strong style={{...styles.cardValue, color: '#137333'}}>{entradasKg.toLocaleString()} kg</strong>
+              <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
+                <span style={styles.cardLabel}>Peso Total Adquirido</span>
+                <strong style={{...styles.cardValue, color: '#059669'}}>{entradasKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
 
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📤 Total de Saídas (Uso na Produção)</h3>
+            <h3 style={styles.sectionTitle}>📤 Fluxo de Saídas (Consumo na Produção)</h3>
             <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #c5221f'}}>
-                <span style={styles.cardLabel}>Saídas em Metros</span>
-                <strong style={{...styles.cardValue, color: '#c5221f'}}>{saidasMetros.toLocaleString()} m</strong>
+              <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
+                <span style={styles.cardLabel}>Metragem Consumida</span>
+                <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
               </div>
-              <div style={{...styles.card, borderLeft: '4px solid #c5221f'}}>
-                <span style={styles.cardLabel}>Saídas em Quilos</span>
-                <strong style={{...styles.cardValue, color: '#c5221f'}}>{saidasKg.toLocaleString()} kg</strong>
+              <div style={{...styles.card, borderLeft: '4px solid #DC2626'}}>
+                <span style={styles.cardLabel}>Peso Consumido</span>
+                <strong style={{...styles.cardValue, color: '#DC2626'}}>{saidasKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
 
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📦 Estoque Geral Atual</h3>
+            <h3 style={styles.sectionTitle}>📦 Saldo Consolidado em Estoque</h3>
             <div style={styles.cardsContainer}>
-              <div style={{...styles.card, borderLeft: '4px solid #1a73e8'}}>
-                <span style={styles.cardLabel}>Saldo Líquido em Metros</span>
-                <strong style={{...styles.cardValue, color: '#1a73e8'}}>{estoqueMetros.toLocaleString()} m</strong>
+              <div style={{...styles.card, borderLeft: '4px solid #2563EB'}}>
+                <span style={styles.cardLabel}>Saldo Líquido (Metros)</span>
+                <strong style={{...styles.cardValue, color: '#2563EB'}}>{estoqueMetros.toLocaleString()} m</strong>
               </div>
-              <div style={{...styles.card, borderLeft: '4px solid #f9ab00'}}>
-                <span style={styles.cardLabel}>Saldo Líquido em Quilos</span>
-                <strong style={{...styles.cardValue, color: '#e37400'}}>{estoqueKg.toLocaleString()} kg</strong>
+              <div style={{...styles.card, borderLeft: '4px solid #D97706'}}>
+                <span style={styles.cardLabel}>Saldo Líquido (Quilos)</span>
+                <strong style={{...styles.cardValue, color: '#D97706'}}>{estoqueKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
 
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>🏢 Distribuição do Estoque por Galpão / Local</h3>
+            <h3 style={styles.sectionTitle}>🏢 Logística por Galpão / Armazém</h3>
             <div style={styles.chartContainer}>
               {Object.keys(porLocalizacao).length === 0 ? (
-                <p style={styles.empty}>Nenhum dado de localização cadastrado.</p>
+                <p style={styles.empty}>Nenhuma localização informada nos cadastros.</p>
               ) : (
                 Object.entries(porLocalizacao).map(([local, vals]) => (
-                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '12px', background: '#f8f9fa', padding: '10px', borderRadius: '6px'}}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '4px'}}>
-                      <span style={{...styles.chartLabelText, fontWeight: 'bold'}}>📍 {local}</span>
+                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0'}}>
+                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
+                      <span style={{...styles.chartLabelText, fontWeight: '700', color: '#0F172A'}}>📍 {local}</span>
                     </div>
-                    <div style={{display: 'flex', gap: '16px', fontSize: '14px'}}>
-                      <span style={{color: '#1a73e8'}}>Metros: <strong>{vals.m} m</strong></span>
-                      <span style={{color: '#e37400'}}>Quilos: <strong>{vals.kg} kg</strong></span>
+                    <div style={{display: 'flex', gap: '20px', fontSize: '14px'}}>
+                      <span style={{color: '#2563EB'}}>Metros: <strong>{vals.m} m</strong></span>
+                      <span style={{color: '#D97706'}}>Quilos: <strong>{vals.kg} kg</strong></span>
                     </div>
                   </div>
                 ))
@@ -565,112 +566,145 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'entrada' && (
         <div style={styles.cardSection}>
-          <h3 style={styles.sectionTitle}>{idEditando ? '✏️ Editar Entrada de Tecido' : '📥 Registrar Compra / Entrada de Tecido'}</h3>
+          <h3 style={styles.sectionTitle}>{idEditando ? '✏️ Editar Entrada de Tecido' : '📥 Cadastro de Nova Entrada / Compra'}</h3>
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
-            <input 
-              type="text" 
-              placeholder="Código do Tecido (Ex: TEC-001)" 
-              value={form.codigo} 
-              onChange={(e) => setForm({...form, codigo: e.target.value})} 
-              style={styles.input}
-              required
-            />
-            <input 
-              type="text" 
-              placeholder="Nome do Tecido (Ex: Malha Canelada)" 
-              value={form.nome} 
-              onChange={(e) => setForm({...form, nome: e.target.value})} 
-              style={styles.input}
-              required
-            />
-            <input 
-              type="text" 
-              placeholder="Cor do Tecido (Ex: Azul Marinho)" 
-              value={form.cor} 
-              onChange={(e) => setForm({...form, cor: e.target.value})} 
-              style={styles.input}
-              required
-            />
-            <input 
-              type="number" 
-              step="0.01"
-              placeholder="Largura do Tecido (Ex: 1.50 m)" 
-              value={form.largura} 
-              onChange={(e) => setForm({...form, largura: e.target.value})} 
-              style={styles.input}
-            />
-            <input 
-              type="text" 
-              placeholder="Localização (Ex: Sunny Galpão 1)" 
-              value={form.localizacao} 
-              onChange={(e) => setForm({...form, localizacao: e.target.value})} 
-              style={styles.input}
-              required
-            />
-            <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px'}}>
+            <div>
+              <label style={styles.formLabel}>Código do Tecido</label>
               <input 
-                type="number" 
-                step="0.01"
-                placeholder="Quantidade (Metros ou Kg)" 
-                value={form.quantidade} 
-                onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} 
+                type="text" 
+                placeholder="Ex: TEC-001" 
+                value={form.codigo} 
+                onChange={(e) => setForm({...form, codigo: e.target.value})} 
                 style={styles.input}
                 required
               />
-              <select 
-                value={form.unidadeMedida} 
-                onChange={(e) => setForm({...form, unidadeMedida: e.target.value})}
-                style={styles.input}
-              >
-                <option value="m">Metros (m)</option>
-                <option value="kg">Quilos (kg)</option>
-              </select>
             </div>
-            <input 
-              type="number" 
-              step="0.01"
-              placeholder="Estoque Mínimo (Ex: 180)" 
-              value={form.estoqueMinimo} 
-              onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} 
-              style={styles.input}
-            />
-            <input 
-              type="number" 
-              step="0.01"
-              placeholder="Valor Unitário (R$ Ex: 15.90 por m ou kg)" 
-              value={form.preco} 
-              onChange={(e) => setForm({...form, preco: e.target.value})} 
-              style={styles.input}
-            />
-            <input 
-              type="text" 
-              placeholder="Número da Nota Fiscal" 
-              value={form.notaFiscal} 
-              onChange={(e) => setForm({...form, notaFiscal: e.target.value})} 
-              style={styles.input}
-            />
-            <input 
-              type="text" 
-              placeholder="Nome do Fornecedor" 
-              value={form.fornecedor} 
-              onChange={(e) => setForm({...form, fornecedor: e.target.value})} 
-              style={styles.input}
-            />
+            <div>
+              <label style={styles.formLabel}>Nome do Tecido</label>
+              <input 
+                type="text" 
+                placeholder="Ex: Malha Canelada" 
+                value={form.nome} 
+                onChange={(e) => setForm({...form, nome: e.target.value})} 
+                style={styles.input}
+                required
+              />
+            </div>
+            <div>
+              <label style={styles.formLabel}>Cor</label>
+              <input 
+                type="text" 
+                placeholder="Ex: Azul Marinho" 
+                value={form.cor} 
+                onChange={(e) => setForm({...form, cor: e.target.value})} 
+                style={styles.input}
+                required
+              />
+            </div>
+            <div>
+              <label style={styles.formLabel}>Largura do Tecido</label>
+              <input 
+                type="number" 
+                step="0.01"
+                placeholder="Ex: 1.50" 
+                value={form.largura} 
+                onChange={(e) => setForm({...form, largura: e.target.value})} 
+                style={styles.input}
+              />
+            </div>
+            <div>
+              <label style={styles.formLabel}>Localização / Galpão</label>
+              <input 
+                type="text" 
+                placeholder="Ex: Galpão A - Corredor 2" 
+                value={form.localizacao} 
+                onChange={(e) => setForm({...form, localizacao: e.target.value})} 
+                style={styles.input}
+                required
+              />
+            </div>
+            <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px'}}>
+              <div>
+                <label style={styles.formLabel}>Quantidade</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  placeholder="0.00" 
+                  value={form.quantidade} 
+                  onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} 
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Unidade</label>
+                <select 
+                  value={form.unidadeMedida} 
+                  onChange={(e) => setForm({...form, unidadeMedida: e.target.value})}
+                  style={styles.input}
+                >
+                  <option value="m">Metros (m)</option>
+                  <option value="kg">Quilos (kg)</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
+              <input 
+                type="number" 
+                step="0.01"
+                placeholder="Ex: 180" 
+                value={form.estoqueMinimo} 
+                onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} 
+                style={styles.input}
+              />
+            </div>
+            <div>
+              <label style={styles.formLabel}>Valor Unitário (R$)</label>
+              <input 
+                type="number" 
+                step="0.01"
+                placeholder="Ex: 15.90" 
+                value={form.preco} 
+                onChange={(e) => setForm({...form, preco: e.target.value})} 
+                style={styles.input}
+              />
+            </div>
+            <div>
+              <label style={styles.formLabel}>Número da Nota Fiscal</label>
+              <input 
+                type="text" 
+                placeholder="Ex: 12345" 
+                value={form.notaFiscal} 
+                onChange={(e) => setForm({...form, notaFiscal: e.target.value})} 
+                style={styles.input}
+              />
+            </div>
+            <div>
+              <label style={styles.formLabel}>Fornecedor</label>
+              <input 
+                type="text" 
+                placeholder="Ex: Têxtil Exemplo Ltda" 
+                value={form.fornecedor} 
+                onChange={(e) => setForm({...form, fornecedor: e.target.value})} 
+                style={styles.input}
+              />
+            </div>
             
             <div style={styles.fileContainer}>
-              <label style={styles.fileLabel}>Foto do Tecido (Opcional):</label>
+              <label style={styles.fileLabel}>Anexar Foto do Tecido (Opcional)</label>
               <input type="file" accept="image/*" capture="environment" onChange={handleFotoChange} style={styles.inputFile} />
             </div>
 
             {form.foto && (
               <div style={styles.previewContainer}>
                 <img src={form.foto} alt="Prévia" style={styles.previewImg} onClick={() => setFotoSelecionada(form.foto)} />
-                <span style={styles.previewText}>Foto anexada! (Clique para ampliar)</span>
+                <span style={styles.previewText}>Imagem carregada com sucesso! (Clique para ampliar)</span>
               </div>
             )}
 
-            <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#f9ab00' : '#137333'}}>
-              {carregando ? 'Salvando...' : (idEditando ? 'Salvar Alterações' : 'Salvar Entrada no Servidor')}
+            <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#D97706' : '#059669', marginTop: '10px'}}>
+              {carregando ? 'Processando...' : (idEditando ? 'Salvar Alterações' : 'Salvar Entrada no Servidor')}
             </button>
           </form>
         </div>
@@ -678,56 +712,65 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'saida' && (
         <div style={styles.cardSection}>
-          <h3 style={styles.sectionTitle}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Registrar Uso / Saída de Tecido'}</h3>
+          <h3 style={styles.sectionTitle}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída'}</h3>
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
             
-            <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-              <input 
-                type="text" 
-                placeholder="Digite o Código ou Nome do Tecido" 
-                value={termoBuscaSaida} 
-                onChange={(e) => setTermoBuscaSaida(e.target.value)} 
-                style={{...styles.input, flex: 1}}
-              />
-              <button 
-                type="button"
-                onClick={executarBuscaSaida}
-                style={{padding: '12px 18px', backgroundColor: '#1a73e8', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'}}
-              >
-                OK / Buscar
-              </button>
+            <div>
+              <label style={styles.formLabel}>Localizar por Código ou Nome</label>
+              <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                <input 
+                  type="text" 
+                  placeholder="Digite o código ou nome do tecido" 
+                  value={termoBuscaSaida} 
+                  onChange={(e) => setTermoBuscaSaida(e.target.value)} 
+                  style={{...styles.input, flex: 1}}
+                />
+                <button 
+                  type="button"
+                  onClick={executarBuscaSaida}
+                  style={{padding: '12px 20px', backgroundColor: '#2563EB', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'}}
+                >
+                  OK / Buscar
+                </button>
+              </div>
             </div>
 
             <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px'}}>
-              <input 
-                type="number" 
-                step="0.01"
-                placeholder="Quantidade Utilizada" 
-                value={form.quantidade} 
-                onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} 
-                style={styles.input}
-                required
-              />
-              <select 
-                value={form.unidadeMedida} 
-                onChange={(e) => setForm({...form, unidadeMedida: e.target.value})}
-                style={styles.input}
-              >
-                <option value="m">Metros (m)</option>
-                <option value="kg">Quilos (kg)</option>
-              </select>
+              <div>
+                <label style={styles.formLabel}>Quantidade Utilizada</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  placeholder="0.00" 
+                  value={form.quantidade} 
+                  onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} 
+                  style={styles.input}
+                  required
+                />
+              </div>
+              <div>
+                <label style={styles.formLabel}>Unidade</label>
+                <select 
+                  value={form.unidadeMedida} 
+                  onChange={(e) => setForm({...form, unidadeMedida: e.target.value})}
+                  style={styles.input}
+                >
+                  <option value="m">Metros (m)</option>
+                  <option value="kg">Quilos (kg)</option>
+                </select>
+              </div>
             </div>
 
-            <div style={{background: '#f8f9fa', padding: '12px', borderRadius: '6px', border: '1px solid #dadce0', display: 'flex', flexDirection: 'column', gap: '8px'}}>
-              <span style={{fontSize: '12px', color: '#5f6368', fontWeight: 'bold'}}>📋 Informações puxadas do cadastro:</span>
-              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Código / Nome:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
-              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
-              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
-              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Estoque Mínimo Configurado:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
+            <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+              <span style={{fontSize: '12px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px'}}>📋 Dados Carregados do Sistema:</span>
+              <div style={{fontSize: '14px', color: '#0F172A'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
+              <div style={{fontSize: '14px', color: '#0F172A'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
+              <div style={{fontSize: '14px', color: '#0F172A'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
+              <div style={{fontSize: '14px', color: '#0F172A'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
             </div>
 
-            <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#f9ab00' : '#c5221f'}}>
-              {carregando ? 'Salvando...' : (idEditando ? 'Salvar Alterações' : 'Registrar Saída no Servidor')}
+            <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#D97706' : '#DC2626', marginTop: '10px'}}>
+              {carregando ? 'Processando...' : (idEditando ? 'Salvar Alterações' : 'Confirmar Saída no Servidor')}
             </button>
           </form>
         </div>
@@ -735,10 +778,10 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'historico' && (
         <div style={styles.cardSection}>
-          <h3 style={styles.sectionTitle}>🔍 Localizar Tecidos, Notas Fiscais & Fornecedores</h3>
+          <h3 style={styles.sectionTitle}>🔍 Consulta de Histórico e Galpões</h3>
           <input 
             type="text" 
-            placeholder="Digite para pesquisar (ex: Nome, Fornecedor, NF, Galpão, Código)..." 
+            placeholder="Pesquisar por nome, código, fornecedor, nota fiscal ou galpão..." 
             value={busca} 
             onChange={(e) => setBusca(e.target.value)} 
             style={styles.inputFull}
@@ -754,7 +797,7 @@ const SunnyWearTecidos = () => {
                   <th style={styles.th}>Tecido / Cor</th>
                   <th style={styles.th}>Fornecedor & NF</th>
                   <th style={styles.th}>Localização</th>
-                  <th style={styles.th}>Qtd & Mínimo</th>
+                  <th style={styles.th}>Qtd & Custos</th>
                   <th style={styles.th}>Data</th>
                   <th style={styles.th}>Ações</th>
                 </tr>
@@ -762,7 +805,7 @@ const SunnyWearTecidos = () => {
               <tbody>
                 {movFiltradas.length === 0 ? (
                   <tr>
-                    <td colSpan="9" style={styles.empty}>Nenhum registro encontrado.</td>
+                    <td colSpan="9" style={styles.empty}>Nenhum registro encontrado no banco de dados.</td>
                   </tr>
                 ) : (
                   movFiltradas.map((item) => {
@@ -784,7 +827,7 @@ const SunnyWearTecidos = () => {
                               src={item.foto} 
                               alt="Tecido" 
                               style={styles.tableImgClickable} 
-                              title="Clique para ampliar a foto"
+                              title="Clique para ampliar"
                               onClick={() => setFotoSelecionada(item.foto)} 
                             />
                           ) : (
@@ -794,27 +837,27 @@ const SunnyWearTecidos = () => {
                         <td style={styles.td}>
                           <span style={{
                             ...styles.badge, 
-                            background: tipoMovimentoNoBanco === 'entrada' ? '#e6f4ea' : '#fce8e6',
-                            color: tipoMovimentoNoBanco === 'entrada' ? '#137333' : '#c5221f'
+                            background: tipoMovimentoNoBanco === 'entrada' ? '#DEF7EC' : '#FDE8E8',
+                            color: tipoMovimentoNoBanco === 'entrada' ? '#03543F' : '#9B1C1C'
                           }}>
                             {tipoMovimentoNoBanco === 'entrada' ? '📥 Entrada' : '📤 Saída'}
                           </span>
                         </td>
                         <td style={styles.td}><strong>{item.codigo}</strong></td>
                         <td style={styles.td}>
-                          {item.nome} ({item.cor})
-                          {item.largura ? <div style={{fontSize: '11px', color: '#1a73e8'}}>Largura: {item.largura}m</div> : null}
+                          <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
+                          {item.largura ? <div style={{fontSize: '11px', color: '#2563EB'}}>Largura: {item.largura}m</div> : null}
                         </td>
                         <td style={styles.td}>
-                          <div style={{fontSize: '13px', fontWeight: '500', color: '#202124'}}>{fornecedor || 'Não informado'}</div>
-                          <div style={{fontSize: '11px', color: '#5f6368'}}>NF: {nf || 'N/D'}</div>
+                          <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || 'Não informado'}</div>
+                          <div style={{fontSize: '11px', color: '#64748B'}}>NF: {nf || 'N/D'}</div>
                         </td>
                         <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                         <td style={styles.td}>
-                          <strong>{qtd} {unidade}</strong>
-                          <div style={{fontSize: '11px', color: '#1a73e8'}}>Mín: {minimo} {unidade}</div>
-                          <div style={{fontSize: '11px', color: '#5f6368'}}>
-                            R$ {precoUnit.toFixed(2)} | <strong>Tot: R$ {custoTotal.toFixed(2)}</strong>
+                          <strong style={{ color: '#0F172A' }}>{qtd} {unidade}</strong>
+                          <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
+                          <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
+                            R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
                           </div>
                         </td>
                         <td style={styles.td}>{item.data}</td>
@@ -822,14 +865,14 @@ const SunnyWearTecidos = () => {
                           <button 
                             onClick={() => iniciarEdicao(item)} 
                             style={styles.btnEditar} 
-                            title="Editar este registro"
+                            title="Editar registro"
                           >
                             ✏️
                           </button>
                           <button 
                             onClick={() => deletarItem(item.id)} 
                             style={styles.btnDeletar} 
-                            title="Apagar este registro"
+                            title="Remover registro"
                           >
                             🗑️
                           </button>
@@ -848,7 +891,7 @@ const SunnyWearTecidos = () => {
         <div style={styles.modalOverlay} onClick={() => setFotoSelecionada(null)}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <button style={styles.modalCloseBtn} onClick={() => setFotoSelecionada(null)}>✕ Fechar</button>
-            <img src={fotoSelecionada} alt="Zoom do Tecido" style={styles.modalImg} />
+            <img src={fotoSelecionada} alt="Zoom" style={styles.modalImg} />
           </div>
         </div>
       )}
@@ -862,199 +905,221 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     height: '100vh',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#0F172A',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
   loginCard: {
     backgroundColor: '#ffffff',
-    padding: '32px',
+    padding: '40px',
     borderRadius: '12px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
     width: '100%',
-    maxWidth: '380px',
+    maxWidth: '400px',
     boxSizing: 'border-box',
   },
   loginLabel: {
     fontSize: '13px',
-    color: '#5f6368',
+    color: '#475569',
     marginBottom: '6px',
     display: 'block',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   container: {
     width: '100%',
-    maxWidth: '100%',
     margin: '0',
-    padding: '16px',
+    padding: '24px',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F8FAFC',
     minHeight: '100vh',
     boxSizing: 'border-box',
   },
-  header: { marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' },
-  title: { fontSize: '24px', color: '#1a73e8', margin: '0 0 4px 0' },
-  subtitle: { fontSize: '14px', color: '#5f6368', margin: 0 },
+  header: { 
+    marginBottom: '24px', 
+    display: 'flex', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    flexWrap: 'wrap', 
+    gap: '16px',
+    backgroundColor: '#ffffff',
+    padding: '20px 24px',
+    borderRadius: '10px',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+    border: '1px solid #E2E8F0'
+  },
+  title: { fontSize: '24px', color: '#0F172A', margin: '0 0 4px 0', fontWeight: '800', letterSpacing: '-0.5px' },
+  subtitle: { fontSize: '13px', color: '#64748B', margin: 0, fontWeight: '500' },
+  statusBadge: { fontSize: '12px', color: '#059669', backgroundColor: '#DEF7EC', padding: '6px 12px', borderRadius: '20px', fontWeight: '600' },
   logoutBtn: {
-    padding: '8px 14px',
-    backgroundColor: '#fce8e6',
-    color: '#c5221f',
+    padding: '8px 16px',
+    backgroundColor: '#FEE2E2',
+    color: '#991B1B',
     border: 'none',
     borderRadius: '6px',
     fontSize: '13px',
     fontWeight: '600',
     cursor: 'pointer',
+    transition: 'background 0.2s',
   },
   alertaContainer: {
-    backgroundColor: '#fce8e6',
-    border: '1px solid #f5c6cb',
-    padding: '12px',
+    backgroundColor: '#FEF2F2',
+    border: '1px solid #FCA5A5',
+    padding: '16px',
     borderRadius: '8px',
-    marginBottom: '16px',
+    marginBottom: '24px',
   },
   navTabs: {
     display: 'flex',
-    gap: '8px',
-    marginBottom: '16px',
+    gap: '10px',
+    marginBottom: '24px',
     overflowX: 'auto',
     paddingBottom: '4px',
   },
   tabBtn: {
-    padding: '10px 14px',
-    backgroundColor: '#e8f0fe',
-    color: '#1a73e8',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '13px',
+    padding: '12px 20px',
+    backgroundColor: '#FFFFFF',
+    color: '#475569',
+    border: '1px solid #E2E8F0',
+    borderRadius: '8px',
+    fontSize: '14px',
     fontWeight: '600',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
+    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.02)',
   },
   tabActive: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: '#2563EB',
     color: '#ffffff',
+    borderColor: '#2563EB',
   },
   carrosselContainer: {
     display: 'flex',
-    gap: '12px',
+    gap: '16px',
     overflowX: 'auto',
     paddingBottom: '8px',
     WebkitOverflowScrolling: 'touch',
   },
   carrosselCard: {
-    backgroundColor: '#f8f9fa',
-    border: '1px solid #dadce0',
-    borderRadius: '8px',
-    padding: '14px',
-    minWidth: '200px',
-    maxWidth: '200px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #E2E8F0',
+    borderRadius: '10px',
+    padding: '16px',
+    minWidth: '220px',
+    maxWidth: '220px',
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
   },
   cardsContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-    gap: '12px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '16px',
   },
   card: {
     backgroundColor: '#ffffff',
-    padding: '16px',
-    borderRadius: '8px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    padding: '20px',
+    borderRadius: '10px',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+    border: '1px solid #E2E8F0',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
-    textAlign: 'center',
+    alignItems: 'flex-start',
   },
-  cardLabel: { fontSize: '12px', color: '#5f6368', marginBottom: '6px' },
-  cardValue: { fontSize: '20px', fontWeight: 'bold' },
+  cardLabel: { fontSize: '12px', color: '#64748B', marginBottom: '8px', fontWeight: '600', textTransform: 'uppercase' },
+  cardValue: { fontSize: '24px', fontWeight: '800' },
   cardSection: {
     backgroundColor: '#ffffff',
-    padding: '16px',
-    borderRadius: '8px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    marginBottom: '16px',
+    padding: '24px',
+    borderRadius: '10px',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+    border: '1px solid #E2E8F0',
+    marginBottom: '24px',
   },
-  sectionTitle: { fontSize: '16px', color: '#202124', marginBottom: '12px', marginTop: 0 },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '12px' },
+  sectionTitle: { fontSize: '18px', color: '#0F172A', marginBottom: '16px', marginTop: 0, fontWeight: '700' },
+  formGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '16px' },
+  formLabel: { fontSize: '13px', color: '#475569', marginBottom: '6px', display: 'block', fontWeight: '600' },
   input: {
     width: '100%',
-    padding: '12px',
+    padding: '12px 14px',
     borderRadius: '6px',
-    border: '1px solid #dadce0',
-    fontSize: '16px',
+    border: '1px solid #CBD5E1',
+    fontSize: '15px',
     outline: 'none',
     boxSizing: 'border-box',
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
+    color: '#0F172A',
   },
   inputFull: {
     width: '100%',
-    padding: '12px',
+    padding: '12px 14px',
     borderRadius: '6px',
-    border: '1px solid #dadce0',
-    fontSize: '16px',
+    border: '1px solid #CBD5E1',
+    fontSize: '15px',
     outline: 'none',
     boxSizing: 'border-box',
-    backgroundColor: '#fff',
-    marginBottom: '12px',
+    backgroundColor: '#F8FAFC',
+    color: '#0F172A',
+    marginBottom: '16px',
   },
   fileContainer: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  fileLabel: { fontSize: '14px', color: '#5f6368', fontWeight: '500' },
-  inputFile: { fontSize: '14px', color: '#3c4043' },
-  previewContainer: { display: 'flex', alignItems: 'center', gap: '12px', background: '#f1f3f4', padding: '8px', borderRadius: '6px' },
-  previewImg: { width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '2px solid #1a73e8' },
-  previewText: { fontSize: '13px', color: '#137333', fontWeight: '600' },
+  fileLabel: { fontSize: '13px', color: '#475569', fontWeight: '600' },
+  inputFile: { fontSize: '14px', color: '#475569' },
+  previewContainer: { display: 'flex', alignItems: 'center', gap: '12px', background: '#F0FDF4', padding: '10px', borderRadius: '6px', border: '1px solid #BBF7D0' },
+  previewImg: { width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '2px solid #059669' },
+  previewText: { fontSize: '13px', color: '#065F46', fontWeight: '600' },
   button: {
     width: '100%',
     padding: '14px',
     color: '#ffffff',
     border: 'none',
     borderRadius: '6px',
-    fontSize: '16px',
-    fontWeight: '600',
+    fontSize: '15px',
+    fontWeight: '700',
     cursor: 'pointer',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   chartContainer: { display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' },
   chartBarWrapper: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  chartLabelText: { fontSize: '13px', color: '#5f6368', fontWeight: '500' },
+  chartLabelText: { fontSize: '14px', color: '#334155' },
   tableResponsive: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
-  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' },
-  thTr: { borderBottom: '2px solid #f1f3f4' },
-  th: { padding: '10px 8px', fontSize: '12px', color: '#5f6368', textTransform: 'uppercase' },
-  tr: { borderBottom: '1px solid #f1f3f4' },
-  td: { padding: '12px 8px', fontSize: '14px', color: '#3c4043', verticalAlign: 'middle' },
-  tableImgClickable: { width: '45px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #dadce0', cursor: 'pointer', transition: 'transform 0.2s' },
-  noFoto: { fontSize: '12px', color: '#80868b', fontStyle: 'italic' },
-  badge: { padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', display: 'inline-block' },
-  localBadge: { padding: '4px 8px', borderRadius: '6px', fontSize: '12px', backgroundColor: '#e8f0fe', color: '#1a73e8', fontWeight: '500' },
+  table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' },
+  thTr: { borderBottom: '2px solid #E2E8F0', backgroundColor: '#F8FAFC' },
+  th: { padding: '12px 10px', fontSize: '12px', color: '#475569', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' },
+  tr: { borderBottom: '1px solid #E2E8F0' },
+  td: { padding: '14px 10px', fontSize: '14px', color: '#334155', verticalAlign: 'middle' },
+  tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #CBD5E1', cursor: 'pointer' },
+  noFoto: { fontSize: '12px', color: '#94A3B8', fontStyle: 'italic' },
+  badge: { padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', display: 'inline-block' },
+  localBadge: { padding: '4px 8px', borderRadius: '6px', fontSize: '12px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: '600' },
   btnEditar: {
-    padding: '6px 8px',
-    backgroundColor: '#e8f0fe',
-    color: '#1a73e8',
+    padding: '6px 10px',
+    backgroundColor: '#EFF6FF',
+    color: '#1D4ED8',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
-    marginRight: '4px',
-    fontSize: '14px',
+    marginRight: '6px',
+    fontSize: '13px',
+    fontWeight: '600',
   },
   btnDeletar: {
-    padding: '6px 8px',
-    backgroundColor: '#fce8e6',
-    color: '#c5221f',
+    padding: '6px 10px',
+    backgroundColor: '#FEE2E2',
+    color: '#991B1B',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '13px',
+    fontWeight: '600',
   },
-  empty: { textAlign: 'center', padding: '24px', color: '#80868b' },
+  empty: { textAlign: 'center', padding: '32px', color: '#94A3B8', fontSize: '14px' },
   modalOverlay: {
     position: 'fixed',
     top: 0,
     left: 0,
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1063,30 +1128,31 @@ const styles = {
   },
   modalContent: {
     backgroundColor: '#fff',
-    padding: '16px',
-    borderRadius: '8px',
+    padding: '20px',
+    borderRadius: '10px',
     maxWidth: '90vw',
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-end',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
   },
   modalCloseBtn: {
-    backgroundColor: '#c5221f',
+    backgroundColor: '#DC2626',
     color: '#fff',
     border: 'none',
-    padding: '6px 12px',
-    borderRadius: '4px',
-    fontWeight: '600',
+    padding: '8px 14px',
+    borderRadius: '6px',
+    fontWeight: '700',
     cursor: 'pointer',
-    marginBottom: '10px',
+    marginBottom: '12px',
+    fontSize: '13px',
   },
   modalImg: {
     maxWidth: '80vw',
     maxHeight: '75vh',
     objectFit: 'contain',
-    borderRadius: '4px',
+    borderRadius: '6px',
   }
 };
 
