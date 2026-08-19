@@ -86,10 +86,10 @@ const SunnyWearTecidos = () => {
         localStorage.setItem('sunny_auth', 'true');
         setErroLogin('');
       } else {
-        setErroLogin(dados.erro || 'Usuário ou senha incorretos!');
+        setErroLogin(dados.erro || 'Credenciais inválidas. Verifique os dados.');
       }
     } catch (erro) {
-      setErroLogin('Erro de conexão com o servidor.');
+      setErroLogin('Falha na comunicação com o servidor.');
     }
   };
 
@@ -114,7 +114,7 @@ const SunnyWearTecidos = () => {
   const executarBuscaSaida = () => {
     const termo = termoBuscaSaida.toLowerCase().trim();
     if (!termo) {
-      alert('Digite um código ou nome para buscar.');
+      alert('Informe um código ou nome para realizar a busca.');
       return;
     }
     const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
@@ -140,9 +140,9 @@ const SunnyWearTecidos = () => {
         foto: tecidoEncontrado.foto || '',
         largura: tecidoEncontrado.largura || ''
       }));
-      alert(`✅ Tecido localizado: ${tecidoEncontrado.nome} (${tecidoEncontrado.codigo})`);
+      alert(`✅ Item localizado: ${tecidoEncontrado.nome} (Cód: ${tecidoEncontrado.codigo})`);
     } else {
-      alert('⚠️ Nenhum tecido encontrado com este código ou nome.');
+      alert('⚠️ Nenhum registro correspondente encontrado.');
       setForm(prev => ({
         ...prev,
         tipoMovimento: 'saida',
@@ -174,7 +174,7 @@ const SunnyWearTecidos = () => {
       const qtdSaida = Number(qtdValida);
 
       if (minFinal > 0 && (saldoAtual - qtdSaida) < minFinal) {
-        alert(`⚠️ ALERTA DE ESTOQUE MÍNIMO!\n\nAtenção: Esta saída deixará o tecido "${form.nome}" com saldo ${(saldoAtual - qtdSaida).toFixed(2)}, ficando abaixo do mínimo permitido (${minFinal}).`);
+        alert(`⚠️ ALERTA DE ESTOQUE MÍNIMO!\n\nAtenção: Esta saída deixará o tecido "${form.nome}" com saldo ${(saldoAtual - qtdSaida).toFixed(2)}, ficando abaixo do limite seguro estabelecido (${minFinal}).`);
       }
     }
 
@@ -205,7 +205,7 @@ const SunnyWearTecidos = () => {
       }
 
       if (resposta.ok) {
-        alert(idEditando ? 'Registro atualizado com sucesso!' : 'Cadastrado com sucesso!');
+        alert(idEditando ? 'Registro atualizado com sucesso!' : 'Lançamento efetuado com sucesso!');
         setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' });
         setTermoBuscaSaida('');
         setIdEditando(null);
@@ -213,11 +213,11 @@ const SunnyWearTecidos = () => {
         setAbaAtiva('historico');
       } else {
         const erroServidor = await resposta.json().catch(() => ({}));
-        alert('Erro ao salvar no servidor: ' + (erroServidor.erro || resposta.statusText));
+        alert('Erro ao processar requisição: ' + (erroServidor.erro || resposta.statusText));
       }
     } catch (erro) {
-      console.error('Erro ao salvar no servidor:', erro);
-      alert('Erro de conexão com o servidor.');
+      console.error('Erro de conexão:', erro);
+      alert('Erro de conexão com o servidor central.');
     } finally {
       setCarregando(false);
     }
@@ -254,7 +254,7 @@ const SunnyWearTecidos = () => {
   };
 
   const deletarItem = async (id) => {
-    if (!window.confirm('Tem certeza que deseja remover este registro permanentemente?')) return;
+    if (!window.confirm('Confirma a exclusão definitiva deste registro do sistema?')) return;
 
     try {
       const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, {
@@ -262,13 +262,13 @@ const SunnyWearTecidos = () => {
       });
 
       if (resposta.ok) {
-        alert('Registro removido com sucesso!');
+        alert('Registro excluído com sucesso.');
         carregarDadosDoServidor();
       } else {
-        alert('Erro ao remover o registro.');
+        alert('Erro ao excluir o registro.');
       }
     } catch (erro) {
-      console.error('Erro ao deletar:', erro);
+      console.error('Erro de conexão:', erro);
       alert('Erro de conexão com o servidor.');
     }
   };
@@ -368,17 +368,18 @@ const SunnyWearTecidos = () => {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <h1 style={{ color: '#0F172A', margin: '0 0 4px 0', fontSize: '26px', fontWeight: '700' }}>Sunny Wear</h1>
-            <p style={{ color: '#64748B', fontSize: '14px', margin: 0 }}>Enterprise Resource & Inventory</p>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div style={{ width: '48px', height: '48px', backgroundColor: '#2563EB', borderRadius: '10px', margin: '0 auto 16px auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '20px', fontWeight: 'bold' }}>SW</div>
+            <h1 style={{ color: '#0F172A', margin: '0 0 6px 0', fontSize: '22px', fontWeight: '700', letterSpacing: '-0.3px' }}>Sunny Wear</h1>
+            <p style={{ color: '#64748B', fontSize: '13px', margin: 0, fontWeight: '500' }}>Sistema de Gestão de Estoque Têxtil</p>
           </div>
           
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={styles.loginLabel}>Usuário corporativo</label>
+              <label style={styles.loginLabel}>Identificação de Usuário</label>
               <input 
                 type="text" 
-                placeholder="Insira seu usuário" 
+                placeholder="Ex: admin" 
                 value={usuarioInput} 
                 onChange={(e) => setUsuarioInput(e.target.value)} 
                 style={styles.input}
@@ -386,18 +387,18 @@ const SunnyWearTecidos = () => {
               />
             </div>
             <div>
-              <label style={styles.loginLabel}>Senha de acesso</label>
+              <label style={styles.loginLabel}>Senha de Segurança</label>
               <input 
                 type="password" 
-                placeholder="Insira sua senha" 
+                placeholder="••••••••" 
                 value={senhaInput} 
                 onChange={(e) => setSenhaInput(e.target.value)} 
                 style={styles.input}
                 required
               />
             </div>
-            {erroLogin && <span style={{ color: '#EF4444', fontSize: '13px', textAlign: 'center', fontWeight: '500' }}>{erroLogin}</span>}
-            <button type="submit" style={{ ...styles.button, backgroundColor: '#2563EB', marginTop: '8px' }}>Acessar Sistema</button>
+            {erroLogin && <div style={styles.errorBox}>{erroLogin}</div>}
+            <button type="submit" style={{ ...styles.button, backgroundColor: '#2563EB', marginTop: '4px' }}>Acessar Plataforma</button>
           </form>
         </div>
       </div>
@@ -407,23 +408,32 @@ const SunnyWearTecidos = () => {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Sunny Wear</h1>
-          <p style={styles.subtitle}>Painel Corporativo de Gestão de Tecidos & Galpões</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '36px', height: '36px', backgroundColor: '#2563EB', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '15px', fontWeight: 'bold' }}>SW</div>
+          <div>
+            <h1 style={styles.title}>Sunny Wear</h1>
+            <p style={styles.subtitle}>Painel Executivo de Controle e Logística de Tecidos</p>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={styles.statusBadge}>● Sistema Online</span>
-          <button onClick={handleLogout} style={styles.logoutBtn}>Encerrar Sessão</button>
+          <div style={styles.statusBadgeContainer}>
+            <span style={styles.pulseDot}></span>
+            <span style={styles.statusText}>Servidor Sincronizado</span>
+          </div>
+          <button onClick={handleLogout} style={styles.logoutBtn}>Sair do Sistema</button>
         </div>
       </header>
 
       {alertasEstoqueBaixo.length > 0 && (
         <div style={styles.alertaContainer}>
-          <strong style={{ color: '#DC2626', display: 'block', marginBottom: '4px' }}>⚠️ Alerta Crítico: Tecidos abaixo do estoque mínimo configurado</strong>
-          <ul style={{ margin: '4px 0 0 16px', padding: 0, fontSize: '13px', color: '#991B1B' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+            <span style={{ fontSize: '16px' }}>🚨</span>
+            <strong style={{ color: '#991B1B', fontSize: '14px' }}>Alerta de Estoque Crítico Abaixo do Mínimo</strong>
+          </div>
+          <ul style={{ margin: '4px 0 0 24px', padding: 0, fontSize: '13px', color: '#7F1D1D' }}>
             {alertasEstoqueBaixo.map((alt, idx) => (
-              <li key={idx}>
-                <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Saldo Atual: <strong>{alt.total} {alt.unidade}</strong> (Mínimo exigido: {alt.minimo} {alt.unidade})
+              <li key={idx} style={{ marginBottom: '3px' }}>
+                <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Estoque Atual: <strong>{alt.total} {alt.unidade}</strong> | Mínimo Recomendado: {alt.minimo} {alt.unidade}
               </li>
             ))}
           </ul>
@@ -447,7 +457,7 @@ const SunnyWearTecidos = () => {
           onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'saida' ? styles.tabActive : {}) }}
         >
-          📤 Registrar Saída (Uso)
+          📤 Registrar Saída (Baixa)
         </button>
         <button 
           onClick={() => setAbaAtiva('historico')} 
@@ -461,35 +471,35 @@ const SunnyWearTecidos = () => {
         <div>
           <div style={styles.cardSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
-              <span style={{ fontSize: '12px', color: '#2563EB', backgroundColor: '#EFF6FF', padding: '4px 10px', borderRadius: '20px', fontWeight: '600' }}>Tempo Real</span>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados na Produção</h3>
+              <span style={{ fontSize: '11px', color: '#2563EB', backgroundColor: '#EFF6FF', padding: '4px 10px', borderRadius: '6px', fontWeight: '600', letterSpacing: '0.3px' }}>EM TEMPO REAL</span>
             </div>
             
             {topTecidosMaisUsados.length === 0 ? (
-              <p style={styles.empty}>Nenhuma movimentação de saída registrada até o momento.</p>
+              <p style={styles.empty}>Aguardando registros de saída para análise de consumo.</p>
             ) : (
               <div style={styles.carrosselContainer}>
                 {topTecidosMaisUsados.map((tecido, index) => {
-                  const posicoesNomes = ['1º Lugar', '2º Lugar', '3º Lugar', '4º Lugar', '5º Lugar'];
+                  const posicoesNomes = ['1º Posição', '2º Posição', '3º Posição', '4º Posição', '5º Posição'];
                   const coresBordas = ['#2563EB', '#059669', '#D97706', '#DC2626', '#7C3AED'];
                   return (
                     <div 
                       key={index} 
                       style={{ 
                         ...styles.carrosselCard, 
-                        borderTop: `4px solid ${coresBordas[index] || '#2563EB'}` 
+                        borderTop: `3px solid ${coresBordas[index] || '#2563EB'}` 
                       }}
                     >
-                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
-                        {posicoesNomes[index] || `${index + 1}º`}
+                      <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px', display: 'block', letterSpacing: '0.5px' }}>
+                        {posicoesNomes[index] || `${index + 1}º Lugar`}
                       </span>
-                      <strong style={{ fontSize: '15px', color: '#0F172A', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
+                      <strong style={{ fontSize: '14px', color: '#0F172A', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>
                         {tecido.nome}
                       </strong>
-                      <span style={{ fontSize: '12px', color: '#64748B', display: 'block', marginBottom: '12px' }}>
-                        Cor: {tecido.cor || 'N/D'} | Cód: {tecido.codigo}
+                      <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '12px' }}>
+                        Cor: {tecido.cor || 'N/D'} • Cód: {tecido.codigo}
                       </span>
-                      <div style={{ fontSize: '16px', fontWeight: '700', color: coresBordas[index] || '#2563EB', marginTop: 'auto' }}>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: coresBordas[index] || '#2563EB', marginTop: 'auto' }}>
                         {tecido.totalUso.toLocaleString()} {tecido.unidade}
                       </div>
                     </div>
@@ -500,14 +510,14 @@ const SunnyWearTecidos = () => {
           </div>
 
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📥 Fluxo de Entradas (Aquisições)</h3>
+            <h3 style={styles.sectionTitle}>📥 Fluxo de Entradas (Aquisições Totais)</h3>
             <div style={styles.cardsContainer}>
               <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
-                <span style={styles.cardLabel}>Metragem Total Adquirida</span>
+                <span style={styles.cardLabel}>Metragem Adquirida</span>
                 <strong style={{...styles.cardValue, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
               </div>
               <div style={{...styles.card, borderLeft: '4px solid #059669'}}>
-                <span style={styles.cardLabel}>Peso Total Adquirido</span>
+                <span style={styles.cardLabel}>Peso Adquirido</span>
                 <strong style={{...styles.cardValue, color: '#059669'}}>{entradasKg.toLocaleString()} kg</strong>
               </div>
             </div>
@@ -528,33 +538,31 @@ const SunnyWearTecidos = () => {
           </div>
 
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>📦 Saldo Consolidado em Estoque</h3>
+            <h3 style={styles.sectionTitle}>📦 Saldo Líquido Consolidado em Estoque</h3>
             <div style={styles.cardsContainer}>
               <div style={{...styles.card, borderLeft: '4px solid #2563EB'}}>
-                <span style={styles.cardLabel}>Saldo Líquido (Metros)</span>
+                <span style={styles.cardLabel}>Saldo em Metros</span>
                 <strong style={{...styles.cardValue, color: '#2563EB'}}>{estoqueMetros.toLocaleString()} m</strong>
               </div>
               <div style={{...styles.card, borderLeft: '4px solid #D97706'}}>
-                <span style={styles.cardLabel}>Saldo Líquido (Quilos)</span>
+                <span style={styles.cardLabel}>Saldo em Quilos</span>
                 <strong style={{...styles.cardValue, color: '#D97706'}}>{estoqueKg.toLocaleString()} kg</strong>
               </div>
             </div>
           </div>
 
           <div style={styles.cardSection}>
-            <h3 style={styles.sectionTitle}>🏢 Logística por Galpão / Armazém</h3>
+            <h3 style={styles.sectionTitle}>🏢 Logística e Distribuição por Galpão / Armazém</h3>
             <div style={styles.chartContainer}>
               {Object.keys(porLocalizacao).length === 0 ? (
-                <p style={styles.empty}>Nenhuma localização informada nos cadastros.</p>
+                <p style={styles.empty}>Nenhum local cadastrado até o momento.</p>
               ) : (
                 Object.entries(porLocalizacao).map(([local, vals]) => (
-                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: '#F8FAFC', padding: '14px', borderRadius: '8px', border: '1px solid #E2E8F0'}}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
-                      <span style={{...styles.chartLabelText, fontWeight: '700', color: '#0F172A'}}>📍 {local}</span>
-                    </div>
-                    <div style={{display: 'flex', gap: '20px', fontSize: '14px'}}>
-                      <span style={{color: '#2563EB'}}>Metros: <strong>{vals.m} m</strong></span>
-                      <span style={{color: '#D97706'}}>Quilos: <strong>{vals.kg} kg</strong></span>
+                  <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: '#F8FAFC', padding: '14px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <span style={{fontWeight: '600', color: '#0F172A', fontSize: '14px'}}>📍 {local}</span>
+                    <div style={{display: 'flex', gap: '24px', fontSize: '13px'}}>
+                      <span style={{color: '#2563EB'}}>Metros: <strong style={{fontWeight: '700'}}>{vals.m} m</strong></span>
+                      <span style={{color: '#D97706'}}>Quilos: <strong style={{fontWeight: '700'}}>{vals.kg} kg</strong></span>
                     </div>
                   </div>
                 ))
@@ -566,10 +574,14 @@ const SunnyWearTecidos = () => {
 
       {abaAtiva === 'entrada' && (
         <div style={styles.cardSection}>
-          <h3 style={styles.sectionTitle}>{idEditando ? '✏️ Editar Entrada de Tecido' : '📥 Cadastro de Nova Entrada / Compra'}</h3>
+          <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '20px' }}>
+            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Atualizar Dados de Entrada' : '📥 Cadastro de Nova Entrada / Compra'}</h3>
+            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os campos abaixo para registrar novos tecidos ou lotes no sistema.</p>
+          </div>
+          
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
-            <div>
-              <label style={styles.formLabel}>Código do Tecido</label>
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>Código do Tecido *</label>
               <input 
                 type="text" 
                 placeholder="Ex: TEC-001" 
@@ -579,8 +591,8 @@ const SunnyWearTecidos = () => {
                 required
               />
             </div>
-            <div>
-              <label style={styles.formLabel}>Nome do Tecido</label>
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>Nome do Tecido *</label>
               <input 
                 type="text" 
                 placeholder="Ex: Malha Canelada" 
@@ -590,8 +602,8 @@ const SunnyWearTecidos = () => {
                 required
               />
             </div>
-            <div>
-              <label style={styles.formLabel}>Cor</label>
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>Cor do Tecido *</label>
               <input 
                 type="text" 
                 placeholder="Ex: Azul Marinho" 
@@ -601,8 +613,8 @@ const SunnyWearTecidos = () => {
                 required
               />
             </div>
-            <div>
-              <label style={styles.formLabel}>Largura do Tecido</label>
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>Largura (m)</label>
               <input 
                 type="number" 
                 step="0.01"
@@ -612,20 +624,20 @@ const SunnyWearTecidos = () => {
                 style={styles.input}
               />
             </div>
-            <div>
-              <label style={styles.formLabel}>Localização / Galpão</label>
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>Localização / Galpão *</label>
               <input 
                 type="text" 
-                placeholder="Ex: Galpão A - Corredor 2" 
+                placeholder="Ex: Galpão A - Setor 2" 
                 value={form.localizacao} 
                 onChange={(e) => setForm({...form, localizacao: e.target.value})} 
                 style={styles.input}
                 required
               />
             </div>
-            <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px'}}>
-              <div>
-                <label style={styles.formLabel}>Quantidade</label>
+            <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Quantidade *</label>
                 <input 
                   type="number" 
                   step="0.01"
@@ -636,7 +648,7 @@ const SunnyWearTecidos = () => {
                   required
                 />
               </div>
-              <div>
+              <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Unidade</label>
                 <select 
                   value={form.unidadeMedida} 
@@ -648,7 +660,7 @@ const SunnyWearTecidos = () => {
                 </select>
               </div>
             </div>
-            <div>
+            <div style={styles.formGroup}>
               <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
               <input 
                 type="number" 
@@ -659,7 +671,7 @@ const SunnyWearTecidos = () => {
                 style={styles.input}
               />
             </div>
-            <div>
+            <div style={styles.formGroup}>
               <label style={styles.formLabel}>Valor Unitário (R$)</label>
               <input 
                 type="number" 
@@ -670,57 +682,65 @@ const SunnyWearTecidos = () => {
                 style={styles.input}
               />
             </div>
-            <div>
+            <div style={styles.formGroup}>
               <label style={styles.formLabel}>Número da Nota Fiscal</label>
               <input 
                 type="text" 
-                placeholder="Ex: 12345" 
+                placeholder="Ex: 45892" 
                 value={form.notaFiscal} 
                 onChange={(e) => setForm({...form, notaFiscal: e.target.value})} 
                 style={styles.input}
               />
             </div>
-            <div>
-              <label style={styles.formLabel}>Fornecedor</label>
+            <div style={styles.formGroup}>
+              <label style={styles.formLabel}>Nome do Fornecedor</label>
               <input 
                 type="text" 
-                placeholder="Ex: Têxtil Exemplo Ltda" 
+                placeholder="Ex: Têxtil Exemplo S.A." 
                 value={form.fornecedor} 
                 onChange={(e) => setForm({...form, fornecedor: e.target.value})} 
                 style={styles.input}
               />
             </div>
             
-            <div style={styles.fileContainer}>
-              <label style={styles.fileLabel}>Anexar Foto do Tecido (Opcional)</label>
+            <div style={{gridColumn: '1 / -1'}}>
+              <label style={styles.fileLabel}>Anexar Imagem / Foto do Tecido (Opcional)</label>
               <input type="file" accept="image/*" capture="environment" onChange={handleFotoChange} style={styles.inputFile} />
             </div>
 
             {form.foto && (
-              <div style={styles.previewContainer}>
+              <div style={{gridColumn: '1 / -1', ...styles.previewContainer}}>
                 <img src={form.foto} alt="Prévia" style={styles.previewImg} onClick={() => setFotoSelecionada(form.foto)} />
-                <span style={styles.previewText}>Imagem carregada com sucesso! (Clique para ampliar)</span>
+                <div>
+                  <strong style={{display: 'block', color: '#065F46', fontSize: '13px'}}>Imagem anexada com sucesso</strong>
+                  <span style={{color: '#047857', fontSize: '11px', cursor: 'pointer'}} onClick={() => setFotoSelecionada(form.foto)}>Clique na miniatura para ampliar</span>
+                </div>
               </div>
             )}
 
-            <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#D97706' : '#059669', marginTop: '10px'}}>
-              {carregando ? 'Processando...' : (idEditando ? 'Salvar Alterações' : 'Salvar Entrada no Servidor')}
-            </button>
+            <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#D97706' : '#059669'}}>
+                {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Salvar Entrada no Servidor')}
+              </button>
+            </div>
           </form>
         </div>
       )}
 
       {abaAtiva === 'saida' && (
         <div style={styles.cardSection}>
-          <h3 style={styles.sectionTitle}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída'}</h3>
+          <div style={{ borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '20px' }}>
+            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída'}</h3>
+            <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
+          </div>
+
           <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid}>
-            
-            <div>
-              <label style={styles.formLabel}>Localizar por Código ou Nome</label>
+            <div style={{gridColumn: '1 / -1'}}>
+              <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
               <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
                 <input 
                   type="text" 
-                  placeholder="Digite o código ou nome do tecido" 
+                  placeholder="Ex: TEC-001 ou Malha" 
                   value={termoBuscaSaida} 
                   onChange={(e) => setTermoBuscaSaida(e.target.value)} 
                   style={{...styles.input, flex: 1}}
@@ -728,16 +748,16 @@ const SunnyWearTecidos = () => {
                 <button 
                   type="button"
                   onClick={executarBuscaSaida}
-                  style={{padding: '12px 20px', backgroundColor: '#2563EB', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'}}
+                  style={{padding: '12px 24px', backgroundColor: '#2563EB', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '14px'}}
                 >
                   OK / Buscar
                 </button>
               </div>
             </div>
 
-            <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px'}}>
-              <div>
-                <label style={styles.formLabel}>Quantidade Utilizada</label>
+            <div style={{gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Quantidade Utilizada *</label>
                 <input 
                   type="number" 
                   step="0.01"
@@ -748,7 +768,7 @@ const SunnyWearTecidos = () => {
                   required
                 />
               </div>
-              <div>
+              <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Unidade</label>
                 <select 
                   value={form.unidadeMedida} 
@@ -761,24 +781,30 @@ const SunnyWearTecidos = () => {
               </div>
             </div>
 
-            <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-              <span style={{fontSize: '12px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px'}}>📋 Dados Carregados do Sistema:</span>
-              <div style={{fontSize: '14px', color: '#0F172A'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
-              <div style={{fontSize: '14px', color: '#0F172A'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
-              <div style={{fontSize: '14px', color: '#0F172A'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
-              <div style={{fontSize: '14px', color: '#0F172A'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
+            <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '6px'}}>
+              <span style={{fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados Carregados do Cadastro:</span>
+              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
+              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
+              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
+              <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
             </div>
 
-            <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#D97706' : '#DC2626', marginTop: '10px'}}>
-              {carregando ? 'Processando...' : (idEditando ? 'Salvar Alterações' : 'Confirmar Saída no Servidor')}
-            </button>
+            <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
+              <button type="submit" disabled={carregando} style={{...styles.button, backgroundColor: idEditando ? '#D97706' : '#DC2626'}}>
+                {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Confirmar Saída no Servidor')}
+              </button>
+            </div>
           </form>
         </div>
       )}
 
       {abaAtiva === 'historico' && (
         <div style={styles.cardSection}>
-          <h3 style={styles.sectionTitle}>🔍 Consulta de Histórico e Galpões</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico e Galpões</h3>
+            <span style={{ fontSize: '12px', color: '#64748B' }}>Total de registros: <strong>{movFiltradas.length}</strong></span>
+          </div>
+
           <input 
             type="text" 
             placeholder="Pesquisar por nome, código, fornecedor, nota fiscal ou galpão..." 
@@ -846,7 +872,7 @@ const SunnyWearTecidos = () => {
                         <td style={styles.td}><strong>{item.codigo}</strong></td>
                         <td style={styles.td}>
                           <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
-                          {item.largura ? <div style={{fontSize: '11px', color: '#2563EB'}}>Largura: {item.largura}m</div> : null}
+                          {item.largura ? <div style={{fontSize: '11px', color: '#2563EB', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
                         </td>
                         <td style={styles.td}>
                           <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || 'Não informado'}</div>
@@ -890,7 +916,7 @@ const SunnyWearTecidos = () => {
       {fotoSelecionada && (
         <div style={styles.modalOverlay} onClick={() => setFotoSelecionada(null)}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <button style={styles.modalCloseBtn} onClick={() => setFotoSelecionada(null)}>✕ Fechar</button>
+            <button style={styles.modalCloseBtn} onClick={() => setFotoSelecionada(null)}>✕ Fechar Visualização</button>
             <img src={fotoSelecionada} alt="Zoom" style={styles.modalImg} />
           </div>
         </div>
@@ -912,17 +938,30 @@ const styles = {
     backgroundColor: '#ffffff',
     padding: '40px',
     borderRadius: '12px',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
     width: '100%',
-    maxWidth: '400px',
+    maxWidth: '410px',
     boxSizing: 'border-box',
+    border: '1px solid rgba(255,255,255,0.1)'
   },
   loginLabel: {
-    fontSize: '13px',
+    fontSize: '12px',
     color: '#475569',
     marginBottom: '6px',
     display: 'block',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: '0.3px'
+  },
+  errorBox: {
+    backgroundColor: '#FEF2F2',
+    color: '#DC2626',
+    padding: '10px',
+    borderRadius: '6px',
+    fontSize: '13px',
+    textAlign: 'center',
     fontWeight: '600',
+    border: '1px solid #FCA5A5'
   },
   container: {
     width: '100%',
@@ -934,21 +973,23 @@ const styles = {
     boxSizing: 'border-box',
   },
   header: { 
-    marginBottom: '24px', 
+    marginBottom: '20px', 
     display: 'flex', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
     flexWrap: 'wrap', 
     gap: '16px',
     backgroundColor: '#ffffff',
-    padding: '20px 24px',
+    padding: '18px 24px',
     borderRadius: '10px',
-    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
     border: '1px solid #E2E8F0'
   },
-  title: { fontSize: '24px', color: '#0F172A', margin: '0 0 4px 0', fontWeight: '800', letterSpacing: '-0.5px' },
-  subtitle: { fontSize: '13px', color: '#64748B', margin: 0, fontWeight: '500' },
-  statusBadge: { fontSize: '12px', color: '#059669', backgroundColor: '#DEF7EC', padding: '6px 12px', borderRadius: '20px', fontWeight: '600' },
+  title: { fontSize: '20px', color: '#0F172A', margin: '0 0 2px 0', fontWeight: '800', letterSpacing: '-0.5px' },
+  subtitle: { fontSize: '12px', color: '#64748B', margin: 0, fontWeight: '500' },
+  statusBadgeContainer: { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#F0FDF4', padding: '6px 12px', borderRadius: '20px', border: '1px solid #BBF7D0' },
+  pulseDot: { width: '8px', height: '8px', backgroundColor: '#059669', borderRadius: '50%', display: 'inline-block' },
+  statusText: { fontSize: '12px', color: '#065F46', fontWeight: '600' },
   logoutBtn: {
     padding: '8px 16px',
     backgroundColor: '#FEE2E2',
@@ -965,12 +1006,12 @@ const styles = {
     border: '1px solid #FCA5A5',
     padding: '16px',
     borderRadius: '8px',
-    marginBottom: '24px',
+    marginBottom: '20px',
   },
   navTabs: {
     display: 'flex',
     gap: '10px',
-    marginBottom: '24px',
+    marginBottom: '20px',
     overflowX: 'auto',
     paddingBottom: '4px',
   },
@@ -990,6 +1031,7 @@ const styles = {
     backgroundColor: '#2563EB',
     color: '#ffffff',
     borderColor: '#2563EB',
+    boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)',
   },
   carrosselContainer: {
     display: 'flex',
@@ -1008,7 +1050,7 @@ const styles = {
     flexShrink: 0,
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
   },
   cardsContainer: {
     display: 'grid',
@@ -1019,31 +1061,32 @@ const styles = {
     backgroundColor: '#ffffff',
     padding: '20px',
     borderRadius: '10px',
-    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
     border: '1px solid #E2E8F0',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
   },
-  cardLabel: { fontSize: '12px', color: '#64748B', marginBottom: '8px', fontWeight: '600', textTransform: 'uppercase' },
-  cardValue: { fontSize: '24px', fontWeight: '800' },
+  cardLabel: { fontSize: '11px', color: '#64748B', marginBottom: '8px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  cardValue: { fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' },
   cardSection: {
     backgroundColor: '#ffffff',
     padding: '24px',
     borderRadius: '10px',
-    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
     border: '1px solid #E2E8F0',
-    marginBottom: '24px',
+    marginBottom: '20px',
   },
-  sectionTitle: { fontSize: '18px', color: '#0F172A', marginBottom: '16px', marginTop: 0, fontWeight: '700' },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr', gap: '16px' },
-  formLabel: { fontSize: '13px', color: '#475569', marginBottom: '6px', display: 'block', fontWeight: '600' },
+  sectionTitle: { fontSize: '16px', color: '#0F172A', marginBottom: '16px', marginTop: 0, fontWeight: '700', letterSpacing: '-0.3px' },
+  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
+  formGroup: { display: 'flex', flexDirection: 'column' },
+  formLabel: { fontSize: '12px', color: '#475569', marginBottom: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.3px' },
   input: {
     width: '100%',
-    padding: '12px 14px',
+    padding: '11px 14px',
     borderRadius: '6px',
     border: '1px solid #CBD5E1',
-    fontSize: '15px',
+    fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
     backgroundColor: '#F8FAFC',
@@ -1054,7 +1097,7 @@ const styles = {
     padding: '12px 14px',
     borderRadius: '6px',
     border: '1px solid #CBD5E1',
-    fontSize: '15px',
+    fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box',
     backgroundColor: '#F8FAFC',
@@ -1062,31 +1105,30 @@ const styles = {
     marginBottom: '16px',
   },
   fileContainer: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  fileLabel: { fontSize: '13px', color: '#475569', fontWeight: '600' },
-  inputFile: { fontSize: '14px', color: '#475569' },
-  previewContainer: { display: 'flex', alignItems: 'center', gap: '12px', background: '#F0FDF4', padding: '10px', borderRadius: '6px', border: '1px solid #BBF7D0' },
+  fileLabel: { fontSize: '12px', color: '#475569', fontWeight: '700', textTransform: 'uppercase' },
+  inputFile: { fontSize: '13px', color: '#475569' },
+  previewContainer: { display: 'flex', alignItems: 'center', gap: '12px', background: '#F0FDF4', padding: '12px', borderRadius: '8px', border: '1px solid #BBF7D0' },
   previewImg: { width: '48px', height: '48px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '2px solid #059669' },
-  previewText: { fontSize: '13px', color: '#065F46', fontWeight: '600' },
   button: {
     width: '100%',
     padding: '14px',
     color: '#ffffff',
     border: 'none',
     borderRadius: '6px',
-    fontSize: '15px',
+    fontSize: '14px',
     fontWeight: '700',
     cursor: 'pointer',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+    letterSpacing: '0.3px'
   },
-  chartContainer: { display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' },
+  chartContainer: { display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' },
   chartBarWrapper: { display: 'flex', flexDirection: 'column', gap: '4px' },
-  chartLabelText: { fontSize: '14px', color: '#334155' },
   tableResponsive: { width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' },
   table: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' },
   thTr: { borderBottom: '2px solid #E2E8F0', backgroundColor: '#F8FAFC' },
-  th: { padding: '12px 10px', fontSize: '12px', color: '#475569', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' },
+  th: { padding: '12px 10px', fontSize: '11px', color: '#475569', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' },
   tr: { borderBottom: '1px solid #E2E8F0' },
-  td: { padding: '14px 10px', fontSize: '14px', color: '#334155', verticalAlign: 'middle' },
+  td: { padding: '14px 10px', fontSize: '13px', color: '#334155', verticalAlign: 'middle' },
   tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #CBD5E1', cursor: 'pointer' },
   noFoto: { fontSize: '12px', color: '#94A3B8', fontStyle: 'italic' },
   badge: { padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', display: 'inline-block' },
