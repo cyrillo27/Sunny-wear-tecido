@@ -29,7 +29,8 @@ const SunnyWearTecidos = () => {
     estoqueMinimo: '',
     notaFiscal: '',
     fornecedor: '',
-    foto: ''
+    foto: '',
+    largura: ''
   });
 
   const [busca, setBusca] = useState('');
@@ -136,7 +137,8 @@ const SunnyWearTecidos = () => {
         estoqueMinimo: minEncontrado,
         notaFiscal: tecidoEncontrado.notafiscal || tecidoEncontrado.notaFiscal || '',
         fornecedor: tecidoEncontrado.fornecedor || '',
-        foto: tecidoEncontrado.foto || ''
+        foto: tecidoEncontrado.foto || '',
+        largura: tecidoEncontrado.largura || ''
       }));
     } else {
       setForm(prev => ({
@@ -202,7 +204,7 @@ const SunnyWearTecidos = () => {
 
       if (resposta.ok) {
         alert(idEditando ? 'Registro atualizado com sucesso!' : 'Cadastrado com sucesso!');
-        setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '' });
+        setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' });
         setIdEditando(null);
         await carregarDadosDoServidor();
         setAbaAtiva('historico');
@@ -241,7 +243,8 @@ const SunnyWearTecidos = () => {
       estoqueMinimo: minItem !== 0 ? minItem : '',
       notaFiscal: item.notafiscal || item.notaFiscal || '',
       fornecedor: item.fornecedor || '',
-      foto: item.foto || ''
+      foto: item.foto || '',
+      largura: item.largura || ''
     });
     setAbaAtiva(tipoItem === 'saida' ? 'saida' : 'entrada');
   };
@@ -426,13 +429,13 @@ const SunnyWearTecidos = () => {
           📊 Dashboard em Tempo Real
         </button>
         <button 
-          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '' }); setAbaAtiva('entrada'); }} 
+          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setAbaAtiva('entrada'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'entrada' ? styles.tabActive : {}) }}
         >
           📥 Registrar Entrada (Compra)
         </button>
         <button 
-          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '' }); setAbaAtiva('saida'); }} 
+          onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setAbaAtiva('saida'); }} 
           style={{ ...styles.tabBtn, ...(abaAtiva === 'saida' ? styles.tabActive : {}) }}
         >
           📤 Registrar Saída (Uso)
@@ -584,6 +587,14 @@ const SunnyWearTecidos = () => {
               required
             />
             <input 
+              type="number" 
+              step="0.01"
+              placeholder="Largura do Tecido (Ex: 1.50 m)" 
+              value={form.largura} 
+              onChange={(e) => setForm({...form, largura: e.target.value})} 
+              style={styles.input}
+            />
+            <input 
               type="text" 
               placeholder="Localização (Ex: Sunny Galpão 1)" 
               value={form.localizacao} 
@@ -695,6 +706,7 @@ const SunnyWearTecidos = () => {
             <div style={{background: '#f8f9fa', padding: '12px', borderRadius: '6px', border: '1px solid #dadce0', display: 'flex', flexDirection: 'column', gap: '8px'}}>
               <span style={{fontSize: '12px', color: '#5f6368', fontWeight: 'bold'}}>📋 Informações puxadas do cadastro:</span>
               <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Código / Nome:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando...'} ({form.cor || '-'})</div>
+              <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
               <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
               <div style={{fontSize: '13px', color: '#3c4043'}}><strong>Estoque Mínimo Configurado:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
             </div>
@@ -774,7 +786,10 @@ const SunnyWearTecidos = () => {
                           </span>
                         </td>
                         <td style={styles.td}><strong>{item.codigo}</strong></td>
-                        <td style={styles.td}>{item.nome} ({item.cor})</td>
+                        <td style={styles.td}>
+                          {item.nome} ({item.cor})
+                          {item.largura ? <div style={{fontSize: '11px', color: '#1a73e8'}}>Largura: {item.largura}m</div> : null}
+                        </td>
                         <td style={styles.td}>
                           <div style={{fontSize: '13px', fontWeight: '500', color: '#202124'}}>{fornecedor || 'Não informado'}</div>
                           <div style={{fontSize: '11px', color: '#5f6368'}}>NF: {nf || 'N/D'}</div>
