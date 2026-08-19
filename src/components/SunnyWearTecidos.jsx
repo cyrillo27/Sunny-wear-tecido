@@ -51,7 +51,14 @@ const SunnyWearTecidos = () => {
     return Number(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
   };
   
-  const obterTipo = (item) => item?.tipomovimento || item?.tipoMovimento || 'entrada';
+  // CORREÇÃO: Força o reconhecimento de OPs antigas salvas como "entrada"
+  const obterTipo = (item) => {
+    const fornecedor = (item?.fornecedor || '').toLowerCase().trim();
+    if (fornecedor === 'ordem de produção') {
+      return 'op';
+    }
+    return item?.tipomovimento || item?.tipoMovimento || 'entrada';
+  };
 
   const carregarDadosDoServidor = async () => {
     try {
