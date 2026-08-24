@@ -449,7 +449,7 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // TELA EXCLUSIVA DO QR CODE COM CÁLCULO DA MÉDIA DE PREÇOS
+  // TELA EXCLUSIVA DO QR CODE (COM VALOR TOTAL EM ESTOQUE, SEM FORNECEDOR E NF)
   if (codigoQrUrl) {
     const movimentosDoTecido = listaSeguraCalculos.filter(m => m?.codigo && m.codigo.toLowerCase() === codigoQrUrl.toLowerCase());
     const infoTecido = movimentosDoTecido[movimentosDoTecido.length - 1] || { codigo: codigoQrUrl, nome: 'Tecido não localizado no servidor', cor: '-', localizacao: '-' };
@@ -472,6 +472,7 @@ const SunnyWearTecidos = () => {
     });
 
     const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : Number(infoTecido.preco || 0);
+    const valorTotalEstoque = totalQtd * precoMedio;
 
     return (
       <div style={styles.qrViewContainer}>
@@ -495,9 +496,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.qrInfoRow}><span>Largura:</span> <strong>{infoTecido.largura ? `${infoTecido.largura}m` : 'Não informada'}</strong></div>
             <div style={styles.qrInfoRow}><span>Galpão / Local:</span> <strong style={{color: '#2563EB'}}>📍 {infoTecido.localizacao || 'N/D'}</strong></div>
             <div style={styles.qrInfoRow}><span>Estoque Atual:</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalQtd} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
-            <div style={styles.qrInfoRow}><span>Valor Unitário Médio:</span> <strong style={{color: '#D97706'}}>R$ {precoMedio.toFixed(2)}</strong></div>
-            <div style={styles.qrInfoRow}><span>Fornecedor:</span> <strong>{infoTecido.fornecedor || 'Não informado'}</strong></div>
-            <div style={styles.qrInfoRow}><span>Nota Fiscal:</span> <strong>{infoTecido.notafiscal || infoTecido.notaFiscal || 'N/D'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Valor Total em Estoque:</span> <strong style={{color: '#D97706'}}>R$ {valorTotalEstoque.toFixed(2)}</strong></div>
           </div>
 
           <button 
