@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
 const SunnyWearTecidos = () => {
-  const [autenticado, setAutenticado] = useState(() => {
-    return localStorage.getItem('sunny_auth') === 'true';
+  const [codigoQrUrl, setCodigoQrUrl] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('codigo');
   });
-
-  const [usuarioInput, setUsuarioInput] = useState('');
-  const [senhaInput, setSenhaInput] = useState('');
-  const [erroLogin, setErroLogin] = useState('');
 
   const [abaAtiva, setAbaAtiva] = useState('dashboard');
   const [movimentacoes, setMovimentacoes] = useState([]);
@@ -99,48 +96,10 @@ const SunnyWearTecidos = () => {
   }, [sobrasSaidas]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const codParam = params.get('codigo');
-    if (codParam) {
-      setBusca(codParam);
-      setAbaAtiva('historico');
-    }
-
-    if (autenticado) {
-      carregarDadosDoServidor();
-      const intervalo = setInterval(carregarDadosDoServidor, 5000);
-      return () => clearInterval(intervalo);
-    }
-  }, [autenticado]);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const resposta = await fetch('https://sunny-wear-tecido.onrender.com/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usuario: usuarioInput, senha: senhaInput })
-      });
-      const dados = await resposta.json();
-
-      if (resposta.ok && dados.sucesso) {
-        setAutenticado(true);
-        localStorage.setItem('sunny_auth', 'true');
-        setErroLogin('');
-      } else {
-        setErroLogin(dados.erro || 'Credenciais inválidas. Verifique os dados.');
-      }
-    } catch (erro) {
-      setErroLogin('Falha na comunicação com o servidor.');
-    }
-  };
-
-  const handleLogout = () => {
-    setAutenticado(false);
-    localStorage.removeItem('sunny_auth');
-    setUsuarioInput('');
-    setSenhaInput('');
-  };
+    carregarDadosDoServidor();
+    const intervalo = setInterval(carregarDadosDoServidor, 5000);
+    return () => clearInterval(intervalo);
+  }, []);
 
   const handleFotoChange = (e) => {
     const file = e.target.files[0];
@@ -180,10 +139,8 @@ const SunnyWearTecidos = () => {
   const usarSobra = (item) => {
     if (!window.confirm(`Confirma a baixa e reuso deste retalho de ${item.nome} (${item.quantidade} ${item.unidadeMedida})?`)) return;
 
-    // Remove das sobras disponíveis
     setSobras(prev => prev.filter(s => s.id !== item.id));
 
-    // Adiciona nas saídas de sobras
     const registroSaida = {
       ...item,
       id: 'SAIDA-SOBRA-' + Date.now(),
@@ -392,17 +349,12 @@ const SunnyWearTecidos = () => {
     .filter(m => obterTipo(m) === 'entrada' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const entradasKg = listaSeguraCalculos
-    .filter(m => obterTipo(m) === 'entrada' && (m?.unidademedida === 'kg' || m?.unidadeMedida === 'kg'))
-    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
-
   const saidasMetros = listaSeguraCalculos
     .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
   const estoqueMetros = entradasMetros - saidasMetros;
 
-  // Totais de Sobras
   const totalSobrasMetros = sobras
     .filter(s => s.unidadeMedida === 'm')
     .reduce((acc, s) => acc + Number(s.quantidade || 0), 0);
@@ -497,43 +449,62 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  if (!autenticado) {
+  // SE O APP FOI ABERTO VIA QR CODE, EXibe APENAS A TELA DE INFORMAÇÃO DO TECIDO
+  if (codigoQrUrl) {
+    const movimentosDoTecido = listaSeguraCalculos.filter(m => m?.codigo && m.codigo.toLowerCase() === codigoQrUrl.toLowerCase());
+    const infoTecido = movimentosDoTecido[movimentosDoTecido.length - 1] || { codigo: codigoQrUrl, nome: 'Tecido não localizado no servidor', cor: '-', localizacao: '-' };
+    
+    let totalQtd = 0;
+    movimentosDoTecido.forEach(m => {
+      const q = Number(m.metros || m.quantidade || 0);
+      const t = obterTipo(m);
+      if (t === 'entrada') totalQtd += q;
+      else if (t === 'saida') totalQtd -= q;
+    });
+
     return (
-      <div style={styles.loginContainer}>
-        <div style={styles.loginCard}>
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+      <div style={styles.qrViewContainer}>
+        <div style={styles.qrViewCard}>
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
             <div style={styles.logoBadge}>SW</div>
-            <h1 style={{ color: '#0F172A', margin: '0 0 6px 0', fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' }}>Sunny Wear</h1>
-            <p style={{ color: '#2563EB', fontSize: '12px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Cyber-Textile Intelligence</p>
+            <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Sunny Wear • Consulta QR Code</h2>
+            <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Informações do Rolo</p>
           </div>
-          
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-            <div>
-              <label style={styles.loginLabel}>Identificação de Usuário</label>
-              <input 
-                type="text" 
-                placeholder="Ex: admin" 
-                value={usuarioInput} 
-                onChange={(e) => setUsuarioInput(e.target.value)} 
-                style={styles.input}
-                required
-              />
-            </div>
-            <div>
-              <label style={styles.loginLabel}>Chave de Acesso</label>
-              <input 
-                type="password" 
-                placeholder="••••••••" 
-                value={senhaInput} 
-                onChange={(e) => setSenhaInput(e.target.value)} 
-                style={styles.input}
-                required
-              />
-            </div>
-            {erroLogin && <div style={styles.errorBox}>{erroLogin}</div>}
-            <button type="submit" style={styles.loginButton}>Inicializar Sistema</button>
-          </form>
+
+          {infoTecido.foto ? (
+            <img src={infoTecido.foto} alt="Tecido" style={styles.qrViewImg} onClick={() => setFotoSelecionada(infoTecido.foto)} />
+          ) : (
+            <div style={styles.qrViewNoFoto}>Sem foto cadastrada</div>
+          )}
+
+          <div style={styles.qrInfoBox}>
+            <div style={styles.qrInfoRow}><span>Código:</span> <strong>{infoTecido.codigo}</strong></div>
+            <div style={styles.qrInfoRow}><span>Nome:</span> <strong>{infoTecido.nome || 'N/D'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Cor:</span> <strong>{infoTecido.cor || 'N/D'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Largura:</span> <strong>{infoTecido.largura ? `${infoTecido.largura}m` : 'Não informada'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Galpão / Local:</span> <strong style={{color: '#2563EB'}}>📍 {infoTecido.localizacao || 'N/D'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Estoque Atual:</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalQtd} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Valor Unitário:</span> <strong>R$ {Number(infoTecido.preco || 0).toFixed(2)}</strong></div>
+            <div style={styles.qrInfoRow}><span>Fornecedor:</span> <strong>{infoTecido.fornecedor || 'Não informado'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Nota Fiscal:</span> <strong>{infoTecido.notafiscal || infoTecido.notaFiscal || 'N/D'}</strong></div>
+          </div>
+
+          <button 
+            onClick={() => { window.location.href = window.location.pathname; }} 
+            style={styles.qrBackBtn}
+          >
+            🏠 Acessar Sistema Completo
+          </button>
         </div>
+
+        {fotoSelecionada && (
+          <div style={styles.modalOverlay} onClick={() => setFotoSelecionada(null)}>
+            <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <button style={styles.modalCloseBtn} onClick={() => setFotoSelecionada(null)}>✕ Fechar</button>
+              <img src={fotoSelecionada} alt="Zoom" style={styles.modalImg} />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -618,12 +589,6 @@ const SunnyWearTecidos = () => {
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'historico' ? styles.sidebarLinkActive : {}) }}
           >
             🔍 Consulta & Galpões
-          </button>
-        </div>
-
-        <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
-          <button onClick={handleLogout} style={styles.sidebarLogoutFullBtn}>
-            🚪 Finalizar Sessão
           </button>
         </div>
       </aside>
@@ -1209,61 +1174,74 @@ const SunnyWearTecidos = () => {
 };
 
 const styles = {
-  loginContainer: {
+  qrViewContainer: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '100vh',
+    minHeight: '100vh',
     backgroundColor: '#F1F5F9',
-    backgroundImage: 'radial-gradient(circle at 50% 30%, rgba(37, 99, 235, 0.08) 0%, transparent 70%)',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     padding: '16px',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
-  loginCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    backdropFilter: 'blur(16px)',
-    WebkitBackdropFilter: 'blur(16px)',
-    padding: '40px',
+  qrViewCard: {
+    backgroundColor: '#FFFFFF',
+    padding: '28px',
     borderRadius: '20px',
-    boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.1), 0 0 25px rgba(37, 99, 235, 0.1)',
+    boxShadow: '0 15px 35px rgba(0, 0, 0, 0.08)',
     width: '100%',
-    maxWidth: '420px',
+    maxWidth: '400px',
     boxSizing: 'border-box',
-    border: '1px solid rgba(255, 255, 255, 1)'
+    border: '1px solid #E2E8F0',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
   },
-  loginLabel: {
-    fontSize: '11px',
-    color: '#475569',
-    marginBottom: '6px',
-    display: 'block',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: '1px'
-  },
-  errorBox: {
-    backgroundColor: '#FEF2F2',
-    color: '#DC2626',
-    padding: '10px',
-    borderRadius: '8px',
-    fontSize: '13px',
-    textAlign: 'center',
-    fontWeight: '600',
-    border: '1px solid #FCA5A5'
-  },
-  loginButton: {
-    width: '100%',
-    padding: '14px',
-    background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '10px',
-    fontSize: '14px',
-    fontWeight: '800',
+  qrViewImg: {
+    width: '100px',
+    height: '100px',
+    objectFit: 'cover',
+    borderRadius: '12px',
+    marginBottom: '16px',
+    border: '2px solid #2563EB',
     cursor: 'pointer',
-    boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
-    letterSpacing: '0.5px',
-    marginTop: '6px',
-    transition: 'all 0.2s'
+  },
+  qrViewNoFoto: {
+    fontSize: '12px',
+    color: '#94A3B8',
+    marginBottom: '16px',
+    fontStyle: 'italic',
+    backgroundColor: '#F8FAFC',
+    padding: '12px 24px',
+    borderRadius: '8px',
+  },
+  qrInfoBox: {
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: '12px',
+    padding: '14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    marginBottom: '20px',
+    border: '1px solid #E2E8F0',
+    boxSizing: 'border-box',
+  },
+  qrInfoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '13px',
+    color: '#475569',
+  },
+  qrBackBtn: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: '#F1F5F9',
+    color: '#334155',
+    border: '1px solid #CBD5E1',
+    borderRadius: '10px',
+    fontWeight: '700',
+    cursor: 'pointer',
+    fontSize: '13px',
   },
   appLayout: {
     display: 'flex',
@@ -1350,22 +1328,6 @@ const styles = {
     color: '#ffffff',
     boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
     fontWeight: '700',
-  },
-  sidebarLogoutFullBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    width: '100%',
-    padding: '12px 14px',
-    backgroundColor: '#FEE2E2',
-    color: '#991B1B',
-    border: '1px solid #FCA5A5',
-    borderRadius: '10px',
-    fontSize: '13px',
-    fontWeight: '700',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
   },
   mainContent: {
     flex: 1,
