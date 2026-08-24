@@ -5,6 +5,10 @@ const SunnyWearTecidos = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get('codigo');
   });
+  const [corQrUrl, setCorQrUrl] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('cor');
+  });
 
   const [abaAtiva, setAbaAtiva] = useState('dashboard');
   const [movimentacoes, setMovimentacoes] = useState([]);
@@ -184,7 +188,7 @@ const SunnyWearTecidos = () => {
         foto: tecidoEncontrado.foto || '',
         largura: tecidoEncontrado.largura || ''
       }));
-      alert(`✅ Item localizado: ${tecidoEncontrado.nome} (Cód: ${tecidoEncontrado.codigo})`);
+      alert(`✅ Item localizado: ${tecidoEncontrado.nome} (Cód: ${tecidoEncontrado.codigo} - Cor: ${tecidoEncontrado.cor})`);
     } else {
       alert('⚠️ Nenhum registro correspondente encontrado.');
       setForm(prev => ({
@@ -306,14 +310,17 @@ const SunnyWearTecidos = () => {
   listaSeguraCalculos.forEach(m => {
     if (!m || !m.codigo) return;
     const cod = m.codigo.toLowerCase();
+    const cor = (m.cor || 'ndef').toLowerCase();
+    const chave = `${cod}_${cor}`; // Chave única combinando Código + Cor
     const qtd = Number(m.metros || m.quantidade || 0);
     const minReg = obterMinimo(m);
     const tipoM = obterTipo(m);
 
-    if (!tecidosConsolidados[cod]) {
-      tecidosConsolidados[cod] = {
+    if (!tecidosConsolidados[chave]) {
+      tecidosConsolidados[chave] = {
         codigo: m.codigo,
         nome: m.nome,
+        cor: m.cor,
         minimo: minReg,
         unidade: m.unidademedida || m.unidadeMedida || 'm',
         total: 0
@@ -321,19 +328,19 @@ const SunnyWearTecidos = () => {
     }
 
     if (tipoM === 'entrada') {
-      tecidosConsolidados[cod].total += qtd;
+      tecidosConsolidados[chave].total += qtd;
     } else if (tipoM === 'saida') {
-      tecidosConsolidados[cod].total -= qtd;
+      tecidosConsolidados[chave].total -= qtd;
     }
 
-    if (!usoTecidos[cod]) {
-      usoTecidos[cod] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
+    if (!usoTecidos[chave]) {
+      usoTecidos[chave] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
     }
     if (tipoM === 'saida') {
-      usoTecidos[cod].totalUso += qtd;
+      usoTecidos[chave].totalUso += qtd;
     }
 
-    if (minReg > 0) tecidosConsolidados[cod].minimo = minReg;
+    if (minReg > 0) tecidosConsolidados[chave].minimo = minReg;
   });
 
   const alertasEstoqueBaixo = Object.values(tecidosConsolidados).filter(t => t.minimo > 0 && t.total < t.minimo);
@@ -449,10 +456,15 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // TELA EXCLUSIVA DO QR CODE (COM PREÇO MÉDIO E VALOR TOTAL, SEM FORNECEDOR E NF)
+  // TELA EXCLUSIVA DO QR CODE (FOCADA NO CÓDIGO + COR ESPECÍFICA)
   if (codigoQrUrl) {
-    const movimentosDoTecido = listaSeguraCalculos.filter(m => m?.codigo && m.codigo.toLowerCase() === codigoQrUrl.toLowerCase());
-    const infoTecido = movimentosDoTecido[movimentosDoTecido.length - 1] || { codigo: codigoQrUrl, nome: 'Tecido não localizado no servidor', cor: '-', localizacao: '-' };
+    const movimentosDoTecido = listaSeguraCalculos.filter(m => {
+      const mesmoCod = m?.codigo && m.codigo.toLowerCase() === codigoQrUrl.toLowerCase();
+      const mesmaCor = corQrUrl ? (m?.cor && m.cor.toLowerCase() === decodeURIComponent(corQrUrl).toLowerCase()) : true;
+      return mesmoCod && mesmaCor;
+    });
+
+    const infoTecido = movimentosDoTecido[movimentosDoTecido.length - 1] || { codigo: codigoQrUrl, cor: corQrUrl ? decodeURIComponent(corQrUrl) : 'N/D', nome: 'Tecido não localizado no servidor', localizacao: '-' };
     
     let totalQtd = 0;
     let somaPrecos = 0;
@@ -492,7 +504,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.qrInfoBox}>
             <div style={styles.qrInfoRow}><span>Código:</span> <strong>{infoTecido.codigo}</strong></div>
             <div style={styles.qrInfoRow}><span>Nome:</span> <strong>{infoTecido.nome || 'N/D'}</strong></div>
-            <div style={styles.qrInfoRow}><span>Cor:</span> <strong>{infoTecido.cor || 'N/D'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Cor:</span> <strong style={{color: '#2563EB'}}>{infoTecido.cor || 'N/D'}</strong></div>
             <div style={styles.qrInfoRow}><span>Largura:</span> <strong>{infoTecido.largura ? `${infoTecido.largura}m` : 'Não informada'}</strong></div>
             <div style={styles.qrInfoRow}><span>Galpão / Local:</span> <strong style={{color: '#2563EB'}}>📍 {infoTecido.localizacao || 'N/D'}</strong></div>
             <div style={styles.qrInfoRow}><span>Estoque Atual:</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalQtd} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
@@ -629,7 +641,7 @@ const SunnyWearTecidos = () => {
             <ul style={{ margin: '6px 0 0 24px', padding: 0, fontSize: '13px', color: '#7F1D1D' }}>
               {alertasEstoqueBaixo.map((alt, idx) => (
                 <li key={idx} style={{ marginBottom: '4px' }}>
-                  <strong>{alt.nome}</strong> (Cód: {alt.codigo}) — Atual: <strong>{alt.total} {alt.unidade}</strong> | Mínimo: {alt.minimo} {alt.unidade}
+                  <strong>{alt.nome}</strong> ({alt.cor}) [Cód: {alt.codigo}] — Atual: <strong>{alt.total} {alt.unidade}</strong> | Mínimo: {alt.minimo} {alt.unidade}
                 </li>
               ))}
             </ul>
@@ -688,14 +700,14 @@ const SunnyWearTecidos = () => {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                               <strong style={{ fontSize: '13px', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {tecido.nome}
+                                {tecido.nome} ({tecido.cor})
                               </strong>
                               <strong style={{ fontSize: '13px', color: '#0F172A', whiteSpace: 'nowrap' }}>
                                 {tecido.totalUso.toLocaleString()} {tecido.unidade}
                               </strong>
                             </div>
                             <span style={{ fontSize: '11px', color: '#64748B', display: 'block', marginBottom: '6px' }}>
-                              Cor: {tecido.cor || 'N/D'} • Cód: {tecido.codigo}
+                              Cód: {tecido.codigo}
                             </span>
                             <div style={styles.progressBarBg}>
                               <div style={{ ...styles.progressBarFill, width: `${porcentagem}%`, backgroundColor: badgeCores[index] || '#2563EB' }} />
@@ -893,7 +905,7 @@ const SunnyWearTecidos = () => {
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
                 <button type="submit" disabled={carregando} style={{...styles.button, background: idEditando ? '#D97706' : 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)', color: '#fff'}}>
-                  {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Confirmar Saída no Servidor')}
+                  {carregando ? 'Processando dados...' : (idEditando ? 'Salvar Alterações' : 'Confirmar Saída na Base')}
                 </button>
               </div>
             </form>
@@ -1117,7 +1129,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{color: '#0F172A'}}>{item.codigo}</strong></td>
                           <td style={styles.td}>
-                            <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
+                            <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} <span style={{color: '#2563EB'}}>({item.cor})</span></div>
                             {item.largura ? <div style={{fontSize: '11px', color: '#2563EB', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
                           </td>
                           <td style={styles.td}>
@@ -1158,24 +1170,24 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {/* MODAL DO QR CODE CONECTADO AO APP */}
+      {/* MODAL DO QR CODE CONECTADO AO APP (COM CÓDIGO E COR ESPECÍFICA) */}
       {qrSelecionado && (
         <div style={styles.modalOverlay} onClick={() => setQrSelecionado(null)}>
           <div style={{...styles.modalContent, alignItems: 'center'}} onClick={(e) => e.stopPropagation()}>
             <button style={styles.modalCloseBtn} onClick={() => setQrSelecionado(null)}>✕ Fechar</button>
             <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#0F172A', fontWeight: '800' }}>QR Code Interativo do Tecido</h3>
             <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px', textAlign: 'center' }}>
-              <strong>{qrSelecionado.codigo}</strong> - {qrSelecionado.nome} ({qrSelecionado.cor})
+              <strong>{qrSelecionado.codigo}</strong> - {qrSelecionado.nome} (<span style={{color: '#2563EB', fontWeight: '700'}}>{qrSelecionado.cor}</span>)
             </p>
             <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #CBD5E1', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '14px' }}>
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`${window.location.origin}/?codigo=${qrSelecionado.codigo}`)}`} 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`${window.location.origin}/?codigo=${qrSelecionado.codigo}&cor=${encodeURIComponent(qrSelecionado.cor)}`)}`} 
                 alt="QR Code" 
                 style={{ width: '200px', height: '200px', display: 'block' }} 
               />
             </div>
             <span style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', maxWidth: '280px', lineHeight: '1.4' }}>
-              📱 Ao apontar a câmera e tocar no link gerado, o celular abrirá o app já mostrando e filtrando as informações deste tecido.
+              📱 Ao apontar a câmera, o app abrirá filtrando exatamente este tecido na cor <strong>{qrSelecionado.cor}</strong>.
             </span>
           </div>
         </div>
