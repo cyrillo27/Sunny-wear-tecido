@@ -68,7 +68,15 @@ const SunnyWearTecidos = () => {
     }
   };
 
+  // Carrega dados e verifica se o app foi aberto via QR Code (parâmetro na URL)
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const codParam = params.get('codigo');
+    if (codParam) {
+      setBusca(codParam);
+      setAbaAtiva('historico');
+    }
+
     if (autenticado) {
       carregarDadosDoServidor();
       const intervalo = setInterval(carregarDadosDoServidor, 5000);
@@ -973,24 +981,24 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {/* MODAL DO QR CODE */}
+      {/* MODAL DO QR CODE CONECTADO AO APP */}
       {qrSelecionado && (
         <div style={styles.modalOverlay} onClick={() => setQrSelecionado(null)}>
           <div style={{...styles.modalContent, alignItems: 'center'}} onClick={(e) => e.stopPropagation()}>
             <button style={styles.modalCloseBtn} onClick={() => setQrSelecionado(null)}>✕ Fechar</button>
-            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#0F172A', fontWeight: '800' }}>QR Code do Tecido</h3>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#0F172A', fontWeight: '800' }}>QR Code Interativo do Tecido</h3>
             <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px', textAlign: 'center' }}>
               <strong>{qrSelecionado.codigo}</strong> - {qrSelecionado.nome} ({qrSelecionado.cor})
             </p>
             <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #CBD5E1', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '14px' }}>
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=TECFID:${encodeURIComponent(qrSelecionado.codigo)}`} 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`${window.location.origin}/?codigo=${qrSelecionado.codigo}`)}`} 
                 alt="QR Code" 
                 style={{ width: '200px', height: '200px', display: 'block' }} 
               />
             </div>
             <span style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', maxWidth: '280px', lineHeight: '1.4' }}>
-              💡 Imprima este QR Code e cole no rolo. Se você alterar a metragem ou dados no sistema, o código continuará válido e atualizado.
+              📱 Ao apontar a câmera e tocar no link gerado, o celular abrirá o app já mostrando e filtrando as informações deste tecido.
             </span>
           </div>
         </div>
