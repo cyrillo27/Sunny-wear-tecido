@@ -36,7 +36,12 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
-  // Formulário específico para Sobras / Retalhos
+  // Estado local para Sobras e Retalhos garantindo exibição imediata na mesma tela
+  const [sobras, setSobras] = useState(() => {
+    const salvas = localStorage.getItem('sunny_sobras');
+    return salvas ? JSON.parse(salvas) : [];
+  });
+
   const [formSobra, setFormSobra] = useState({
     codigo: '',
     nome: '',
@@ -79,6 +84,10 @@ const SunnyWearTecidos = () => {
       setMovimentacoes([]);
     }
   };
+
+  useEffect(() => {
+    localStorage.setItem('sunny_sobras', JSON.stringify(sobras));
+  }, [sobras]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -135,53 +144,33 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  const cadastrarSobra = async (e) => {
+  const cadastrarSobra = (e) => {
     e.preventDefault();
     if (!formSobra.codigo || !formSobra.nome || !formSobra.quantidade || !formSobra.localizacao) {
       alert('Preencha os campos obrigatórios da sobra.');
       return;
     }
 
-    const dadosSobra = {
-      tipoMovimento: 'sobra',
+    const novaSobra = {
+      id: 'SOBRA-' + Date.now(),
       codigo: formSobra.codigo,
       nome: formSobra.nome,
       cor: formSobra.cor || 'N/D',
-      localizacao: formSobra.localizacao,
       quantidade: formSobra.quantidade,
-      metros: formSobra.quantidade,
       unidadeMedida: formSobra.unidadeMedida,
-      preco: 0,
-      estoqueMinimo: 0,
-      estoqueminimo: 0,
-      notaFiscal: 'Sobra de Corte',
-      notafiscal: 'Sobra de Corte',
-      fornecedor: formSobra.observacao || 'Retalho / Sobra',
-      foto: '',
-      largura: ''
+      localizacao: formSobra.localizacao,
+      observacao: formSobra.observacao || 'Retalho / Sobra',
+      data: new Date().toLocaleDateString('pt-BR')
     };
 
-    setCarregando(true);
-    try {
-      const resposta = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosSobra)
-      });
+    setSobras(prev => [novaSobra, ...prev]);
+    setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+    alert('✂️ Sobra cadastrada com sucesso e exibida na tabela abaixo!');
+  };
 
-      if (resposta.ok) {
-        alert('✂️ Sobra de tecido cadastrada com sucesso!');
-        setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
-        await carregarDadosDoServidor();
-      } else {
-        alert('Erro ao salvar a sobra no servidor.');
-      }
-    } catch (erro) {
-      console.error('Erro de conexão:', erro);
-      alert('Erro de conexão com o servidor.');
-    } finally {
-      setCarregando(false);
-    }
+  const deletarSobra = (id) => {
+    if (!window.confirm('Confirma a exclusão deste retalho?')) return;
+    setSobras(prev => prev.filter(s => s.id !== id));
   };
 
   const executarBuscaSaida = () => {
@@ -457,7 +446,7 @@ const SunnyWearTecidos = () => {
   }, {});
 
   const movFiltradas = listaSeguraCalculos.filter(m => {
-    if (!m || obterTipo(m) === 'sobra') return false; 
+    if (!m) return false; 
     const termo = busca.toLowerCase();
     const codigo = (m.codigo || '').toLowerCase();
     const nome = (m.nome || '').toLowerCase();
@@ -468,15 +457,15 @@ const SunnyWearTecidos = () => {
     return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || fornecedor.includes(termo) || notaFiscal.includes(termo);
   });
 
-  const sobrasFiltradas = listaSeguraCalculos.filter(m => {
-    if (!m || obterTipo(m) !== 'sobra') return false;
+  const sobrasFiltradas = sobras.filter(s => {
     const termo = buscaSobra.toLowerCase();
-    const codigo = (m.codigo || '').toLowerCase();
-    const nome = (m.nome || '').toLowerCase();
-    const cor = (m.cor || '').toLowerCase();
-    const localizacao = (m.localizacao || '').toLowerCase();
-    const obs = (m.fornecedor || '').toLowerCase();
-    return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || obs.includes(termo);
+    return (
+      (s.codigo || '').toLowerCase().includes(termo) ||
+      (s.nome || '').toLowerCase().includes(termo) ||
+      (s.cor || '').toLowerCase().includes(termo) ||
+      (s.localizacao || '').toLowerCase().includes(termo) ||
+      (s.observacao || '').toLowerCase().includes(termo)
+    );
   });
 
   if (!autenticado) {
@@ -990,15 +979,15 @@ const SunnyWearTecidos = () => {
               </div>
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-                <button type="submit" disabled={carregando} style={{...styles.button, background: 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)', color: '#fff'}}>
-                  {carregando ? 'Salvando sobra...' : '💾 Salvar Retalho no Estoque'}
+                <button type="submit" style={{...styles.button, background: 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)', color: '#fff'}}>
+                  💾 Salvar Retalho no Estoque
                 </button>
               </div>
             </form>
 
             <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>🔎 Pesquisar Retalhos Disponíveis para Reuso</h4>
+                <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>🔎 Retalhos Cadastrados Disponíveis para Reuso</h4>
                 <span style={{ fontSize: '12px', color: '#64748B' }}>Total de sobras: <strong>{sobrasFiltradas.length}</strong></span>
               </div>
 
@@ -1026,30 +1015,25 @@ const SunnyWearTecidos = () => {
                   <tbody>
                     {sobrasFiltradas.length === 0 ? (
                       <tr>
-                        <td colSpan="7" style={styles.empty}>Nenhuma sobra cadastrada com este termo.</td>
+                        <td colSpan="7" style={styles.empty}>Nenhuma sobra cadastrada ainda.</td>
                       </tr>
                     ) : (
-                      sobrasFiltradas.map((item) => {
-                        const qtd = Number(item.metros || item.quantidade || 0);
-                        const unidade = item.unidademedida || item.unidadeMedida || 'm';
-
-                        return (
-                          <tr key={item.id} style={styles.tr}>
-                            <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
-                            <td style={styles.td}>
-                              <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
-                            </td>
-                            <td style={styles.td}><strong style={{ color: '#9333EA', fontSize: '14px' }}>{qtd} {unidade}</strong></td>
-                            <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                            <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.fornecedor || 'N/D'}</span></td>
-                            <td style={styles.td}><span style={{ color: '#64748B' }}>{item.data}</span></td>
-                            <td style={styles.td}>
-                              <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Sobra">🔲</button>
-                              <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Remover retalho usado">🗑️</button>
-                            </td>
-                          </tr>
-                        );
-                      })
+                      sobrasFiltradas.map((item) => (
+                        <tr key={item.id} style={styles.tr}>
+                          <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
+                          <td style={styles.td}>
+                            <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
+                          </td>
+                          <td style={styles.td}><strong style={{ color: '#9333EA', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
+                          <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.observacao || 'N/D'}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B' }}>{item.data}</span></td>
+                          <td style={styles.td}>
+                            <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Sobra">🔲</button>
+                            <button onClick={() => deletarSobra(item.id)} style={styles.btnDeletar} title="Remover retalho usado">🗑️</button>
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>
