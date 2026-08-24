@@ -15,6 +15,7 @@ const SunnyWearTecidos = () => {
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
 
   const [fotoSelecionada, setFotoSelecionada] = useState(null);
+  const [qrSelecionado, setQrSelecionado] = useState(null);
   const [idEditando, setIdEditando] = useState(null);
   const [unidadeGrafico, setUnidadeGrafico] = useState('Metros (m)');
 
@@ -948,6 +949,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><span style={{color: '#64748B'}}>{item.data}</span></td>
                           <td style={styles.td}>
+                            <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
                             <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
                             <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
                           </td>
@@ -967,6 +969,29 @@ const SunnyWearTecidos = () => {
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <button style={styles.modalCloseBtn} onClick={() => setFotoSelecionada(null)}>✕ Fechar Visualização</button>
             <img src={fotoSelecionada} alt="Zoom" style={styles.modalImg} />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DO QR CODE */}
+      {qrSelecionado && (
+        <div style={styles.modalOverlay} onClick={() => setQrSelecionado(null)}>
+          <div style={{...styles.modalContent, alignItems: 'center'}} onClick={(e) => e.stopPropagation()}>
+            <button style={styles.modalCloseBtn} onClick={() => setQrSelecionado(null)}>✕ Fechar</button>
+            <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#0F172A', fontWeight: '800' }}>QR Code do Tecido</h3>
+            <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px', textAlign: 'center' }}>
+              <strong>{qrSelecionado.codigo}</strong> - {qrSelecionado.nome} ({qrSelecionado.cor})
+            </p>
+            <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #CBD5E1', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '14px' }}>
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=TECFID:${encodeURIComponent(qrSelecionado.codigo)}`} 
+                alt="QR Code" 
+                style={{ width: '200px', height: '200px', display: 'block' }} 
+              />
+            </div>
+            <span style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', maxWidth: '280px', lineHeight: '1.4' }}>
+              💡 Imprima este QR Code e cole no rolo. Se você alterar a metragem ou dados no sistema, o código continuará válido e atualizado.
+            </span>
           </div>
         </div>
       )}
@@ -1352,6 +1377,17 @@ const styles = {
   td: { padding: '16px 12px', fontSize: '13px', color: '#334155', verticalAlign: 'middle' },
   localBadge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: '700', border: '1px solid #BFDBFE' },
   badge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', display: 'inline-block' },
+  btnQr: {
+    padding: '6px 10px',
+    backgroundColor: '#F3E8FF',
+    color: '#7E22CE',
+    border: '1px solid #D8B4FE',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    marginRight: '6px',
+    fontSize: '12px',
+    fontWeight: '700',
+  },
   btnEditar: {
     padding: '6px 10px',
     backgroundColor: '#EFF6FF',
