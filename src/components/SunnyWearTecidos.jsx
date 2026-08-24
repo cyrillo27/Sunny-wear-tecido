@@ -311,7 +311,7 @@ const SunnyWearTecidos = () => {
     if (!m || !m.codigo) return;
     const cod = m.codigo.toLowerCase();
     const cor = (m.cor || 'ndef').toLowerCase();
-    const chave = `${cod}_${cor}`; // Chave única combinando Código + Cor
+    const chave = `${cod}_${cor}`;
     const qtd = Number(m.metros || m.quantidade || 0);
     const minReg = obterMinimo(m);
     const tipoM = obterTipo(m);
@@ -417,18 +417,26 @@ const SunnyWearTecidos = () => {
   const pontosPath = valoresGraficoAtual.map((val, idx) => `${idx === 0 ? 'M' : 'L'} ${getX(idx)},${getY(val)}`).join(' ');
   const areaPath = `${pontosPath} L ${getX(6)},160 L ${getX(0)},160 Z`;
 
+  // NORMALIZAÇÃO DOS GALPÕES PARA SOMAR MESMO COM DIFERENÇAS DE ACENTUAÇÃO OU MAIÚSCULAS
   const porLocalizacao = listaSeguraCalculos.reduce((acc, m) => {
     if (!m) return acc;
-    const loc = m.localizacao || 'Não definido';
-    if (!acc[loc]) acc[loc] = { m: 0, kg: 0 };
+    const rawLoc = m.localizacao || 'Não definido';
+    const chaveLoc = rawLoc.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    if (!acc[chaveLoc]) {
+      acc[chaveLoc] = { nomeExibicao: rawLoc.trim().toUpperCase(), m: 0, kg: 0 };
+    }
+
     const qtd = Number(m.metros || m.quantidade || 0);
-    const unidade = m.unidademedida || m.unidadeMedida || 'm';
+    const unidade = (m.unidademedida || m.unidadeMedida || 'm').toLowerCase();
     const tipoM = obterTipo(m);
     
     if (tipoM === 'entrada') {
-      acc[loc][unidade] += qtd;
+      if (acc[chaveLoc][unidade] !== undefined) acc[chaveLoc][unidade] += qtd;
+      else acc[chaveLoc][unidade] = qtd;
     } else if (tipoM === 'saida') {
-      acc[loc][unidade] -= qtd;
+      if (acc[chaveLoc][unidade] !== undefined) acc[chaveLoc][unidade] -= qtd;
+      else acc[chaveLoc][unidade] = -qtd;
     }
     return acc;
   }, {});
@@ -768,9 +776,9 @@ const SunnyWearTecidos = () => {
                 {Object.keys(porLocalizacao).length === 0 ? (
                   <p style={styles.empty}>Nenhum local cadastrado até o momento.</p>
                 ) : (
-                  Object.entries(porLocalizacao).map(([local, vals]) => (
-                    <div key={local} style={{...styles.chartBarWrapper, marginBottom: '10px', background: 'rgba(255,255,255,0.8)', padding: '14px 18px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
-                      <span style={{fontWeight: '700', color: '#0F172A', fontSize: '14px'}}>📍 {local}</span>
+                  Object.entries(porLocalizacao).map(([chave, vals]) => (
+                    <div key={chave} style={{...styles.chartBarWrapper, marginBottom: '10px', background: 'rgba(255,255,255,0.8)', padding: '14px 18px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
+                      <span style={{fontWeight: '700', color: '#0F172A', fontSize: '14px'}}>📍 {vals.nomeExibicao}</span>
                       <div style={{display: 'flex', gap: '24px', fontSize: '13px'}}>
                         <span style={{color: '#64748B'}}>Metros livres: <strong style={{color: '#2563EB', fontWeight: '700'}}>{vals.m} m</strong></span>
                         <span style={{color: '#64748B'}}>Quilos livres: <strong style={{color: '#D97706', fontWeight: '700'}}>{vals.kg} kg</strong></span>
