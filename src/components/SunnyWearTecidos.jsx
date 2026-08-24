@@ -36,6 +36,18 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
+  // Formulário específico para Sobras / Retalhos
+  const [formSobra, setFormSobra] = useState({
+    codigo: '',
+    nome: '',
+    cor: '',
+    quantidade: '',
+    unidadeMedida: 'm',
+    localizacao: '',
+    observacao: ''
+  });
+  const [buscaSobra, setBuscaSobra] = useState('');
+
   const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
 
@@ -68,7 +80,6 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Carrega dados e verifica se o app foi aberto via QR Code (parâmetro na URL)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const codParam = params.get('codigo');
@@ -121,6 +132,55 @@ const SunnyWearTecidos = () => {
         setForm((prev) => ({ ...prev, foto: reader.result }));
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const cadastrarSobra = async (e) => {
+    e.preventDefault();
+    if (!formSobra.codigo || !formSobra.nome || !formSobra.quantidade || !formSobra.localizacao) {
+      alert('Preencha os campos obrigatórios da sobra.');
+      return;
+    }
+
+    const dadosSobra = {
+      tipoMovimento: 'sobra',
+      codigo: formSobra.codigo,
+      nome: formSobra.nome,
+      cor: formSobra.cor || 'N/D',
+      localizacao: formSobra.localizacao,
+      quantidade: formSobra.quantidade,
+      metros: formSobra.quantidade,
+      unidadeMedida: formSobra.unidadeMedida,
+      preco: 0,
+      estoqueMinimo: 0,
+      estoqueminimo: 0,
+      notaFiscal: 'Sobra de Corte',
+      notafiscal: 'Sobra de Corte',
+      fornecedor: formSobra.observacao || 'Retalho / Sobra',
+      foto: '',
+      largura: ''
+    };
+
+    setCarregando(true);
+    try {
+      const resposta = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dadosSobra)
+      });
+
+      if (resposta.ok) {
+        alert('✂️ Sobra de tecido cadastrada com sucesso!');
+        setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+        await carregarDadosDoServidor();
+      } else {
+        alert('Erro ao salvar a sobra no servidor.');
+      }
+    } catch (erro) {
+      console.error('Erro de conexão:', erro);
+      alert('Erro de conexão com o servidor.');
+    } finally {
+      setCarregando(false);
     }
   };
 
@@ -397,7 +457,7 @@ const SunnyWearTecidos = () => {
   }, {});
 
   const movFiltradas = listaSeguraCalculos.filter(m => {
-    if (!m) return false; 
+    if (!m || obterTipo(m) === 'sobra') return false; 
     const termo = busca.toLowerCase();
     const codigo = (m.codigo || '').toLowerCase();
     const nome = (m.nome || '').toLowerCase();
@@ -406,6 +466,17 @@ const SunnyWearTecidos = () => {
     const fornecedor = (m.fornecedor || '').toLowerCase();
     const notaFiscal = (m.notafiscal || m.notaFiscal || '').toLowerCase();
     return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || fornecedor.includes(termo) || notaFiscal.includes(termo);
+  });
+
+  const sobrasFiltradas = listaSeguraCalculos.filter(m => {
+    if (!m || obterTipo(m) !== 'sobra') return false;
+    const termo = buscaSobra.toLowerCase();
+    const codigo = (m.codigo || '').toLowerCase();
+    const nome = (m.nome || '').toLowerCase();
+    const cor = (m.cor || '').toLowerCase();
+    const localizacao = (m.localizacao || '').toLowerCase();
+    const obs = (m.fornecedor || '').toLowerCase();
+    return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || obs.includes(termo);
   });
 
   if (!autenticado) {
@@ -517,6 +588,12 @@ const SunnyWearTecidos = () => {
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'saida' ? styles.sidebarLinkActive : {}) }}
           >
             📤 Registrar Saída
+          </button>
+          <button 
+            onClick={() => { setAbaAtiva('sobras'); setMenuMobileAberto(false); }} 
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'sobras' ? styles.sidebarLinkActive : {}) }}
+          >
+            ✂️ Sobras & Retalhos
           </button>
           <button 
             onClick={() => { setAbaAtiva('historico'); setMenuMobileAberto(false); }} 
@@ -867,6 +944,117 @@ const SunnyWearTecidos = () => {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {abaAtiva === 'sobras' && (
+          <div style={styles.cardSection}>
+            <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>✂️ Cadastro e Consulta de Sobras e Retalhos</h3>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre os pedaços e retalhos que sobraram dos cortes para pesquisar e reaproveitar depois.</p>
+            </div>
+
+            <form onSubmit={cadastrarSobra} style={styles.formGrid} className="form-grid-responsive">
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Código do Tecido *</label>
+                <input type="text" placeholder="Ex: TEC-001" value={formSobra.codigo} onChange={(e) => setFormSobra({...formSobra, codigo: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome do Tecido *</label>
+                <input type="text" placeholder="Ex: Malha Canelada" value={formSobra.nome} onChange={(e) => setFormSobra({...formSobra, nome: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Cor *</label>
+                <input type="text" placeholder="Ex: Azul Marinho" value={formSobra.cor} onChange={(e) => setFormSobra({...formSobra, cor: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Localização / Caixa de Retalhos *</label>
+                <input type="text" placeholder="Ex: Caixa de Retalhos - Prateleira B" value={formSobra.localizacao} onChange={(e) => setFormSobra({...formSobra, localizacao: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px', gridColumn: '1 / -1'}}>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Quantidade da Sobra *</label>
+                  <input type="number" step="0.01" placeholder="Ex: 2.5" value={formSobra.quantidade} onChange={(e) => setFormSobra({...formSobra, quantidade: e.target.value})} style={styles.input} required />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Unidade</label>
+                  <select value={formSobra.unidadeMedida} onChange={(e) => setFormSobra({...formSobra, unidadeMedida: e.target.value})} style={styles.input}>
+                    <option value="m">Metros (m)</option>
+                    <option value="kg">Quilos (kg)</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{gridColumn: '1 / -1'}}>
+                <label style={styles.formLabel}>Observação / De onde sobrou?</label>
+                <input type="text" placeholder="Ex: Sobra do corte da Coleção Verão" value={formSobra.observacao} onChange={(e) => setFormSobra({...formSobra, observacao: e.target.value})} style={styles.input} />
+              </div>
+
+              <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
+                <button type="submit" disabled={carregando} style={{...styles.button, background: 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)', color: '#fff'}}>
+                  {carregando ? 'Salvando sobra...' : '💾 Salvar Retalho no Estoque'}
+                </button>
+              </div>
+            </form>
+
+            <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>🔎 Pesquisar Retalhos Disponíveis para Reuso</h4>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>Total de sobras: <strong>{sobrasFiltradas.length}</strong></span>
+              </div>
+
+              <input 
+                type="text" 
+                placeholder="Pesquisar sobra por nome, cor, código ou observação..." 
+                value={buscaSobra} 
+                onChange={(e) => setBuscaSobra(e.target.value)} 
+                style={styles.inputFull}
+              />
+
+              <div style={styles.tableResponsive}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr style={styles.thTr}>
+                      <th style={styles.th}>Código</th>
+                      <th style={styles.th}>Tecido / Cor</th>
+                      <th style={styles.th}>Quantidade Disponível</th>
+                      <th style={styles.th}>Onde Encontrar</th>
+                      <th style={styles.th}>Observação</th>
+                      <th style={styles.th}>Data</th>
+                      <th style={styles.th}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sobrasFiltradas.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" style={styles.empty}>Nenhuma sobra cadastrada com este termo.</td>
+                      </tr>
+                    ) : (
+                      sobrasFiltradas.map((item) => {
+                        const qtd = Number(item.metros || item.quantidade || 0);
+                        const unidade = item.unidademedida || item.unidadeMedida || 'm';
+
+                        return (
+                          <tr key={item.id} style={styles.tr}>
+                            <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
+                            <td style={styles.td}>
+                              <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
+                            </td>
+                            <td style={styles.td}><strong style={{ color: '#9333EA', fontSize: '14px' }}>{qtd} {unidade}</strong></td>
+                            <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
+                            <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.fornecedor || 'N/D'}</span></td>
+                            <td style={styles.td}><span style={{ color: '#64748B' }}>{item.data}</span></td>
+                            <td style={styles.td}>
+                              <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Sobra">🔲</button>
+                              <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Remover retalho usado">🗑️</button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
