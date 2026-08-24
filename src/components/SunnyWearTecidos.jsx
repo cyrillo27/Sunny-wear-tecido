@@ -36,9 +36,14 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
-  // Estado local para Sobras e Retalhos garantindo exibição imediata na mesma tela
+  // Estados locais para Sobras e Saída de Sobras salvos no localStorage
   const [sobras, setSobras] = useState(() => {
     const salvas = localStorage.getItem('sunny_sobras');
+    return salvas ? JSON.parse(salvas) : [];
+  });
+
+  const [sobrasSaidas, setSobrasSaidas] = useState(() => {
+    const salvas = localStorage.getItem('sunny_sobras_saidas');
     return salvas ? JSON.parse(salvas) : [];
   });
 
@@ -88,6 +93,10 @@ const SunnyWearTecidos = () => {
   useEffect(() => {
     localStorage.setItem('sunny_sobras', JSON.stringify(sobras));
   }, [sobras]);
+
+  useEffect(() => {
+    localStorage.setItem('sunny_sobras_saidas', JSON.stringify(sobrasSaidas));
+  }, [sobrasSaidas]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -156,7 +165,7 @@ const SunnyWearTecidos = () => {
       codigo: formSobra.codigo,
       nome: formSobra.nome,
       cor: formSobra.cor || 'N/D',
-      quantidade: formSobra.quantidade,
+      quantidade: Number(formSobra.quantidade),
       unidadeMedida: formSobra.unidadeMedida,
       localizacao: formSobra.localizacao,
       observacao: formSobra.observacao || 'Retalho / Sobra',
@@ -166,6 +175,22 @@ const SunnyWearTecidos = () => {
     setSobras(prev => [novaSobra, ...prev]);
     setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
     alert('✂️ Sobra cadastrada com sucesso e exibida na tabela abaixo!');
+  };
+
+  const usarSobra = (item) => {
+    if (!window.confirm(`Confirma a baixa e reuso deste retalho de ${item.nome} (${item.quantidade} ${item.unidadeMedida})?`)) return;
+
+    // Remove das sobras disponíveis
+    setSobras(prev => prev.filter(s => s.id !== item.id));
+
+    // Adiciona nas saídas de sobras
+    const registroSaida = {
+      ...item,
+      id: 'SAIDA-SOBRA-' + Date.now(),
+      dataBaixa: new Date().toLocaleDateString('pt-BR')
+    };
+    setSobrasSaidas(prev => [registroSaida, ...prev]);
+    alert('✅ Retalho utilizado na produção e registrado nas saídas de sobras!');
   };
 
   const deletarSobra = (id) => {
@@ -375,12 +400,16 @@ const SunnyWearTecidos = () => {
     .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const saidasKg = listaSeguraCalculos
-    .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'kg' || m?.unidadeMedida === 'kg'))
-    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
-
   const estoqueMetros = entradasMetros - saidasMetros;
-  const estoqueKg = entradasKg - saidasKg;
+
+  // Totais de Sobras
+  const totalSobrasMetros = sobras
+    .filter(s => s.unidadeMedida === 'm')
+    .reduce((acc, s) => acc + Number(s.quantidade || 0), 0);
+
+  const totalSobrasSaidasMetros = sobrasSaidas
+    .filter(s => s.unidadeMedida === 'm')
+    .reduce((acc, s) => acc + Number(s.quantidade || 0), 0);
 
   const diasEvolucao = [];
   const dadosEvolucaoMetros = [];
@@ -640,14 +669,14 @@ const SunnyWearTecidos = () => {
                 <span style={styles.metricSub}>Total em estoque</span>
               </div>
               <div style={styles.metricCard}>
-                <span style={styles.metricLabel}>Itens Cadastrados</span>
-                <strong style={{...styles.metricVal, color: '#059669'}}>{Object.keys(tecidosConsolidados).length}</strong>
-                <span style={styles.metricSub}>Produtos ativos</span>
+                <span style={styles.metricLabel}>Retalhos Disponíveis</span>
+                <strong style={{...styles.metricVal, color: '#9333EA'}}>{totalSobrasMetros.toLocaleString()} m</strong>
+                <span style={styles.metricSub}>Sobras no galpão</span>
               </div>
               <div style={styles.metricCard}>
-                <span style={styles.metricLabel}>Galpões</span>
-                <strong style={{...styles.metricVal, color: '#9333EA'}}>{Object.keys(porLocalizacao).length}</strong>
-                <span style={styles.metricSub}>Áreas monitoradas</span>
+                <span style={styles.metricLabel}>Saída de Sobras</span>
+                <strong style={{...styles.metricVal, color: '#D97706'}}>{totalSobrasSaidasMetros.toLocaleString()} m</strong>
+                <span style={styles.metricSub}>Retalhos reaproveitados</span>
               </div>
               <div style={styles.metricCard}>
                 <span style={styles.metricLabel}>Entradas Hoje</span>
@@ -741,47 +770,6 @@ const SunnyWearTecidos = () => {
                       <span key={idx}>{dia}</span>
                     ))}
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.cardsWaveGrid}>
-              <div style={styles.cardWave}>
-                <div>
-                  <span style={styles.cardWaveLabel}>📥 Fluxo de Entradas <span style={{fontSize: '10px', color: '#64748B'}}>(Aquisições Totais)</span></span>
-                  <strong style={{...styles.cardWaveVal, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
-                  <span style={styles.cardWaveSub}>METRAGEM ADQUIRIDA</span>
-                </div>
-                <div style={styles.waveSvgWrapper}>
-                  <svg viewBox="0 0 150 40" style={{ width: '100%', height: '35px' }}>
-                    <path d="M 0,30 Q 37,10 75,25 T 150,10" fill="none" stroke="#059669" strokeWidth="2.5" />
-                  </svg>
-                </div>
-              </div>
-
-              <div style={styles.cardWave}>
-                <div>
-                  <span style={styles.cardWaveLabel}>📤 Fluxo de Saídas <span style={{fontSize: '10px', color: '#64748B'}}>(Consumo e Baixas)</span></span>
-                  <strong style={{...styles.cardWaveVal, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
-                  <span style={styles.cardWaveSub}>METRAGEM BAIXADA</span>
-                </div>
-                <div style={styles.waveSvgWrapper}>
-                  <svg viewBox="0 0 150 40" style={{ width: '100%', height: '35px' }}>
-                    <path d="M 0,25 Q 40,35 75,20 T 150,5" fill="none" stroke="#DC2626" strokeWidth="2.5" />
-                  </svg>
-                </div>
-              </div>
-
-              <div style={styles.cardWave}>
-                <div>
-                  <span style={styles.cardWaveLabel}>⚖️ Peso Total</span>
-                  <strong style={{...styles.cardWaveVal, color: '#059669'}}>{entradasKg.toLocaleString()} kg</strong>
-                  <span style={styles.cardWaveSub}>PESO ADQUIRIDO</span>
-                </div>
-                <div style={styles.waveSvgWrapper}>
-                  <svg viewBox="0 0 150 40" style={{ width: '100%', height: '35px' }}>
-                    <path d="M 0,20 Q 50,30 100,15 T 150,25" fill="none" stroke="#059669" strokeWidth="2.5" />
-                  </svg>
                 </div>
               </div>
             </div>
@@ -940,7 +928,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>✂️ Cadastro e Consulta de Sobras e Retalhos</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre os pedaços e retalhos que sobraram dos cortes para pesquisar e reaproveitar depois.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre os pedaços que sobraram dos cortes, consulte o estoque e dê baixa (saída) ao reutilizá-los.</p>
             </div>
 
             <form onSubmit={cadastrarSobra} style={styles.formGrid} className="form-grid-responsive">
@@ -987,7 +975,7 @@ const SunnyWearTecidos = () => {
 
             <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>🔎 Retalhos Cadastrados Disponíveis para Reuso</h4>
+                <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>🔎 Retalhos Disponíveis para Reuso</h4>
                 <span style={{ fontSize: '12px', color: '#64748B' }}>Total de sobras: <strong>{sobrasFiltradas.length}</strong></span>
               </div>
 
@@ -1005,7 +993,7 @@ const SunnyWearTecidos = () => {
                     <tr style={styles.thTr}>
                       <th style={styles.th}>Código</th>
                       <th style={styles.th}>Tecido / Cor</th>
-                      <th style={styles.th}>Quantidade Disponível</th>
+                      <th style={styles.th}>Qtd Disponível</th>
                       <th style={styles.th}>Onde Encontrar</th>
                       <th style={styles.th}>Observação</th>
                       <th style={styles.th}>Data</th>
@@ -1029,8 +1017,9 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.observacao || 'N/D'}</span></td>
                           <td style={styles.td}><span style={{ color: '#64748B' }}>{item.data}</span></td>
                           <td style={styles.td}>
-                            <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Sobra">🔲</button>
-                            <button onClick={() => deletarSobra(item.id)} style={styles.btnDeletar} title="Remover retalho usado">🗑️</button>
+                            <button onClick={() => usarSobra(item)} style={styles.btnUsarSobra} title="Dar baixa e usar retalho">✅ Usar</button>
+                            <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
+                            <button onClick={() => deletarSobra(item.id)} style={styles.btnDeletar} title="Excluir">🗑️</button>
                           </td>
                         </tr>
                       ))
@@ -1039,6 +1028,46 @@ const SunnyWearTecidos = () => {
                 </table>
               </div>
             </div>
+
+            {/* HISTÓRICO DE SAÍDAS DE SOBRAS */}
+            <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
+              <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📤 Histórico de Saída de Sobras (Reutilizadas)</h4>
+              <div style={styles.tableResponsive}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr style={styles.thTr}>
+                      <th style={styles.th}>Código</th>
+                      <th style={styles.th}>Tecido / Cor</th>
+                      <th style={styles.th}>Qtd Utilizada</th>
+                      <th style={styles.th}>Local de Origem</th>
+                      <th style={styles.th}>Observação</th>
+                      <th style={styles.th}>Data da Baixa</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sobrasSaidas.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" style={styles.empty}>Nenhuma saída de sobra registrada até o momento.</td>
+                      </tr>
+                    ) : (
+                      sobrasSaidas.map((item) => (
+                        <tr key={item.id} style={styles.tr}>
+                          <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
+                          <td style={styles.td}>
+                            <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
+                          </td>
+                          <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
+                          <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.observacao || 'N/D'}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B' }}>{item.dataBaixa}</span></td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -1471,30 +1500,6 @@ const styles = {
     paddingTop: '8px',
     borderTop: '1px solid #E2E8F0',
   },
-  cardsWaveGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: '16px',
-    marginBottom: '24px',
-  },
-  cardWave: {
-    backgroundColor: 'rgba(255, 255, 255, 0.75)',
-    backdropFilter: 'blur(12px)',
-    padding: '22px',
-    borderRadius: '16px',
-    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04)',
-    border: '1px solid rgba(255, 255, 255, 0.9)',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardWaveLabel: { fontSize: '12px', color: '#0F172A', display: 'block', fontWeight: '700', marginBottom: '8px' },
-  cardWaveVal: { fontSize: '24px', fontWeight: '900', display: 'block', letterSpacing: '-0.5px', marginBottom: '4px' },
-  cardWaveSub: { fontSize: '9px', color: '#64748B', fontWeight: '700', letterSpacing: '0.8px', display: 'block' },
-  waveSvgWrapper: {
-    width: '100px',
-    flexShrink: 0,
-  },
   cardSection: {
     backgroundColor: 'rgba(255, 255, 255, 0.75)',
     backdropFilter: 'blur(12px)',
@@ -1557,6 +1562,17 @@ const styles = {
   td: { padding: '16px 12px', fontSize: '13px', color: '#334155', verticalAlign: 'middle' },
   localBadge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', backgroundColor: '#EFF6FF', color: '#1D4ED8', fontWeight: '700', border: '1px solid #BFDBFE' },
   badge: { padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '800', display: 'inline-block' },
+  btnUsarSobra: {
+    padding: '6px 10px',
+    backgroundColor: '#DEF7EC',
+    color: '#03543F',
+    border: '1px solid #A7F3D0',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    marginRight: '6px',
+    fontSize: '12px',
+    fontWeight: '700',
+  },
   btnQr: {
     padding: '6px 10px',
     backgroundColor: '#F3E8FF',
