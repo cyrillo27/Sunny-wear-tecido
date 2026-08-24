@@ -449,18 +449,29 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // SE O APP FOI ABERTO VIA QR CODE, EXibe APENAS A TELA DE INFORMAÇÃO DO TECIDO
+  // TELA EXCLUSIVA DO QR CODE COM CÁLCULO DA MÉDIA DE PREÇOS
   if (codigoQrUrl) {
     const movimentosDoTecido = listaSeguraCalculos.filter(m => m?.codigo && m.codigo.toLowerCase() === codigoQrUrl.toLowerCase());
     const infoTecido = movimentosDoTecido[movimentosDoTecido.length - 1] || { codigo: codigoQrUrl, nome: 'Tecido não localizado no servidor', cor: '-', localizacao: '-' };
     
     let totalQtd = 0;
+    let somaPrecos = 0;
+    let qtdPrecos = 0;
+
     movimentosDoTecido.forEach(m => {
       const q = Number(m.metros || m.quantidade || 0);
       const t = obterTipo(m);
       if (t === 'entrada') totalQtd += q;
       else if (t === 'saida') totalQtd -= q;
+
+      const p = Number(m.preco);
+      if (!isNaN(p) && p > 0) {
+        somaPrecos += p;
+        qtdPrecos++;
+      }
     });
+
+    const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : Number(infoTecido.preco || 0);
 
     return (
       <div style={styles.qrViewContainer}>
@@ -484,7 +495,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.qrInfoRow}><span>Largura:</span> <strong>{infoTecido.largura ? `${infoTecido.largura}m` : 'Não informada'}</strong></div>
             <div style={styles.qrInfoRow}><span>Galpão / Local:</span> <strong style={{color: '#2563EB'}}>📍 {infoTecido.localizacao || 'N/D'}</strong></div>
             <div style={styles.qrInfoRow}><span>Estoque Atual:</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalQtd} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
-            <div style={styles.qrInfoRow}><span>Valor Unitário:</span> <strong>R$ {Number(infoTecido.preco || 0).toFixed(2)}</strong></div>
+            <div style={styles.qrInfoRow}><span>Valor Unitário Médio:</span> <strong style={{color: '#D97706'}}>R$ {precoMedio.toFixed(2)}</strong></div>
             <div style={styles.qrInfoRow}><span>Fornecedor:</span> <strong>{infoTecido.fornecedor || 'Não informado'}</strong></div>
             <div style={styles.qrInfoRow}><span>Nota Fiscal:</span> <strong>{infoTecido.notafiscal || infoTecido.notaFiscal || 'N/D'}</strong></div>
           </div>
