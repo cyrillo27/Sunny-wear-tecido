@@ -88,8 +88,10 @@ const SunnyWearTecidos = () => {
     return Number(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
   };
   
+  // Função robusta para capturar o tipo de movimento sem falhas de maiúsculas/minúsculas
   const obterTipo = (item) => {
-    return item?.tipomovimento || item?.tipoMovimento || 'entrada';
+    const tipo = item?.tipomovimento || item?.tipoMovimento || 'entrada';
+    return typeof tipo === 'string' ? tipo.toLowerCase().trim() : 'entrada';
   };
 
   const carregarDadosDoServidor = async () => {
@@ -177,7 +179,7 @@ const SunnyWearTecidos = () => {
     setSobras(prev => prev.filter(s => s.id !== id));
   };
 
-  // --- FUNÇÕES DE RESERVA AGORA INTEGRADAS NA NUVEM (API) ---
+  // --- FUNÇÕES DE RESERVA INTEGRADAS NA NUVEM (API) ---
   const cadastrarReserva = async (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
@@ -233,7 +235,7 @@ const SunnyWearTecidos = () => {
         body: JSON.stringify(dadosParaEnviar)
       });
       if (resposta.ok) {
-        alert('📌 Reserva salva no Servidor e deduzida do estoque!');
+        alert('📌 Reserva salva no Servidor e deduzida do estoque livre!');
         setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
         carregarDadosDoServidor();
       } else {
@@ -252,10 +254,8 @@ const SunnyWearTecidos = () => {
     
     setCarregando(true);
     try {
-      // 1. Exclui a reserva do banco
       await fetch(`${API_URL}/${encodeURIComponent(item.id)}`, { method: 'DELETE' });
       
-      // 2. Transforma em saída real
       const dadosSaida = {
         ...item,
         tipoMovimento: 'saida',
@@ -442,7 +442,7 @@ const SunnyWearTecidos = () => {
   const usoTecidos = {};
   const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
 
-  // Cálculos Gerais (Entradas, Saídas e Reservas processados simultaneamente)
+  // Cálculos Gerais (Entradas, Saídas e Reservas)
   listaSeguraCalculos.forEach(m => {
     if (!m || !m.codigo) return;
     const cod = m.codigo.toLowerCase().trim();
@@ -628,7 +628,7 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // TELA EXCLUSIVA DO QR CODE (COM CÁLCULO DE ABATIMENTO DE RESERVAS)
+  // TELA EXCLUSIVA DO QR CODE
   if (codigoQrUrl) {
     const paramCodigoLpo = codigoQrUrl.toLowerCase().trim();
     const paramCorLpo = corQrUrl ? corQrUrl.toLowerCase().trim() : '';
