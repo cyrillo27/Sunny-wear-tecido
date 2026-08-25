@@ -37,7 +37,7 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
-  // Estados locais para Sobras e Saída de Sobras salvos no localStorage
+  // Estados locais para Sobras salvos no localStorage
   const [sobras, setSobras] = useState(() => {
     const salvas = localStorage.getItem('sunny_sobras');
     return salvas ? JSON.parse(salvas) : [];
@@ -45,6 +45,12 @@ const SunnyWearTecidos = () => {
 
   const [sobrasSaidas, setSobrasSaidas] = useState(() => {
     const salvas = localStorage.getItem('sunny_sobras_saidas');
+    return salvas ? JSON.parse(salvas) : [];
+  });
+
+  // Estado local para Reservas salvas no localStorage
+  const [reservas, setReservas] = useState(() => {
+    const salvas = localStorage.getItem('sunny_reservas');
     return salvas ? JSON.parse(salvas) : [];
   });
 
@@ -58,6 +64,18 @@ const SunnyWearTecidos = () => {
     observacao: ''
   });
   const [buscaSobra, setBuscaSobra] = useState('');
+
+  // Formulário para nova Reserva
+  const [formReserva, setFormReserva] = useState({
+    codigo: '',
+    nome: '',
+    cor: '',
+    quantidade: '',
+    unidadeMedida: 'm',
+    localizacao: '',
+    observacao: ''
+  });
+  const [buscaReserva, setBuscaReserva] = useState('');
 
   const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
@@ -100,6 +118,10 @@ const SunnyWearTecidos = () => {
   }, [sobrasSaidas]);
 
   useEffect(() => {
+    localStorage.setItem('sunny_reservas', JSON.stringify(reservas));
+  }, [reservas]);
+
+  useEffect(() => {
     carregarDadosDoServidor();
     const intervalo = setInterval(carregarDadosDoServidor, 5000);
     return () => clearInterval(intervalo);
@@ -137,7 +159,7 @@ const SunnyWearTecidos = () => {
 
     setSobras(prev => [novaSobra, ...prev]);
     setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
-    alert('✂️ Sobra cadastrada com sucesso e exibida na tabela abaixo!');
+    alert('✂️ Sobra cadastrada com sucesso!');
   };
 
   const usarSobra = (item) => {
@@ -151,12 +173,49 @@ const SunnyWearTecidos = () => {
       dataBaixa: new Date().toLocaleDateString('pt-BR')
     };
     setSobrasSaidas(prev => [registroSaida, ...prev]);
-    alert('✅ Retalho utilizado na produção e registrado nas saídas de sobras!');
+    alert('✅ Retalho utilizado na produção!');
   };
 
   const deletarSobra = (id) => {
     if (!window.confirm('Confirma a exclusão deste retalho?')) return;
     setSobras(prev => prev.filter(s => s.id !== id));
+  };
+
+  // Funções de Reserva
+  const cadastrarReserva = (e) => {
+    e.preventDefault();
+    if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
+      alert('Preencha os campos obrigatórios da reserva (Código, Nome, Qtd e Local de Separação).');
+      return;
+    }
+
+    const novaReserva = {
+      id: 'RES-' + Date.now(),
+      codigo: formReserva.codigo,
+      nome: formReserva.nome,
+      cor: formReserva.cor || 'N/D',
+      quantidade: Number(formReserva.quantidade),
+      unidadeMedida: formReserva.unidadeMedida,
+      localizacao: formReserva.localizacao,
+      observacao: formReserva.observacao || 'Separado para uso futuro',
+      data: new Date().toLocaleDateString('pt-BR')
+    };
+
+    setReservas(prev => [novaReserva, ...prev]);
+    setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+    alert('📌 Tecido reservado com sucesso e deduzido do estoque disponível!');
+  };
+
+  const concluirReserva = (item) => {
+    if (!window.confirm(`Confirma o consumo/baixa definitiva desta reserva de ${item.nome} (${item.quantidade} ${item.unidadeMedida})?`)) return;
+    setReservas(prev => prev.filter(r => r.id !== item.id));
+    alert('✅ Reserva consumida na produção com sucesso!');
+  };
+
+  const cancelarReserva = (id) => {
+    if (!window.confirm('Confirma o cancelamento desta reserva (o tecido voltará para o estoque livre)?')) return;
+    setReservas(prev => prev.filter(r => r.id !== id));
+    alert('🔄 Reserva cancelada e tecido retornado ao estoque disponível.');
   };
 
   const executarBuscaSaida = () => {
@@ -360,7 +419,14 @@ const SunnyWearTecidos = () => {
     .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const estoqueMetros = entradasMetros - saidasMetros;
+  // Total de reservas em metros
+  const totalReservasMetros = reservas
+    .filter(r => r.unidadeMedida === 'm')
+    .reduce((acc, r) => acc + Number(r.quantidade || 0), 0);
+
+  // Estoque bruto e estoque disponível (tirando as reservas)
+  const estoqueBrutoMetros = entradasMetros - saidasMetros;
+  const estoqueDisponivelMetros = estoqueBrutoMetros - totalReservasMetros;
 
   const totalSobrasMetros = sobras
     .filter(s => s.unidadeMedida === 'm')
@@ -417,7 +483,7 @@ const SunnyWearTecidos = () => {
   const pontosPath = valoresGraficoAtual.map((val, idx) => `${idx === 0 ? 'M' : 'L'} ${getX(idx)},${getY(val)}`).join(' ');
   const areaPath = `${pontosPath} L ${getX(6)},160 L ${getX(0)},160 Z`;
 
-  // NORMALIZAÇÃO DOS GALPÕES PARA SOMAR MESMO COM DIFERENÇAS DE ACENTUAÇÃO OU MAIÚSCULAS
+  // Normalização dos galpões
   const porLocalizacao = listaSeguraCalculos.reduce((acc, m) => {
     if (!m) return acc;
     const rawLoc = m.localizacao || 'Não definido';
@@ -464,7 +530,18 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // TELA EXCLUSIVA DO QR CODE (FOCADA NO CÓDIGO + COR ESPECÍFICA)
+  const reservasFiltradas = reservas.filter(r => {
+    const termo = buscaReserva.toLowerCase();
+    return (
+      (r.codigo || '').toLowerCase().includes(termo) ||
+      (r.nome || '').toLowerCase().includes(termo) ||
+      (r.cor || '').toLowerCase().includes(termo) ||
+      (r.localizacao || '').toLowerCase().includes(termo) ||
+      (r.observacao || '').toLowerCase().includes(termo)
+    );
+  });
+
+  // TELA EXCLUSIVA DO QR CODE
   if (codigoQrUrl) {
     const movimentosDoTecido = listaSeguraCalculos.filter(m => {
       const mesmoCod = m?.codigo && m.codigo.toLowerCase() === codigoQrUrl.toLowerCase();
@@ -586,7 +663,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v2.5 GLASS</span>
+            <span style={styles.versionBadge}>v2.6 GLASS</span>
           </div>
         </div>
 
@@ -608,6 +685,12 @@ const SunnyWearTecidos = () => {
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'saida' ? styles.sidebarLinkActive : {}) }}
           >
             📤 Registrar Saída
+          </button>
+          <button 
+            onClick={() => { setAbaAtiva('reservas'); setMenuMobileAberto(false); }} 
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'reservas' ? styles.sidebarLinkActive : {}) }}
+          >
+            📌 Reservas de Tecidos
           </button>
           <button 
             onClick={() => { setAbaAtiva('sobras'); setMenuMobileAberto(false); }} 
@@ -660,19 +743,19 @@ const SunnyWearTecidos = () => {
           <div>
             <div style={styles.metricsGrid}>
               <div style={styles.metricCard}>
-                <span style={styles.metricLabel}>Metragem Total</span>
-                <strong style={{...styles.metricVal, color: '#2563EB'}}>{estoqueMetros.toLocaleString()} m</strong>
-                <span style={styles.metricSub}>Total em estoque</span>
+                <span style={styles.metricLabel}>Estoque Disponível</span>
+                <strong style={{...styles.metricVal, color: '#2563EB'}}>{estoqueDisponivelMetros.toLocaleString()} m</strong>
+                <span style={styles.metricSub}>Livre para uso (já sem reservas)</span>
+              </div>
+              <div style={styles.metricCard}>
+                <span style={styles.metricLabel}>Tecidos Reservados</span>
+                <strong style={{...styles.metricVal, color: '#D97706'}}>{totalReservasMetros.toLocaleString()} m</strong>
+                <span style={styles.metricSub}>Separado para uso futuro</span>
               </div>
               <div style={styles.metricCard}>
                 <span style={styles.metricLabel}>Retalhos Disponíveis</span>
                 <strong style={{...styles.metricVal, color: '#9333EA'}}>{totalSobrasMetros.toLocaleString()} m</strong>
                 <span style={styles.metricSub}>Sobras no galpão</span>
-              </div>
-              <div style={styles.metricCard}>
-                <span style={styles.metricLabel}>Saída de Sobras</span>
-                <strong style={{...styles.metricVal, color: '#D97706'}}>{totalSobrasSaidasMetros.toLocaleString()} m</strong>
-                <span style={styles.metricSub}>Retalhos reaproveitados</span>
               </div>
               <div style={styles.metricCard}>
                 <span style={styles.metricLabel}>Entradas Hoje</span>
@@ -917,6 +1000,114 @@ const SunnyWearTecidos = () => {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* TELA DE RESERVAS DE TECIDOS */}
+        {abaAtiva === 'reservas' && (
+          <div style={styles.cardSection}>
+            <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📌 Cadastro e Consulta de Reservas</h3>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro, informando a quantidade e o local exato onde a reserva ficará guardada.</p>
+            </div>
+
+            <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Código do Tecido *</label>
+                <input type="text" placeholder="Ex: TEC-001" value={formReserva.codigo} onChange={(e) => setFormReserva({...formReserva, codigo: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome do Tecido *</label>
+                <input type="text" placeholder="Ex: Malha Canelada" value={formReserva.nome} onChange={(e) => setFormReserva({...formReserva, nome: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Cor *</label>
+                <input type="text" placeholder="Ex: Azul Marinho" value={formReserva.cor} onChange={(e) => setFormReserva({...formReserva, cor: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Local Onde a Reserva Vai Ficar Guardada *</label>
+                <input type="text" placeholder="Ex: Prateleira de Separação / Mesa 2" value={formReserva.localizacao} onChange={(e) => setFormReserva({...formReserva, localizacao: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px', gridColumn: '1 / -1'}}>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Quantidade Reservada *</label>
+                  <input type="number" step="0.01" placeholder="Ex: 50" value={formReserva.quantidade} onChange={(e) => setFormReserva({...formReserva, quantidade: e.target.value})} style={styles.input} required />
+                </div>
+                <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Unidade</label>
+                  <select value={formReserva.unidadeMedida} onChange={(e) => setFormReserva({...formReserva, unidadeMedida: e.target.value})} style={styles.input}>
+                    <option value="m">Metros (m)</option>
+                    <option value="kg">Quilos (kg)</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{gridColumn: '1 / -1'}}>
+                <label style={styles.formLabel}>Observação / Destino (Opcional)</label>
+                <input type="text" placeholder="Ex: Separado para o lote de vestidos da próxima semana" value={formReserva.observacao} onChange={(e) => setFormReserva({...formReserva, observacao: e.target.value})} style={styles.input} />
+              </div>
+
+              <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
+                <button type="submit" style={{...styles.button, background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff'}}>
+                  📌 Salvar Reserva (Retirar do Estoque Disponível)
+                </button>
+              </div>
+            </form>
+
+            <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 Lista de Tecidos Reservados Atualmente</h4>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>Total de reservas: <strong>{reservasFiltradas.length}</strong></span>
+              </div>
+
+              <input 
+                type="text" 
+                placeholder="Pesquisar reserva por nome, cor, código, local ou observação..." 
+                value={buscaReserva} 
+                onChange={(e) => setBuscaReserva(e.target.value)} 
+                style={styles.inputFull}
+              />
+
+              <div style={styles.tableResponsive}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr style={styles.thTr}>
+                      <th style={styles.th}>Código</th>
+                      <th style={styles.th}>Tecido / Cor</th>
+                      <th style={styles.th}>Qtd Reservada</th>
+                      <th style={styles.th}>Local Guardado</th>
+                      <th style={styles.th}>Observação / Destino</th>
+                      <th style={styles.th}>Data</th>
+                      <th style={styles.th}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reservasFiltradas.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" style={styles.empty}>Nenhuma reserva registrada no momento.</td>
+                      </tr>
+                    ) : (
+                      reservasFiltradas.map((item) => (
+                        <tr key={item.id} style={styles.tr}>
+                          <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
+                          <td style={styles.td}>
+                            <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} (<span style={{color: '#2563EB'}}>{item.cor}</span>)</div>
+                          </td>
+                          <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
+                          <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.observacao || 'N/D'}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B' }}>{item.data}</span></td>
+                          <td style={styles.td}>
+                            <button onClick={() => concluirReserva(item)} style={styles.btnUsarSobra} title="Consumir / Dar baixa definitiva">✅ Usar</button>
+                            <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Reserva">🔲</button>
+                            <button onClick={() => cancelarReserva(item.id)} style={styles.btnDeletar} title="Cancelar reserva e devolver ao estoque">🗑️ Cancelar</button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1178,7 +1369,7 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {/* MODAL DO QR CODE CONECTADO AO APP (COM CÓDIGO E COR ESPECÍFICA) */}
+      {/* MODAL DO QR CODE CONECTADO AO APP */}
       {qrSelecionado && (
         <div style={styles.modalOverlay} onClick={() => setQrSelecionado(null)}>
           <div style={{...styles.modalContent, alignItems: 'center'}} onClick={(e) => e.stopPropagation()}>
