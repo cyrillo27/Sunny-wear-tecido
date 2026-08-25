@@ -37,7 +37,6 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
-  // Sobras mantidas no local
   const [sobras, setSobras] = useState(() => {
     const salvas = localStorage.getItem('sunny_sobras');
     return salvas ? JSON.parse(salvas) : [];
@@ -48,7 +47,6 @@ const SunnyWearTecidos = () => {
     return salvas ? JSON.parse(salvas) : [];
   });
 
-  // Reservas mantidas de forma robusta no localStorage
   const [reservas, setReservas] = useState(() => {
     const salvas = localStorage.getItem('sunny_reservas');
     return salvas ? JSON.parse(salvas) : [];
@@ -65,7 +63,6 @@ const SunnyWearTecidos = () => {
   });
   const [buscaSobra, setBuscaSobra] = useState('');
 
-  // Formulário para nova Reserva
   const [formReserva, setFormReserva] = useState({
     codigo: '',
     nome: '',
@@ -81,13 +78,23 @@ const SunnyWearTecidos = () => {
 
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
 
+  // Função para padronizar textos e evitar erros de comparação (espaços, acentos, maiúsculas)
+  const normalizarTexto = (str) => {
+    if (!str) return '';
+    return String(str)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  };
+
   const obterMinimo = (item) => {
     return Number(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
   };
   
   const obterTipo = (item) => {
     const tipo = item?.tipomovimento || item?.tipoMovimento || 'entrada';
-    return typeof tipo === 'string' ? tipo.toLowerCase().trim() : 'entrada';
+    return normalizarTexto(tipo);
   };
 
   const carregarDadosDoServidor = async () => {
@@ -179,11 +186,11 @@ const SunnyWearTecidos = () => {
     setSobras(prev => prev.filter(s => s.id !== id));
   };
 
-  // --- GERENCIAMENTO DE RESERVAS LOCAL (ESTÁVEL E PRECISO) ---
+  // --- GERENCIAMENTO DE RESERVAS ---
   const cadastrarReserva = (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
-      alert('Preencha os campos obrigatórios da reserva (Código, Nome, Qtd e Local).');
+      alert('Preencha os campos obrigatórios da reserva.');
       return;
     }
 
@@ -191,13 +198,11 @@ const SunnyWearTecidos = () => {
     const corLimpa = (formReserva.cor || 'N/D').trim();
     const qtdReserva = Number(formReserva.quantidade);
 
-    // Calcula estoque bruto total disponível para o tecido/cor
     let brutoTotal = 0;
     movimentacoes.forEach(m => {
       if (!m || !m.codigo) return;
-      const cCod = m.codigo.trim().toLowerCase();
-      const cCor = (m.cor || 'N/D').trim().toLowerCase();
-      if (cCod === codigoLimpo.toLowerCase() && cCor === corLimpa.toLowerCase()) {
+      if (normalizarTexto(m.codigo) === normalizarTexto(codigoLimpo) && 
+          normalizarTexto(m.cor || 'N/D') === normalizarTexto(corLimpa)) {
         const q = Number(m.metros || m.quantidade || 0);
         const t = obterTipo(m);
         if (t === 'entrada') brutoTotal += q;
@@ -205,12 +210,10 @@ const SunnyWearTecidos = () => {
       }
     });
 
-    // Soma reservas já cadastradas para este tecido/cor
     let reservadoTotal = 0;
     reservas.forEach(r => {
-      const rCod = r.codigo.trim().toLowerCase();
-      const rCor = (r.cor || 'N/D').trim().toLowerCase();
-      if (rCod === codigoLimpo.toLowerCase() && rCor === corLimpa.toLowerCase()) {
+      if (normalizarTexto(r.codigo) === normalizarTexto(codigoLimpo) && 
+          normalizarTexto(r.cor || 'N/D') === normalizarTexto(corLimpa)) {
         reservadoTotal += Number(r.quantidade || r.metros || 0);
       }
     });
@@ -236,7 +239,7 @@ const SunnyWearTecidos = () => {
 
     setReservas(prev => [novaReserva, ...prev]);
     setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
-    alert('📌 Reserva salva com sucesso e abatida do estoque livre!');
+    alert('📌 Reserva salva com sucesso e abatida do estoque!');
   };
 
   const concluirReserva = async (item) => {
@@ -244,10 +247,8 @@ const SunnyWearTecidos = () => {
     
     setCarregando(true);
     try {
-      // 1. Remove da lista de reservas local
       setReservas(prev => prev.filter(r => r.id !== item.id));
 
-      // 2. Envia a saída real para o backend
       const dadosSaida = {
         tipoMovimento: 'saida',
         codigo: item.codigo,
@@ -284,15 +285,15 @@ const SunnyWearTecidos = () => {
   };
 
   const executarBuscaSaida = () => {
-    const termo = termoBuscaSaida.toLowerCase().trim();
+    const termo = normalizarTexto(termoBuscaSaida);
     if (!termo) {
       alert('Informe um código ou nome para realizar a busca.');
       return;
     }
     const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
     const tecidoEncontrado = listaSegura.find(
-      m => (m?.codigo && m.codigo.toLowerCase().includes(termo)) || 
-           (m?.nome && m.nome.toLowerCase().includes(termo))
+      m => normalizarTexto(m?.codigo).includes(termo) || 
+           normalizarTexto(m?.nome).includes(termo)
     );
 
     if (tecidoEncontrado) {
@@ -430,8 +431,8 @@ const SunnyWearTecidos = () => {
   // 1. Processa Entradas e Saídas do Servidor
   listaSeguraCalculos.forEach(m => {
     if (!m || !m.codigo) return;
-    const cod = m.codigo.toLowerCase().trim();
-    const cor = (m.cor || 'ndef').toLowerCase().trim();
+    const cod = normalizarTexto(m.codigo);
+    const cor = normalizarTexto(m.cor || 'ndef');
     const chave = `${cod}_${cor}`;
     const qtd = Number(m.metros || m.quantidade || 0);
     const minReg = obterMinimo(m);
@@ -466,11 +467,11 @@ const SunnyWearTecidos = () => {
     if (minReg > 0) tecidosConsolidados[chave].minimo = minReg;
   });
 
-  // 2. Abate as Reservas locais do Estoque Bruto
+  // 2. Abate as Reservas locais
   reservas.forEach(r => {
     if (!r || !r.codigo) return;
-    const cod = r.codigo.toLowerCase().trim();
-    const cor = (r.cor || 'ndef').toLowerCase().trim();
+    const cod = normalizarTexto(r.codigo);
+    const cor = normalizarTexto(r.cor || 'ndef');
     const chave = `${cod}_${cor}`;
     const qtd = Number(r.quantidade || r.metros || 0);
 
@@ -489,7 +490,6 @@ const SunnyWearTecidos = () => {
     tecidosConsolidados[chave].totalReservas += qtd;
   });
 
-  // Calcula o Estoque Livre (Bruto - Reservas)
   Object.keys(tecidosConsolidados).forEach(chave => {
     const item = tecidosConsolidados[chave];
     item.total = item.totalBruto - item.totalReservas;
@@ -523,10 +523,6 @@ const SunnyWearTecidos = () => {
     .filter(s => s.unidadeMedida === 'm')
     .reduce((acc, s) => acc + Number(s.quantidade || 0), 0);
 
-  const totalSobrasSaidasMetros = sobrasSaidas
-    .filter(s => s.unidadeMedida === 'm')
-    .reduce((acc, s) => acc + Number(s.quantidade || 0), 0);
-
   const diasEvolucao = [];
   const dadosEvolucaoMetros = [];
   const dadosEvolucaoKg = [];
@@ -545,7 +541,7 @@ const SunnyWearTecidos = () => {
       const mData = (m.data || '').split('T')[0];
       if (mData && mData <= dataStrYYYYMMDD) {
         const qtd = Number(m.metros || m.quantidade || 0);
-        const un = (m.unidademedida || m.unidadeMedida || 'm').toLowerCase();
+        const un = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
         const tipoM = obterTipo(m);
 
         if (tipoM === 'entrada') {
@@ -573,18 +569,17 @@ const SunnyWearTecidos = () => {
   const pontosPath = valoresGraficoAtual.map((val, idx) => `${idx === 0 ? 'M' : 'L'} ${getX(idx)},${getY(val)}`).join(' ');
   const areaPath = `${pontosPath} L ${getX(6)},160 L ${getX(0)},160 Z`;
 
-  // Normalização dos galpões
   const porLocalizacao = listaSeguraCalculos.reduce((acc, m) => {
     if (!m) return acc;
     const rawLoc = m.localizacao || 'Não definido';
-    const chaveLoc = rawLoc.trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const chaveLoc = normalizarTexto(rawLoc).toUpperCase();
 
     if (!acc[chaveLoc]) {
       acc[chaveLoc] = { nomeExibicao: rawLoc.trim().toUpperCase(), m: 0, kg: 0 };
     }
 
     const qtd = Number(m.metros || m.quantidade || 0);
-    const unidade = (m.unidademedida || m.unidadeMedida || 'm').toLowerCase();
+    const unidade = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
     const tipoM = obterTipo(m);
     
     if (tipoM === 'entrada') {
@@ -599,46 +594,46 @@ const SunnyWearTecidos = () => {
 
   const movFiltradas = listaSeguraCalculos.filter(m => {
     if (!m) return false; 
-    const termo = busca.toLowerCase();
-    const codigo = (m.codigo || '').toLowerCase();
-    const nome = (m.nome || '').toLowerCase();
-    const cor = (m.cor || '').toLowerCase();
-    const localizacao = (m.localizacao || '').toLowerCase();
-    const fornecedor = (m.fornecedor || '').toLowerCase();
-    const notaFiscal = (m.notafiscal || m.notaFiscal || '').toLowerCase();
+    const termo = normalizarTexto(busca);
+    const codigo = normalizarTexto(m.codigo);
+    const nome = normalizarTexto(m.nome);
+    const cor = normalizarTexto(m.cor);
+    const localizacao = normalizarTexto(m.localizacao);
+    const fornecedor = normalizarTexto(m.fornecedor);
+    const notaFiscal = normalizarTexto(m.notafiscal || m.notaFiscal);
     return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || fornecedor.includes(termo) || notaFiscal.includes(termo);
   });
 
   const sobrasFiltradas = sobras.filter(s => {
-    const termo = buscaSobra.toLowerCase();
+    const termo = normalizarTexto(buscaSobra);
     return (
-      (s.codigo || '').toLowerCase().includes(termo) ||
-      (s.nome || '').toLowerCase().includes(termo) ||
-      (s.cor || '').toLowerCase().includes(termo) ||
-      (s.localizacao || '').toLowerCase().includes(termo) ||
-      (s.observacao || '').toLowerCase().includes(termo)
+      normalizarTexto(s.codigo).includes(termo) ||
+      normalizarTexto(s.nome).includes(termo) ||
+      normalizarTexto(s.cor).includes(termo) ||
+      normalizarTexto(s.localizacao).includes(termo) ||
+      normalizarTexto(s.observacao).includes(termo)
     );
   });
 
   const reservasFiltradas = reservas.filter(r => {
-    const termo = buscaReserva.toLowerCase();
+    const termo = normalizarTexto(buscaReserva);
     return (
-      (r.codigo || '').toLowerCase().includes(termo) ||
-      (r.nome || '').toLowerCase().includes(termo) ||
-      (r.cor || '').toLowerCase().includes(termo) ||
-      (r.localizacao || '').toLowerCase().includes(termo) ||
-      (r.observacao || '').toLowerCase().includes(termo)
+      normalizarTexto(r.codigo).includes(termo) ||
+      normalizarTexto(r.nome).includes(termo) ||
+      normalizarTexto(r.cor).includes(termo) ||
+      normalizarTexto(r.localizacao).includes(termo) ||
+      normalizarTexto(r.observacao).includes(termo)
     );
   });
 
   // TELA EXCLUSIVA DO QR CODE
   if (codigoQrUrl) {
-    const paramCodigoLpo = codigoQrUrl.toLowerCase().trim();
-    const paramCorLpo = corQrUrl ? corQrUrl.toLowerCase().trim() : '';
+    const paramCodigoLpo = normalizarTexto(codigoQrUrl);
+    const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
 
     const movimentosDoTecido = listaSeguraCalculos.filter(m => {
-      const mesmoCod = m?.codigo && m.codigo.toLowerCase().trim() === paramCodigoLpo;
-      const mesmaCor = paramCorLpo ? (m?.cor && m.cor.toLowerCase().trim() === paramCorLpo) : true;
+      const mesmoCod = normalizarTexto(m?.codigo) === paramCodigoLpo;
+      const mesmaCor = paramCorLpo ? (normalizarTexto(m?.cor) === paramCorLpo) : true;
       return mesmoCod && mesmaCor;
     });
 
@@ -665,13 +660,11 @@ const SunnyWearTecidos = () => {
         qtdPrecos++;
       }
     });
-
-    const corAlvoCalculo = infoTecido.cor ? infoTecido.cor.toLowerCase().trim() : paramCorLpo;
     
     let totalReservaTecido = 0;
     reservas.forEach(r => {
-      const rCod = r?.codigo ? r.codigo.toLowerCase().trim() : '';
-      const rCor = r?.cor ? r.cor.toLowerCase().trim() : '';
+      const rCod = normalizarTexto(r?.codigo);
+      const rCor = normalizarTexto(r?.cor);
       const mesmaCod = rCod === paramCodigoLpo;
       const mesmaCor = paramCorLpo ? (rCor === paramCorLpo) : true;
       if (mesmaCod && mesmaCor) {
@@ -1123,7 +1116,7 @@ const SunnyWearTecidos = () => {
           </div>
         )}
 
-        {/* TELA DE RESERVAS DE TECIDOS COM ABATIMENTO CORRETO */}
+        {/* TELA DE RESERVAS */}
         {abaAtiva === 'reservas' && (
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
