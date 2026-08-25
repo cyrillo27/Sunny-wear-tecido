@@ -185,13 +185,40 @@ const SunnyWearTecidos = () => {
       return;
     }
 
+    const codigoLimpo = formReserva.codigo.trim();
+    const corLimpa = (formReserva.cor || 'N/D').trim();
+    const qtdReserva = Number(formReserva.quantidade);
+
+    // Validação inteligente: Verifica se há estoque livre suficiente antes de reservar
+    let brutoTotal = 0;
+    let reservadoTotal = 0;
+
+    movimentacoes.forEach(m => {
+      if (!m || !m.codigo) return;
+      const cCod = m.codigo.trim().toLowerCase();
+      const cCor = (m.cor || 'N/D').trim().toLowerCase();
+      if (cCod === codigoLimpo.toLowerCase() && cCor === corLimpa.toLowerCase()) {
+        const q = Number(m.metros || m.quantidade || 0);
+        const t = obterTipo(m);
+        if (t === 'entrada') brutoTotal += q;
+        else if (t === 'saida') brutoTotal -= q;
+        else if (t === 'reserva') reservadoTotal += q;
+      }
+    });
+
+    const estoqueLivreAtual = brutoTotal - reservadoTotal;
+    if (qtdReserva > estoqueLivreAtual) {
+      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido/cor é de apenas ${estoqueLivreAtual}.`);
+      return;
+    }
+
     const dadosParaEnviar = {
       tipoMovimento: 'reserva',
-      codigo: formReserva.codigo,
+      codigo: codigoLimpo,
       nome: formReserva.nome,
-      cor: formReserva.cor || 'N/D',
-      quantidade: Number(formReserva.quantidade),
-      metros: Number(formReserva.quantidade),
+      cor: corLimpa,
+      quantidade: qtdReserva,
+      metros: qtdReserva,
       unidadeMedida: formReserva.unidadeMedida,
       localizacao: formReserva.localizacao,
       observacao: formReserva.observacao || 'Separado para uso futuro',
@@ -566,7 +593,6 @@ const SunnyWearTecidos = () => {
 
   const movFiltradas = listaSeguraCalculos.filter(m => {
     if (!m) return false; 
-    // Filtramos para não mostrar as reservas no histórico geral, só na aba de reservas
     if (obterTipo(m) === 'reserva') return false; 
 
     const termo = busca.toLowerCase();
@@ -602,7 +628,7 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // TELA EXCLUSIVA DO QR CODE (COM PROTEÇÃO DE ESPAÇOS E RESGATE DA NUVEM)
+  // TELA EXCLUSIVA DO QR CODE (COM CÁLCULO DE ABATIMENTO DE RESERVAS)
   if (codigoQrUrl) {
     const paramCodigoLpo = codigoQrUrl.toLowerCase().trim();
     const paramCorLpo = corQrUrl ? corQrUrl.toLowerCase().trim() : '';
@@ -613,7 +639,6 @@ const SunnyWearTecidos = () => {
       return mesmoCod && mesmaCor;
     });
 
-    // Pega as info baseadas no último registro que não seja reserva (para mostrar a foto certa)
     const registrosVisuais = movimentosDoTecido.filter(m => obterTipo(m) !== 'reserva');
     const infoTecido = registrosVisuais[registrosVisuais.length - 1] || movimentosDoTecido[movimentosDoTecido.length - 1] || { 
       codigo: codigoQrUrl, 
@@ -678,7 +703,7 @@ const SunnyWearTecidos = () => {
             
             <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
 
-            <div style={styles.qrInfoRow}><span>Total de Tecido:</span> <strong style={{color: '#0F172A'}}>{totalQtdBruta} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Total de Tecido (Bruto):</span> <strong style={{color: '#0F172A'}}>{totalQtdBruta} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
             <div style={styles.qrInfoRow}><span>Total da Reserva:</span> <strong style={{color: '#D97706'}}>- {totalReservaTecido} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
             <div style={styles.qrInfoRow}><span>Total Disponível (Livre):</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalDisponivelTecido} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
 
@@ -1094,12 +1119,12 @@ const SunnyWearTecidos = () => {
           </div>
         )}
 
-        {/* TELA DE RESERVAS DE TECIDOS AGORA NA NUVEM */}
+        {/* TELA DE RESERVAS DE TECIDOS COM ABATIMENTO */}
         {abaAtiva === 'reservas' && (
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📌 Cadastro e Consulta de Reservas</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro, informando a quantidade e o local exato onde a reserva ficará guardada.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre automaticamente.</p>
             </div>
 
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
