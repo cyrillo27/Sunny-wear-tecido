@@ -78,7 +78,6 @@ const SunnyWearTecidos = () => {
 
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
 
-  // Função para padronizar textos e evitar erros de comparação (espaços, acentos, maiúsculas)
   const normalizarTexto = (str) => {
     if (!str) return '';
     return String(str)
@@ -345,8 +344,9 @@ const SunnyWearTecidos = () => {
     setCarregando(true);
     try {
       let resposta;
-      if (idEditando) {
-        resposta = await fetch(`${API_URL}/${encodeURIComponent(idEditando)}`, {
+      const targetId = idEditando || form.id || form._id;
+      if (targetId) {
+        resposta = await fetch(`${API_URL}/${encodeURIComponent(targetId)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dadosParaEnviar)
@@ -360,7 +360,7 @@ const SunnyWearTecidos = () => {
       }
 
       if (resposta.ok) {
-        alert(idEditando ? 'Registro atualizado com sucesso!' : 'Lançamento efetuado com sucesso!');
+        alert(targetId ? 'Registro atualizado com sucesso!' : 'Lançamento efetuado com sucesso!');
         setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' });
         setTermoBuscaSaida('');
         setIdEditando(null);
@@ -379,16 +379,18 @@ const SunnyWearTecidos = () => {
   };
 
   const iniciarEdicao = (item) => {
-    if (!item || item.id === undefined || item.id === null) {
+    const itemId = item.id || item._id;
+    if (!item || itemId === undefined || itemId === null) {
       alert('Erro: ID do registro inválido.');
       return;
     }
-    setIdEditando(item.id);
+    setIdEditando(itemId);
     const qtdItem = item.quantidade || item.metros || '';
     const minItem = Number(item.estoqueminimo !== undefined ? item.estoqueminimo : (item.estoqueMinimo !== undefined ? item.estoqueMinimo : 0));
     const tipoItem = obterTipo(item);
     
     setForm({
+      ...item,
       tipoMovimento: tipoItem,
       codigo: item.codigo || '',
       nome: item.nome || '',
@@ -408,7 +410,12 @@ const SunnyWearTecidos = () => {
     setAbaAtiva(tipoItem === 'saida' ? 'saida' : 'entrada');
   };
 
-  const deletarItem = async (id) => {
+  const deletarItem = async (itemOrId) => {
+    const id = typeof itemOrId === 'object' ? (itemOrId.id || itemOrId._id) : itemOrId;
+    if (!id) {
+      alert('Erro: ID inválido para exclusão.');
+      return;
+    }
     if (!window.confirm('Confirma a exclusão definitiva deste registro do sistema?')) return;
     try {
       const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -428,7 +435,6 @@ const SunnyWearTecidos = () => {
   const usoTecidos = {};
   const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
 
-  // 1. Processa Entradas e Saídas do Servidor
   listaSeguraCalculos.forEach(m => {
     if (!m || !m.codigo) return;
     const cod = normalizarTexto(m.codigo);
@@ -467,7 +473,6 @@ const SunnyWearTecidos = () => {
     if (minReg > 0) tecidosConsolidados[chave].minimo = minReg;
   });
 
-  // 2. Abate as Reservas locais
   reservas.forEach(r => {
     if (!r || !r.codigo) return;
     const cod = normalizarTexto(r.codigo);
@@ -1199,7 +1204,7 @@ const SunnyWearTecidos = () => {
                       </tr>
                     ) : (
                       reservasFiltradas.map((item) => (
-                        <tr key={item.id} style={styles.tr}>
+                        <tr key={item.id || item._id} style={styles.tr}>
                           <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
                           <td style={styles.td}>
                             <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} (<span style={{color: '#2563EB'}}>{item.cor}</span>)</div>
@@ -1210,7 +1215,7 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}>
                             <button onClick={() => concluirReserva(item)} style={styles.btnUsarSobra} title="Consumir / Dar baixa definitiva">✅ Usar</button>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Reserva">🔲</button>
-                            <button onClick={() => cancelarReserva(item.id)} style={styles.btnDeletar} title="Cancelar reserva e devolver ao estoque">🗑️</button>
+                            <button onClick={() => cancelarReserva(item.id || item._id)} style={styles.btnDeletar} title="Cancelar reserva e devolver ao estoque">🗑️</button>
                           </td>
                         </tr>
                       ))
@@ -1305,7 +1310,7 @@ const SunnyWearTecidos = () => {
                       </tr>
                     ) : (
                       sobrasFiltradas.map((item) => (
-                        <tr key={item.id} style={styles.tr}>
+                        <tr key={item.id || item._id} style={styles.tr}>
                           <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
                           <td style={styles.td}>
                             <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
@@ -1317,7 +1322,7 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}>
                             <button onClick={() => usarSobra(item)} style={styles.btnUsarSobra} title="Dar baixa e usar retalho">✅ Usar</button>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
-                            <button onClick={() => deletarSobra(item.id)} style={styles.btnDeletar} title="Excluir">🗑️</button>
+                            <button onClick={() => deletarSobra(item.id || item._id)} style={styles.btnDeletar} title="Excluir">🗑️</button>
                           </td>
                         </tr>
                       ))
@@ -1349,7 +1354,7 @@ const SunnyWearTecidos = () => {
                       </tr>
                     ) : (
                       sobrasSaidas.map((item) => (
-                        <tr key={item.id} style={styles.tr}>
+                        <tr key={item.id || item._id} style={styles.tr}>
                           <td style={styles.td}><strong style={{ color: '#0F172A' }}>{item.codigo}</strong></td>
                           <td style={styles.td}>
                             <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} ({item.cor})</div>
@@ -1406,6 +1411,7 @@ const SunnyWearTecidos = () => {
                     </tr>
                   ) : (
                     movFiltradas.map((item) => {
+                      const itemId = item.id || item._id;
                       const precoUnit = Number(item.preco) || 0;
                       const qtd = Number(item.metros || item.quantidade || 0);
                       const unidade = item.unidademedida || item.unidadeMedida || 'm';
@@ -1426,7 +1432,7 @@ const SunnyWearTecidos = () => {
                       }
 
                       return (
-                        <tr key={item.id} style={styles.tr}>
+                        <tr key={itemId} style={styles.tr}>
                           <td style={styles.td}>
                             {item.foto ? (
                               <img src={item.foto} alt="Tecido" style={styles.tableImgClickable} title="Clique para ampliar" onClick={() => setFotoSelecionada(item.foto)} />
@@ -1458,7 +1464,7 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
                             <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
-                            <button onClick={() => deletarItem(item.id)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
+                            <button onClick={() => deletarItem(itemId)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
                           </td>
                         </tr>
                       );
