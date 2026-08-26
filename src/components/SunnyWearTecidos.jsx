@@ -23,7 +23,6 @@ const SunnyWearTecidos = () => {
 
   const [abaAtiva, setAbaAtiva] = useState('dashboard');
   const [movimentacoes, setMovimentacoes] = useState([]);
-  const [reservas, setReservas] = useState([]); // Agora inicia vazio para carregar do banco de dados (Render)
   const [carregando, setCarregando] = useState(false);
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
 
@@ -63,6 +62,16 @@ const SunnyWearTecidos = () => {
     try {
       if (typeof window === 'undefined') return [];
       const salvas = localStorage.getItem('sunny_sobras_saidas');
+      return salvas ? JSON.parse(salvas) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [reservas, setReservas] = useState(() => {
+    try {
+      if (typeof window === 'undefined') return [];
+      const salvas = localStorage.getItem('sunny_reservas');
       return salvas ? JSON.parse(salvas) : [];
     } catch (e) {
       return [];
@@ -113,25 +122,18 @@ const SunnyWearTecidos = () => {
     return normalizarTexto(tipo);
   };
 
-  // Ajustado para dividir as respostas do banco: o que é Reserva vai para as reservas, o resto para o Histórico.
   const carregarDadosDoServidor = async () => {
     try {
       const resposta = await fetch(`${API_URL}?_t=${Date.now()}`);
       if (resposta.ok) {
         const dados = await resposta.json();
         if (Array.isArray(dados)) {
-          const movsNormais = dados.filter(d => obterTipo(d) !== 'reserva');
-          const reservasDoBanco = dados.filter(d => obterTipo(d) === 'reserva');
-          
-          setMovimentacoes(movsNormais);
-          setReservas(reservasDoBanco);
+          setMovimentacoes(dados);
         } else {
           setMovimentacoes([]);
-          setReservas([]);
         }
       } else {
         setMovimentacoes([]);
-        setReservas([]);
       }
     } catch (erro) {
       console.error('Erro ao conectar com o back-end:', erro);
@@ -150,6 +152,12 @@ const SunnyWearTecidos = () => {
       localStorage.setItem('sunny_sobras_saidas', JSON.stringify(sobrasSaidas));
     } catch (e) {}
   }, [sobrasSaidas]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sunny_reservas', JSON.stringify(reservas));
+    } catch (e) {}
+  }, [reservas]);
 
   useEffect(() => {
     carregarDadosDoServidor();
@@ -209,8 +217,7 @@ const SunnyWearTecidos = () => {
     setSobras(prev => prev.filter(s => s.id !== id));
   };
 
-  // Ajustado para enviar a Reserva para o Banco de Dados do Render
-  const cadastrarReserva = async (e) => {
+  const cadastrarReserva = (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
       alert('Preencha os campos obrigatórios da reserva.');
@@ -248,7 +255,7 @@ const SunnyWearTecidos = () => {
     }
 
     const novaReserva = {
-      tipoMovimento: 'reserva',
+      id: 'RESERVA-' + Date.now(),
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -257,41 +264,20 @@ const SunnyWearTecidos = () => {
       unidadeMedida: formReserva.unidadeMedida,
       localizacao: formReserva.localizacao,
       observacao: formReserva.observacao || 'Separado para uso futuro',
-      data: new Date().toISOString()
+      data: new Date().toLocaleDateString('pt-BR')
     };
 
-    setCarregando(true);
-    try {
-      const resposta = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(novaReserva)
-      });
-      if (resposta.ok) {
-        setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
-        alert('📌 Reserva salva com sucesso no Banco de Dados (Render) e abatida do estoque!');
-        carregarDadosDoServidor(); // Recarrega os dados para atualizar a tela automaticamente
-      } else {
-        alert('Erro ao processar reserva no servidor central.');
-      }
-    } catch (erro) {
-      console.error(erro);
-      alert('Erro de conexão ao tentar salvar a reserva no banco.');
-    } finally {
-      setCarregando(false);
-    }
+    setReservas(prev => [novaReserva, ...prev]);
+    setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+    alert('📌 Reserva salva com sucesso e abatida do estoque!');
   };
 
-  // Ajustado para apagar a reserva antiga do banco e gerar a Saída.
   const concluirReserva = async (item) => {
     if (!window.confirm(`Confirma o consumo/baixa definitiva desta reserva de ${item.nome}?`)) return;
     
     setCarregando(true);
     try {
-      const idReserva = item.id || item._id;
-      if (idReserva) {
-        await fetch(`${API_URL}/${encodeURIComponent(idReserva)}`, { method: 'DELETE' });
-      }
+      setReservas(prev => prev.filter(r => r.id !== item.id));
 
       const dadosSaida = {
         tipoMovimento: 'saida',
@@ -322,20 +308,10 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Ajustado para cancelar apagando diretamente no banco de dados.
-  const cancelarReserva = async (id) => {
+  const cancelarReserva = (id) => {
     if (!window.confirm('Confirma o cancelamento desta reserva (o tecido voltará para o estoque livre)?')) return;
-    setCarregando(true);
-    try {
-      await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
-      carregarDadosDoServidor();
-    } catch (erro) {
-      console.error(erro);
-      alert('Erro ao cancelar reserva no servidor.');
-    } finally {
-      setCarregando(false);
-    }
+    setReservas(prev => prev.filter(r => r.id !== id));
+    alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
   };
 
   const executarBuscaSaida = () => {
@@ -1177,7 +1153,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📌 Cadastro e Consulta de Reservas</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre automaticamente e salva no banco de dados.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre automaticamente.</p>
             </div>
 
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
