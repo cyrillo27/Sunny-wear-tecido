@@ -662,6 +662,7 @@ const SunnyWearTecidos = () => {
     );
   });
 
+  // ========== BLOCO DO QR CODE CORRIGIDO ==========
   if (codigoQrUrl) {
     const paramCodigoLpo = normalizarTexto(codigoQrUrl);
     const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
@@ -696,10 +697,11 @@ const SunnyWearTecidos = () => {
       }
     });
     
+    // CORREÇÃO APLICADA: Varre as reservas de forma correta lidando com cores vazias ou nulas
     let totalReservaTecido = 0;
     reservas.forEach(r => {
       const rCod = normalizarTexto(r?.codigo);
-      const rCor = normalizarTexto(r?.cor);
+      const rCor = normalizarTexto(r?.cor || 'N/D');
       const mesmaCod = rCod === paramCodigoLpo;
       const mesmaCor = paramCorLpo ? (rCor === paramCorLpo) : true;
       if (mesmaCod && mesmaCor) {
@@ -707,9 +709,11 @@ const SunnyWearTecidos = () => {
       }
     });
 
+    // Subtração aplicada!
     const totalDisponivelTecido = totalQtdBruta - totalReservaTecido;
     const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : Number(infoTecido.preco || 0);
     const valorTotalEstoque = totalDisponivelTecido * precoMedio;
+    const unidadeMed = infoTecido.unidademedida || infoTecido.unidadeMedida || 'm';
 
     return (
       <div style={styles.qrViewContainer}>
@@ -735,9 +739,9 @@ const SunnyWearTecidos = () => {
             
             <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
 
-            <div style={styles.qrInfoRow}><span>Total de Tecido (Bruto):</span> <strong style={{color: '#0F172A'}}>{totalQtdBruta} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
-            <div style={styles.qrInfoRow}><span>Total da Reserva:</span> <strong style={{color: '#D97706'}}>- {totalReservaTecido} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
-            <div style={styles.qrInfoRow}><span>Total Disponível (Livre):</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalDisponivelTecido} {infoTecido.unidademedida || infoTecido.unidadeMedida || 'm'}</strong></div>
+            <div style={styles.qrInfoRow}><span>Total de Tecido (Bruto):</span> <strong style={{color: '#0F172A'}}>{totalQtdBruta} {unidadeMed}</strong></div>
+            <div style={styles.qrInfoRow}><span>Total da Reserva:</span> <strong style={{color: '#D97706'}}>- {totalReservaTecido} {unidadeMed}</strong></div>
+            <div style={styles.qrInfoRow}><span>Total Disponível (Livre):</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalDisponivelTecido} {unidadeMed}</strong></div>
 
             <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
 
@@ -764,6 +768,7 @@ const SunnyWearTecidos = () => {
       </div>
     );
   }
+  // ========== FIM DO BLOCO DO QR CODE CORRIGIDO ==========
 
   return (
     <div style={styles.appLayout} className="app-layout-container">
