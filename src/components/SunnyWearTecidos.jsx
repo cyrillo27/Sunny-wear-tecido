@@ -68,6 +68,16 @@ const SunnyWearTecidos = () => {
     }
   });
 
+  const [reservas, setReservas] = useState(() => {
+    try {
+      if (typeof window === 'undefined') return [];
+      const salvas = localStorage.getItem('sunny_reservas');
+      return salvas ? JSON.parse(salvas) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [formSobra, setFormSobra] = useState({
     codigo: '',
     nome: '',
@@ -144,6 +154,12 @@ const SunnyWearTecidos = () => {
   }, [sobrasSaidas]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem('sunny_reservas', JSON.stringify(reservas));
+    } catch (e) {}
+  }, [reservas]);
+
+  useEffect(() => {
     carregarDadosDoServidor();
     const intervalo = setInterval(carregarDadosDoServidor, 5000);
     return () => clearInterval(intervalo);
@@ -201,7 +217,7 @@ const SunnyWearTecidos = () => {
     setSobras(prev => prev.filter(s => s.id !== id));
   };
 
-  const cadastrarReserva = async (e) => {
+  const cadastrarReserva = (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
       alert('Preencha os campos obrigatórios da reserva.');
@@ -213,7 +229,6 @@ const SunnyWearTecidos = () => {
     const qtdReserva = Number(formReserva.quantidade);
 
     let brutoTotal = 0;
-    let reservadoTotal = 0;
     movimentacoes.forEach(m => {
       if (!m || !m.codigo) return;
       if (normalizarTexto(m.codigo) === normalizarTexto(codigoLimpo) && 
@@ -222,7 +237,14 @@ const SunnyWearTecidos = () => {
         const t = obterTipo(m);
         if (t === 'entrada') brutoTotal += q;
         else if (t === 'saida') brutoTotal -= q;
-        else if (t === 'reserva') reservadoTotal += q;
+      }
+    });
+
+    let reservadoTotal = 0;
+    reservas.forEach(r => {
+      if (normalizarTexto(r.codigo) === normalizarTexto(codigoLimpo) && 
+          normalizarTexto(r.cor || 'N/D') === normalizarTexto(corLimpa)) {
+        reservadoTotal += Number(r.quantidade || r.metros || 0);
       }
     });
 
@@ -232,8 +254,8 @@ const SunnyWearTecidos = () => {
       return;
     }
 
-    const dadosReserva = {
-      tipoMovimento: 'reserva',
+    const novaReserva = {
+      id: 'RESERVA-' + Date.now(),
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -245,27 +267,9 @@ const SunnyWearTecidos = () => {
       data: new Date().toLocaleDateString('pt-BR')
     };
 
-    setCarregando(true);
-    try {
-      const resposta = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosReserva)
-      });
-
-      if (resposta.ok) {
-        alert('📌 Reserva salva com sucesso e abatida do estoque!');
-        setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
-        await carregarDadosDoServidor();
-      } else {
-        alert('Erro ao salvar reserva no servidor.');
-      }
-    } catch (erro) {
-      console.error(erro);
-      alert('Erro de conexão ao salvar reserva.');
-    } finally {
-      setCarregando(false);
-    }
+    setReservas(prev => [novaReserva, ...prev]);
+    setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+    alert('📌 Reserva salva com sucesso e abatida do estoque!');
   };
 
   const concluirReserva = async (item) => {
@@ -273,8 +277,7 @@ const SunnyWearTecidos = () => {
     
     setCarregando(true);
     try {
-      const itemId = item.id || item._id;
-      await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
+      setReservas(prev => prev.filter(r => r.id !== item.id));
 
       const dadosSaida = {
         tipoMovimento: 'saida',
@@ -286,7 +289,7 @@ const SunnyWearTecidos = () => {
         unidadeMedida: item.unidadeMedida || 'm',
         localizacao: item.localizacao,
         observacao: 'Baixa de reserva: ' + (item.observacao || ''),
-        data: new Date().toLocaleDateString('pt-BR')
+        data: new Date().toISOString()
       };
 
       await fetch(API_URL, {
@@ -305,24 +308,10 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  const cancelarReserva = async (item) => {
+  const cancelarReserva = (id) => {
     if (!window.confirm('Confirma o cancelamento desta reserva (o tecido voltará para o estoque livre)?')) return;
-    setCarregando(true);
-    try {
-      const itemId = item.id || item._id;
-      const resposta = await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
-      if (resposta.ok) {
-        alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
-        carregarDadosDoServidor();
-      } else {
-        alert('Erro ao cancelar reserva.');
-      }
-    } catch (erro) {
-      console.error(erro);
-      alert('Erro de conexão.');
-    } finally {
-      setCarregando(false);
-    }
+    setReservas(prev => prev.filter(r => r.id !== id));
+    alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
   };
 
   const executarBuscaSaida = () => {
@@ -503,8 +492,6 @@ const SunnyWearTecidos = () => {
       tecidosConsolidados[chave].totalBruto += qtd;
     } else if (tipoM === 'saida') {
       tecidosConsolidados[chave].totalBruto -= qtd;
-    } else if (tipoM === 'reserva') {
-      tecidosConsolidados[chave].totalReservas += qtd;
     }
 
     if (!usoTecidos[chave]) {
@@ -515,6 +502,28 @@ const SunnyWearTecidos = () => {
     }
 
     if (minReg > 0) tecidosConsolidados[chave].minimo = minReg;
+  });
+
+  reservas.forEach(r => {
+    if (!r || !r.codigo) return;
+    const cod = normalizarTexto(r.codigo);
+    const cor = normalizarTexto(r.cor || 'ndef');
+    const chave = `${cod}_${cor}`;
+    const qtd = Number(r.quantidade || r.metros || 0);
+
+    if (!tecidosConsolidados[chave]) {
+      tecidosConsolidados[chave] = {
+        codigo: r.codigo,
+        nome: r.nome,
+        cor: r.cor,
+        minimo: 0,
+        unidade: r.unidadeMedida || 'm',
+        totalBruto: 0,
+        totalReservas: 0,
+        total: 0
+      };
+    }
+    tecidosConsolidados[chave].totalReservas += qtd;
   });
 
   Object.keys(tecidosConsolidados).forEach(chave => {
@@ -539,9 +548,9 @@ const SunnyWearTecidos = () => {
     .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const totalReservasMetros = listaSeguraCalculos
-    .filter(m => obterTipo(m) === 'reserva' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
-    .reduce((acc, m) => acc + Number(m.quantidade || m.metros || 0), 0);
+  const totalReservasMetros = reservas
+    .filter(r => (r?.unidadeMedida === 'm' || !r?.unidadeMedida))
+    .reduce((acc, r) => acc + Number(r.quantidade || r.metros || 0), 0);
 
   const estoqueBrutoMetros = entradasMetros - saidasMetros;
   const estoqueDisponivelMetros = estoqueBrutoMetros - totalReservasMetros;
@@ -628,8 +637,7 @@ const SunnyWearTecidos = () => {
     const localizacao = normalizarTexto(m.localizacao);
     const fornecedor = normalizarTexto(m.fornecedor);
     const notaFiscal = normalizarTexto(m.notafiscal || m.notaFiscal);
-    const observacao = normalizarTexto(m.observacao);
-    return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || fornecedor.includes(termo) || notaFiscal.includes(termo) || observacao.includes(termo);
+    return codigo.includes(termo) || nome.includes(termo) || cor.includes(termo) || localizacao.includes(termo) || fornecedor.includes(termo) || notaFiscal.includes(termo);
   });
 
   const sobrasFiltradas = sobras.filter(s => {
@@ -643,15 +651,14 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  const reservasFiltradas = listaSeguraCalculos.filter(m => {
-    if (obterTipo(m) !== 'reserva') return false;
+  const reservasFiltradas = reservas.filter(r => {
     const termo = normalizarTexto(buscaReserva);
     return (
-      normalizarTexto(m.codigo).includes(termo) ||
-      normalizarTexto(m.nome).includes(termo) ||
-      normalizarTexto(m.cor).includes(termo) ||
-      normalizarTexto(m.localizacao).includes(termo) ||
-      normalizarTexto(m.observacao).includes(termo)
+      normalizarTexto(r.codigo).includes(termo) ||
+      normalizarTexto(r.nome).includes(termo) ||
+      normalizarTexto(r.cor).includes(termo) ||
+      normalizarTexto(r.localizacao).includes(termo) ||
+      normalizarTexto(r.observacao).includes(termo)
     );
   });
 
@@ -674,7 +681,6 @@ const SunnyWearTecidos = () => {
     };
     
     let totalQtdBruta = 0;
-    let totalReservaTecido = 0;
     let somaPrecos = 0;
     let qtdPrecos = 0;
 
@@ -683,7 +689,6 @@ const SunnyWearTecidos = () => {
       const t = obterTipo(m);
       if (t === 'entrada') totalQtdBruta += q;
       else if (t === 'saida') totalQtdBruta -= q;
-      else if (t === 'reserva') totalReservaTecido += q;
 
       const p = Number(m.preco);
       if (!isNaN(p) && p > 0) {
@@ -692,6 +697,19 @@ const SunnyWearTecidos = () => {
       }
     });
     
+    // CORREÇÃO APLICADA: Varre as reservas de forma correta lidando com cores vazias ou nulas
+    let totalReservaTecido = 0;
+    reservas.forEach(r => {
+      const rCod = normalizarTexto(r?.codigo);
+      const rCor = normalizarTexto(r?.cor || 'N/D');
+      const mesmaCod = rCod === paramCodigoLpo;
+      const mesmaCor = paramCorLpo ? (rCor === paramCorLpo) : true;
+      if (mesmaCod && mesmaCor) {
+        totalReservaTecido += Number(r.quantidade || r.metros || 0);
+      }
+    });
+
+    // Subtração aplicada!
     const totalDisponivelTecido = totalQtdBruta - totalReservaTecido;
     const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : Number(infoTecido.preco || 0);
     const valorTotalEstoque = totalDisponivelTecido * precoMedio;
@@ -1140,7 +1158,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📌 Cadastro e Consulta de Reservas</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre automaticamente e registra na base.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre automaticamente.</p>
             </div>
 
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
@@ -1180,7 +1198,7 @@ const SunnyWearTecidos = () => {
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
                 <button type="submit" disabled={carregando} style={{...styles.button, background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff'}}>
-                  {carregando ? 'Salvando...' : '📌 Salvar Reserva (Abater do Estoque Livre)'}
+                  📌 Salvar Reserva (Abater do Estoque Livre)
                 </button>
               </div>
             </form>
@@ -1223,13 +1241,13 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}>
                             <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} (<span style={{color: '#2563EB'}}>{item.cor}</span>)</div>
                           </td>
-                          <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade || item.metros} {item.unidadeMedida || 'm'}</strong></td>
+                          <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                           <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.observacao || 'N/D'}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => concluirReserva(item)} style={styles.btnUsarSobra} title="Consumir / Dar baixa definitiva">✅ Usar</button>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Reserva">🔲</button>
-                            <button onClick={() => cancelarReserva(item)} style={styles.btnDeletar} title="Cancelar reserva e devolver ao estoque">🗑️</button>
+                            <button onClick={() => cancelarReserva(item.id || item._id)} style={styles.btnDeletar} title="Cancelar reserva e devolver ao estoque">🗑️</button>
                           </td>
                         </tr>
                       ))
@@ -1442,10 +1460,6 @@ const SunnyWearTecidos = () => {
                         badgeBg = '#FDE8E8';
                         badgeColor = '#9B1C1C';
                         badgeText = '📤 Saída';
-                      } else if (tipoMovimentoNoBanco === 'reserva') {
-                        badgeBg = '#FEF3C7';
-                        badgeColor = '#B45309';
-                        badgeText = '📌 Reserva';
                       }
 
                       return (
@@ -1464,28 +1478,23 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}>
                             <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} <span style={{color: '#2563EB'}}>({item.cor})</span></div>
                             {item.largura ? <div style={{fontSize: '11px', color: '#2563EB', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
-                            {tipoMovimentoNoBanco === 'reserva' && item.observacao && <div style={{fontSize: '11px', color: '#D97706', fontStyle: 'italic'}}>{item.observacao}</div>}
                           </td>
                           <td style={styles.td}>
-                            <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || (tipoMovimentoNoBanco === 'reserva' ? 'Separação' : 'Não informado')}</div>
+                            <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || 'Não informado'}</div>
                             <div style={{fontSize: '11px', color: '#64748B'}}>NF: {nf || 'N/D'}</div>
                           </td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                           <td style={styles.td}>
-                            <strong style={{ color: tipoMovimentoNoBanco === 'reserva' ? '#D97706' : '#0F172A' }}>{qtd} {unidade}</strong>
+                            <strong style={{ color: '#0F172A' }}>{qtd} {unidade}</strong>
                             <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
-                            {tipoMovimentoNoBanco !== 'reserva' && (
-                              <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
-                                R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
-                              </div>
-                            )}
+                            <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
+                              R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
+                            </div>
                           </td>
                           <td style={styles.td}><span style={{color: '#64748B'}}>{item.data}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
-                            {tipoMovimentoNoBanco !== 'reserva' && (
-                              <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
-                            )}
+                            <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
                             <button onClick={() => deletarItem(itemId)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
                           </td>
                         </tr>
