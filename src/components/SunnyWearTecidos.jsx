@@ -48,6 +48,36 @@ const SunnyWearTecidos = () => {
     largura: ''
   });
 
+  const [sobras, setSobras] = useState(() => {
+    try {
+      if (typeof window === 'undefined') return [];
+      const salvas = localStorage.getItem('sunny_sobras');
+      return salvas ? JSON.parse(salvas) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [sobrasSaidas, setSobrasSaidas] = useState(() => {
+    try {
+      if (typeof window === 'undefined') return [];
+      const salvas = localStorage.getItem('sunny_sobras_saidas');
+      return salvas ? JSON.parse(salvas) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [reservas, setReservas] = useState(() => {
+    try {
+      if (typeof window === 'undefined') return [];
+      const salvas = localStorage.getItem('sunny_reservas');
+      return salvas ? JSON.parse(salvas) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [formSobra, setFormSobra] = useState({
     codigo: '',
     nome: '',
@@ -112,6 +142,24 @@ const SunnyWearTecidos = () => {
   };
 
   useEffect(() => {
+    try {
+      localStorage.setItem('sunny_sobras', JSON.stringify(sobras));
+    } catch (e) {}
+  }, [sobras]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sunny_sobras_saidas', JSON.stringify(sobrasSaidas));
+    } catch (e) {}
+  }, [sobrasSaidas]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sunny_reservas', JSON.stringify(reservas));
+    } catch (e) {}
+  }, [reservas]);
+
+  useEffect(() => {
     carregarDadosDoServidor();
     const intervalo = setInterval(carregarDadosDoServidor, 5000);
     return () => clearInterval(intervalo);
@@ -128,19 +176,7 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Separação de listas vindas da nuvem
-  const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
-  
-  const reservas = listaSeguraCalculos.filter(m => (m.observacao || '').startsWith('[RESERVA]'));
-  const sobras = listaSeguraCalculos.filter(m => (m.observacao || '').startsWith('[SOBRA]'));
-  const sobrasSaidas = listaSeguraCalculos.filter(m => (m.observacao || '').startsWith('[BAIXA_SOBRA]'));
-  const movimentosEstoque = listaSeguraCalculos.filter(m => {
-    const obs = m.observacao || '';
-    return !obs.startsWith('[RESERVA]') && !obs.startsWith('[SOBRA]') && !obs.startsWith('[BAIXA_SOBRA]');
-  });
-
-  // Cadastrar Sobra na Nuvem sem erro
-  const cadastrarSobra = async (e) => {
+  const cadastrarSobra = (e) => {
     e.preventDefault();
     if (!formSobra.codigo || !formSobra.nome || !formSobra.quantidade || !formSobra.localizacao) {
       alert('Preencha os campos obrigatórios da sobra.');
@@ -148,97 +184,40 @@ const SunnyWearTecidos = () => {
     }
 
     const novaSobra = {
-      tipoMovimento: 'saida',
-      codigo: formSobra.codigo.trim(),
+      id: 'SOBRA-' + Date.now(),
+      codigo: formSobra.codigo,
       nome: formSobra.nome,
-      cor: (formSobra.cor || 'N/D').trim(),
+      cor: formSobra.cor || 'N/D',
       quantidade: Number(formSobra.quantidade),
-      metros: Number(formSobra.quantidade),
       unidadeMedida: formSobra.unidadeMedida,
       localizacao: formSobra.localizacao,
-      observacao: `[SOBRA] ${formSobra.observacao || 'Retalho / Sobra'}`,
+      observacao: formSobra.observacao || 'Retalho / Sobra',
       data: new Date().toLocaleDateString('pt-BR')
     };
 
-    setCarregando(true);
-    try {
-      const resposta = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(novaSobra)
-      });
-      if (resposta.ok) {
-        alert('✂️ Retalho salvo na nuvem com sucesso!');
-        setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
-        await carregarDadosDoServidor();
-      } else {
-        alert('Erro ao salvar retalho.');
-      }
-    } catch (erro) {
-      console.error(erro);
-      alert('Erro de conexão com o servidor.');
-    } finally {
-      setCarregando(false);
-    }
+    setSobras(prev => [novaSobra, ...prev]);
+    setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+    alert('✂️ Sobra cadastrada com sucesso!');
   };
 
-  const usarSobra = async (item) => {
-    const itemId = item.id || item._id;
+  const usarSobra = (item) => {
     if (!window.confirm(`Confirma a baixa e reuso deste retalho de ${item.nome} (${item.quantidade} ${item.unidadeMedida})?`)) return;
-    
-    setCarregando(true);
-    try {
-      await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
-
-      const registroBaixa = {
-        tipoMovimento: 'saida',
-        codigo: item.codigo,
-        nome: item.nome,
-        cor: item.cor,
-        quantidade: item.quantidade,
-        metros: item.quantidade,
-        unidadeMedida: item.unidadeMedida,
-        localizacao: item.localizacao,
-        observacao: `[BAIXA_SOBRA] ${item.observacao || ''}`,
-        data: new Date().toLocaleDateString('pt-BR')
-      };
-
-      await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registroBaixa)
-      });
-
-      alert('✅ Retalho utilizado na produção!');
-      await carregarDadosDoServidor();
-    } catch (erro) {
-      console.error(erro);
-      alert('Erro ao processar baixa do retalho.');
-    } finally {
-      setCarregando(false);
-    }
+    setSobras(prev => prev.filter(s => s.id !== item.id));
+    const registroSaida = {
+      ...item,
+      id: 'SAIDA-SOBRA-' + Date.now(),
+      dataBaixa: new Date().toLocaleDateString('pt-BR')
+    };
+    setSobrasSaidas(prev => [registroSaida, ...prev]);
+    alert('✅ Retalho utilizado na produção!');
   };
 
-  const deletarItemGenerico = async (itemOrId) => {
-    const id = typeof itemOrId === 'object' ? (itemOrId.id || itemOrId._id) : itemOrId;
-    if (!id) return;
-    if (!window.confirm('Confirma a exclusão definitiva deste registro?')) return;
-    try {
-      const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      if (resposta.ok) {
-        alert('Registro excluído com sucesso.');
-        carregarDadosDoServidor();
-      } else {
-        alert('Erro ao excluir o registro.');
-      }
-    } catch (erro) {
-      console.error(erro);
-      alert('Erro de conexão.');
-    }
+  const deletarSobra = (id) => {
+    if (!window.confirm('Confirma a exclusão deste retalho?')) return;
+    setSobras(prev => prev.filter(s => s.id !== id));
   };
 
-  // Cadastrar Reserva na Nuvem sem erro
-  const cadastrarReserva = async (e) => {
+  const cadastrarReserva = (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
       alert('Preencha os campos obrigatórios da reserva.');
@@ -250,7 +229,7 @@ const SunnyWearTecidos = () => {
     const qtdReserva = Number(formReserva.quantidade);
 
     let brutoTotal = 0;
-    movimentosEstoque.forEach(m => {
+    movimentacoes.forEach(m => {
       if (!m || !m.codigo) return;
       if (normalizarTexto(m.codigo) === normalizarTexto(codigoLimpo) && 
           normalizarTexto(m.cor || 'N/D') === normalizarTexto(corLimpa)) {
@@ -276,7 +255,7 @@ const SunnyWearTecidos = () => {
     }
 
     const novaReserva = {
-      tipoMovimento: 'saida',
+      id: 'RESERVA-' + Date.now(),
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -284,41 +263,22 @@ const SunnyWearTecidos = () => {
       metros: qtdReserva,
       unidadeMedida: formReserva.unidadeMedida,
       localizacao: formReserva.localizacao,
-      observacao: `[RESERVA] ${formReserva.observacao || 'Separado para uso futuro'}`,
+      observacao: formReserva.observacao || 'Separado para uso futuro',
       data: new Date().toLocaleDateString('pt-BR')
     };
 
-    setCarregando(true);
-    try {
-      const resposta = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(novaReserva)
-      });
-      if (resposta.ok) {
-        alert('📌 Reserva salva na nuvem com sucesso e abatida do estoque!');
-        setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
-        await carregarDadosDoServidor();
-      } else {
-        alert('Erro ao salvar reserva.');
-      }
-    } catch (erro) {
-      console.error(erro);
-      alert('Erro de conexão.');
-    } finally {
-      setCarregando(false);
-    }
+    setReservas(prev => [novaReserva, ...prev]);
+    setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+    alert('📌 Reserva salva com sucesso e abatida do estoque!');
   };
 
   const concluirReserva = async (item) => {
-    const itemId = item.id || item._id;
     if (!window.confirm(`Confirma o consumo/baixa definitiva desta reserva de ${item.nome}?`)) return;
     
     setCarregando(true);
     try {
-      await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
+      setReservas(prev => prev.filter(r => r.id !== item.id));
 
-      const obsLimpa = (item.observacao || '').replace('[RESERVA]', '').trim();
       const dadosSaida = {
         tipoMovimento: 'saida',
         codigo: item.codigo,
@@ -328,7 +288,7 @@ const SunnyWearTecidos = () => {
         metros: item.quantidade || item.metros,
         unidadeMedida: item.unidadeMedida || 'm',
         localizacao: item.localizacao,
-        observacao: 'Baixa de reserva: ' + obsLimpa,
+        observacao: 'Baixa de reserva: ' + (item.observacao || ''),
         data: new Date().toISOString()
       };
 
@@ -339,7 +299,7 @@ const SunnyWearTecidos = () => {
       });
 
       alert('✅ Reserva consumida e registrada como saída na base!');
-      await carregarDadosDoServidor();
+      carregarDadosDoServidor();
     } catch (erro) {
       console.error(erro);
       alert('Erro ao concluir reserva.');
@@ -348,10 +308,10 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  const cancelarReserva = async (itemOrId) => {
-    const id = typeof itemOrId === 'object' ? (itemOrId.id || itemOrId._id) : itemOrId;
+  const cancelarReserva = (id) => {
     if (!window.confirm('Confirma o cancelamento desta reserva (o tecido voltará para o estoque livre)?')) return;
-    await deletarItemGenerico(id);
+    setReservas(prev => prev.filter(r => r.id !== id));
+    alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
   };
 
   const executarBuscaSaida = () => {
@@ -360,7 +320,8 @@ const SunnyWearTecidos = () => {
       alert('Informe um código ou nome para realizar a busca.');
       return;
     }
-    const tecidoEncontrado = movimentosEstoque.find(
+    const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
+    const tecidoEncontrado = listaSegura.find(
       m => normalizarTexto(m?.codigo).includes(termo) || 
            normalizarTexto(m?.nome).includes(termo)
     );
@@ -480,10 +441,32 @@ const SunnyWearTecidos = () => {
     setAbaAtiva(tipoItem === 'saida' ? 'saida' : 'entrada');
   };
 
+  const deletarItem = async (itemOrId) => {
+    const id = typeof itemOrId === 'object' ? (itemOrId.id || itemOrId._id) : itemOrId;
+    if (!id) {
+      alert('Erro: ID inválido para exclusão.');
+      return;
+    }
+    if (!window.confirm('Confirma a exclusão definitiva deste registro do sistema?')) return;
+    try {
+      const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (resposta.ok) {
+        alert('Registro excluído com sucesso.');
+        carregarDadosDoServidor();
+      } else {
+        alert('Erro ao excluir o registro.');
+      }
+    } catch (erro) {
+      console.error('Erro de conexão:', erro);
+      alert('Erro de conexão com o servidor.');
+    }
+  };
+
   const tecidosConsolidados = {};
   const usoTecidos = {};
+  const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
 
-  movimentosEstoque.forEach(m => {
+  listaSeguraCalculos.forEach(m => {
     if (!m || !m.codigo) return;
     const cod = normalizarTexto(m.codigo);
     const cor = normalizarTexto(m.cor || 'ndef');
@@ -557,11 +540,11 @@ const SunnyWearTecidos = () => {
 
   const maxUsoTop = topTecidosMaisUsados.length > 0 ? Math.max(...topTecidosMaisUsados.map(t => t.totalUso)) : 100;
 
-  const entradasMetros = movimentosEstoque
+  const entradasMetros = listaSeguraCalculos
     .filter(m => obterTipo(m) === 'entrada' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
-  const saidasMetros = movimentosEstoque
+  const saidasMetros = listaSeguraCalculos
     .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
 
@@ -590,7 +573,7 @@ const SunnyWearTecidos = () => {
     let mTotal = 0;
     let kgTotal = 0;
 
-    movimentosEstoque.forEach(m => {
+    listaSeguraCalculos.forEach(m => {
       const mData = (m.data || '').split('T')[0];
       if (mData && mData <= dataStrYYYYMMDD) {
         const qtd = Number(m.metros || m.quantidade || 0);
@@ -622,7 +605,7 @@ const SunnyWearTecidos = () => {
   const pontosPath = valoresGraficoAtual.map((val, idx) => `${idx === 0 ? 'M' : 'L'} ${getX(idx)},${getY(val)}`).join(' ');
   const areaPath = `${pontosPath} L ${getX(6)},160 L ${getX(0)},160 Z`;
 
-  const porLocalizacao = movimentosEstoque.reduce((acc, m) => {
+  const porLocalizacao = listaSeguraCalculos.reduce((acc, m) => {
     if (!m) return acc;
     const rawLoc = m.localizacao || 'Não definido';
     const chaveLoc = normalizarTexto(rawLoc).toUpperCase();
@@ -645,7 +628,7 @@ const SunnyWearTecidos = () => {
     return acc;
   }, {});
 
-  const movFiltradas = movimentosEstoque.filter(m => {
+  const movFiltradas = listaSeguraCalculos.filter(m => {
     if (!m) return false; 
     const termo = normalizarTexto(busca);
     const codigo = normalizarTexto(m.codigo);
@@ -679,12 +662,12 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // ========== BLOCO DO QR CODE (COM LEITURA DA NUVEM) ==========
+  // ========== BLOCO DO QR CODE COM SUBTRAÇÃO DE RESERVAS E RETALHOS ==========
   if (codigoQrUrl) {
     const paramCodigoLpo = normalizarTexto(codigoQrUrl);
     const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
 
-    const movimentosDoTecido = movimentosEstoque.filter(m => {
+    const movimentosDoTecido = listaSeguraCalculos.filter(m => {
       const mesmoCod = normalizarTexto(m?.codigo) === paramCodigoLpo;
       const mesmaCor = paramCorLpo ? (normalizarTexto(m?.cor) === paramCorLpo) : true;
       return mesmoCod && mesmaCor;
@@ -714,7 +697,7 @@ const SunnyWearTecidos = () => {
       }
     });
     
-    // Calcula as Reservas da Nuvem
+    // Calcula as Reservas do tecido/cor
     let totalReservaTecido = 0;
     reservas.forEach(r => {
       const rCod = normalizarTexto(r?.codigo);
@@ -726,7 +709,7 @@ const SunnyWearTecidos = () => {
       }
     });
 
-    // Calcula os Retalhos/Sobras da Nuvem
+    // Calcula os Retalhos/Sobras do tecido/cor
     let totalSobraTecido = 0;
     sobras.forEach(s => {
       const sCod = normalizarTexto(s?.codigo);
@@ -798,7 +781,7 @@ const SunnyWearTecidos = () => {
       </div>
     );
   }
-  // ========== FIM DO BLOCO DO QR CODE ==========
+  // ========== FIM DO BLOCO DO QR CODE COM SUBTRAÇÃO ==========
 
   return (
     <div style={styles.appLayout} className="app-layout-container">
@@ -845,7 +828,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v2.9 CLOUD</span>
+            <span style={styles.versionBadge}>v2.7 CLOUD</span>
           </div>
         </div>
 
@@ -1228,7 +1211,7 @@ const SunnyWearTecidos = () => {
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
                 <button type="submit" disabled={carregando} style={{...styles.button, background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff'}}>
-                  📌 Salvar Reserva na Nuvem
+                  📌 Salvar Reserva (Abater do Estoque Livre)
                 </button>
               </div>
             </form>
@@ -1333,7 +1316,7 @@ const SunnyWearTecidos = () => {
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
                 <button type="submit" style={{...styles.button, background: 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)', color: '#fff'}}>
-                  💾 Salvar Retalho na Nuvem
+                  💾 Salvar Retalho no Estoque
                 </button>
               </div>
             </form>
@@ -1384,7 +1367,7 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}>
                             <button onClick={() => usarSobra(item)} style={styles.btnUsarSobra} title="Dar baixa e usar retalho">✅ Usar</button>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
-                            <button onClick={() => deletarItemGenerico(item.id || item._id)} style={styles.btnDeletar} title="Excluir">🗑️</button>
+                            <button onClick={() => deletarSobra(item.id || item._id)} style={styles.btnDeletar} title="Excluir">🗑️</button>
                           </td>
                         </tr>
                       ))
@@ -1406,13 +1389,12 @@ const SunnyWearTecidos = () => {
                       <th style={styles.th}>Local de Origem</th>
                       <th style={styles.th}>Observação</th>
                       <th style={styles.th}>Data da Baixa</th>
-                      <th style={styles.th}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sobrasSaidas.length === 0 ? (
                       <tr>
-                        <td colSpan="7" style={styles.empty}>Nenhuma saída de sobra registrada até o momento.</td>
+                        <td colSpan="6" style={styles.empty}>Nenhuma saída de sobra registrada até o momento.</td>
                       </tr>
                     ) : (
                       sobrasSaidas.map((item) => (
@@ -1424,10 +1406,7 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                           <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.observacao || 'N/D'}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B' }}>{item.data}</span></td>
-                          <td style={styles.td}>
-                            <button onClick={() => deletarItemGenerico(item.id || item._id)} style={styles.btnDeletar} title="Excluir histórico">🗑️</button>
-                          </td>
+                          <td style={styles.td}><span style={{ color: '#64748B' }}>{item.dataBaixa}</span></td>
                         </tr>
                       ))
                     )}
@@ -1529,7 +1508,7 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
                             <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
-                            <button onClick={() => deletarItemGenerico(itemId)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
+                            <button onClick={() => deletarItem(itemId)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
                           </td>
                         </tr>
                       );
@@ -1567,7 +1546,7 @@ const SunnyWearTecidos = () => {
               />
             </div>
             <span style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', maxWidth: '280px', lineHeight: '1.4' }}>
-              📱 Ao apontar a câmera do celular, ele carregará diretamente o status total deste rolo na cor exata, já subtraindo reservas e retalhos da nuvem.
+              📱 Ao apontar a câmera do celular, ele carregará diretamente o status total deste rolo na cor exata, já subtraindo reservas e retalhos.
             </span>
           </div>
         </div>
