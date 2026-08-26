@@ -2,16 +2,28 @@ import React, { useState, useEffect } from 'react';
 
 const SunnyWearTecidos = () => {
   const [codigoQrUrl, setCodigoQrUrl] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('codigo');
+    try {
+      if (typeof window === 'undefined') return null;
+      const params = new URLSearchParams(window.location.search);
+      return params.get('codigo');
+    } catch (e) {
+      return null;
+    }
   });
+  
   const [corQrUrl, setCorQrUrl] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('cor');
+    try {
+      if (typeof window === 'undefined') return null;
+      const params = new URLSearchParams(window.location.search);
+      return params.get('cor');
+    } catch (e) {
+      return null;
+    }
   });
 
   const [abaAtiva, setAbaAtiva] = useState('dashboard');
   const [movimentacoes, setMovimentacoes] = useState([]);
+  const [reservas, setReservas] = useState([]); // Agora inicia vazio para carregar do banco de dados (Render)
   const [carregando, setCarregando] = useState(false);
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
 
@@ -38,18 +50,23 @@ const SunnyWearTecidos = () => {
   });
 
   const [sobras, setSobras] = useState(() => {
-    const salvas = localStorage.getItem('sunny_sobras');
-    return salvas ? JSON.parse(salvas) : [];
+    try {
+      if (typeof window === 'undefined') return [];
+      const salvas = localStorage.getItem('sunny_sobras');
+      return salvas ? JSON.parse(salvas) : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   const [sobrasSaidas, setSobrasSaidas] = useState(() => {
-    const salvas = localStorage.getItem('sunny_sobras_saidas');
-    return salvas ? JSON.parse(salvas) : [];
-  });
-
-  const [reservas, setReservas] = useState(() => {
-    const salvas = localStorage.getItem('sunny_reservas');
-    return salvas ? JSON.parse(salvas) : [];
+    try {
+      if (typeof window === 'undefined') return [];
+      const salvas = localStorage.getItem('sunny_sobras_saidas');
+      return salvas ? JSON.parse(salvas) : [];
+    } catch (e) {
+      return [];
+    }
   });
 
   const [formSobra, setFormSobra] = useState({
@@ -96,18 +113,25 @@ const SunnyWearTecidos = () => {
     return normalizarTexto(tipo);
   };
 
+  // Ajustado para dividir as respostas do banco: o que é Reserva vai para as reservas, o resto para o Histórico.
   const carregarDadosDoServidor = async () => {
     try {
       const resposta = await fetch(`${API_URL}?_t=${Date.now()}`);
       if (resposta.ok) {
         const dados = await resposta.json();
         if (Array.isArray(dados)) {
-          setMovimentacoes(dados);
+          const movsNormais = dados.filter(d => obterTipo(d) !== 'reserva');
+          const reservasDoBanco = dados.filter(d => obterTipo(d) === 'reserva');
+          
+          setMovimentacoes(movsNormais);
+          setReservas(reservasDoBanco);
         } else {
           setMovimentacoes([]);
+          setReservas([]);
         }
       } else {
         setMovimentacoes([]);
+        setReservas([]);
       }
     } catch (erro) {
       console.error('Erro ao conectar com o back-end:', erro);
@@ -116,16 +140,16 @@ const SunnyWearTecidos = () => {
   };
 
   useEffect(() => {
-    localStorage.setItem('sunny_sobras', JSON.stringify(sobras));
+    try {
+      localStorage.setItem('sunny_sobras', JSON.stringify(sobras));
+    } catch (e) {}
   }, [sobras]);
 
   useEffect(() => {
-    localStorage.setItem('sunny_sobras_saidas', JSON.stringify(sobrasSaidas));
+    try {
+      localStorage.setItem('sunny_sobras_saidas', JSON.stringify(sobrasSaidas));
+    } catch (e) {}
   }, [sobrasSaidas]);
-
-  useEffect(() => {
-    localStorage.setItem('sunny_reservas', JSON.stringify(reservas));
-  }, [reservas]);
 
   useEffect(() => {
     carregarDadosDoServidor();
@@ -185,8 +209,8 @@ const SunnyWearTecidos = () => {
     setSobras(prev => prev.filter(s => s.id !== id));
   };
 
-  // --- GERENCIAMENTO DE RESERVAS ---
-  const cadastrarReserva = (e) => {
+  // Ajustado para enviar a Reserva para o Banco de Dados do Render
+  const cadastrarReserva = async (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
       alert('Preencha os campos obrigatórios da reserva.');
@@ -224,7 +248,7 @@ const SunnyWearTecidos = () => {
     }
 
     const novaReserva = {
-      id: 'RESERVA-' + Date.now(),
+      tipoMovimento: 'reserva',
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -233,20 +257,41 @@ const SunnyWearTecidos = () => {
       unidadeMedida: formReserva.unidadeMedida,
       localizacao: formReserva.localizacao,
       observacao: formReserva.observacao || 'Separado para uso futuro',
-      data: new Date().toLocaleDateString('pt-BR')
+      data: new Date().toISOString()
     };
 
-    setReservas(prev => [novaReserva, ...prev]);
-    setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
-    alert('📌 Reserva salva com sucesso e abatida do estoque!');
+    setCarregando(true);
+    try {
+      const resposta = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novaReserva)
+      });
+      if (resposta.ok) {
+        setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+        alert('📌 Reserva salva com sucesso no Banco de Dados (Render) e abatida do estoque!');
+        carregarDadosDoServidor(); // Recarrega os dados para atualizar a tela automaticamente
+      } else {
+        alert('Erro ao processar reserva no servidor central.');
+      }
+    } catch (erro) {
+      console.error(erro);
+      alert('Erro de conexão ao tentar salvar a reserva no banco.');
+    } finally {
+      setCarregando(false);
+    }
   };
 
+  // Ajustado para apagar a reserva antiga do banco e gerar a Saída.
   const concluirReserva = async (item) => {
     if (!window.confirm(`Confirma o consumo/baixa definitiva desta reserva de ${item.nome}?`)) return;
     
     setCarregando(true);
     try {
-      setReservas(prev => prev.filter(r => r.id !== item.id));
+      const idReserva = item.id || item._id;
+      if (idReserva) {
+        await fetch(`${API_URL}/${encodeURIComponent(idReserva)}`, { method: 'DELETE' });
+      }
 
       const dadosSaida = {
         tipoMovimento: 'saida',
@@ -277,10 +322,20 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  const cancelarReserva = (id) => {
+  // Ajustado para cancelar apagando diretamente no banco de dados.
+  const cancelarReserva = async (id) => {
     if (!window.confirm('Confirma o cancelamento desta reserva (o tecido voltará para o estoque livre)?')) return;
-    setReservas(prev => prev.filter(r => r.id !== id));
-    alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
+    setCarregando(true);
+    try {
+      await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
+      carregarDadosDoServidor();
+    } catch (erro) {
+      console.error(erro);
+      alert('Erro ao cancelar reserva no servidor.');
+    } finally {
+      setCarregando(false);
+    }
   };
 
   const executarBuscaSaida = () => {
@@ -631,7 +686,6 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // TELA EXCLUSIVA DO QR CODE
   if (codigoQrUrl) {
     const paramCodigoLpo = normalizarTexto(codigoQrUrl);
     const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
@@ -775,7 +829,6 @@ const SunnyWearTecidos = () => {
         />
       )}
 
-      {/* SIDEBAR */}
       <aside style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
           <div style={styles.logoBadge}>SW</div>
@@ -825,7 +878,6 @@ const SunnyWearTecidos = () => {
         </div>
       </aside>
 
-      {/* CONTEÚDO PRINCIPAL */}
       <main style={styles.mainContent}>
         <header style={styles.topbar}>
           <button 
@@ -1121,12 +1173,11 @@ const SunnyWearTecidos = () => {
           </div>
         )}
 
-        {/* TELA DE RESERVAS */}
         {abaAtiva === 'reservas' && (
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📌 Cadastro e Consulta de Reservas</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre automaticamente.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre automaticamente e salva no banco de dados.</p>
             </div>
 
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
@@ -1332,7 +1383,6 @@ const SunnyWearTecidos = () => {
               </div>
             </div>
 
-            {/* HISTÓRICO DE SAÍDAS DE SOBRAS */}
             <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
               <h4 style={{ margin: '0 0 16px 0', fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📤 Histórico de Saída de Sobras (Reutilizadas)</h4>
               <div style={styles.tableResponsive}>
@@ -1486,7 +1536,6 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {/* MODAL DO QR CODE */}
       {qrSelecionado && (
         <div style={styles.modalOverlay} onClick={() => setQrSelecionado(null)}>
           <div style={{...styles.modalContent, alignItems: 'center'}} onClick={(e) => e.stopPropagation()}>
