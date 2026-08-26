@@ -662,7 +662,7 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // ========== BLOCO DO QR CODE CORRIGIDO ==========
+  // ========== BLOCO DO QR CODE COM SUBTRAÇÃO DE RESERVAS E RETALHOS ==========
   if (codigoQrUrl) {
     const paramCodigoLpo = normalizarTexto(codigoQrUrl);
     const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
@@ -697,7 +697,7 @@ const SunnyWearTecidos = () => {
       }
     });
     
-    // CORREÇÃO APLICADA: Varre as reservas de forma correta lidando com cores vazias ou nulas
+    // Calcula as Reservas do tecido/cor
     let totalReservaTecido = 0;
     reservas.forEach(r => {
       const rCod = normalizarTexto(r?.codigo);
@@ -709,8 +709,20 @@ const SunnyWearTecidos = () => {
       }
     });
 
-    // Subtração aplicada!
-    const totalDisponivelTecido = totalQtdBruta - totalReservaTecido;
+    // Calcula os Retalhos/Sobras do tecido/cor
+    let totalSobraTecido = 0;
+    sobras.forEach(s => {
+      const sCod = normalizarTexto(s?.codigo);
+      const sCor = normalizarTexto(s?.cor || 'N/D');
+      const mesmaCod = sCod === paramCodigoLpo;
+      const mesmaCor = paramCorLpo ? (sCor === paramCorLpo) : true;
+      if (mesmaCod && mesmaCor) {
+        totalSobraTecido += Number(s.quantidade || 0);
+      }
+    });
+
+    // Subtração aplicada: Bruto - Reservas - Retalhos = Valor Real Disponível
+    const totalDisponivelTecido = totalQtdBruta - totalReservaTecido - totalSobraTecido;
     const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : Number(infoTecido.preco || 0);
     const valorTotalEstoque = totalDisponivelTecido * precoMedio;
     const unidadeMed = infoTecido.unidademedida || infoTecido.unidadeMedida || 'm';
@@ -741,12 +753,13 @@ const SunnyWearTecidos = () => {
 
             <div style={styles.qrInfoRow}><span>Total de Tecido (Bruto):</span> <strong style={{color: '#0F172A'}}>{totalQtdBruta} {unidadeMed}</strong></div>
             <div style={styles.qrInfoRow}><span>Total da Reserva:</span> <strong style={{color: '#D97706'}}>- {totalReservaTecido} {unidadeMed}</strong></div>
-            <div style={styles.qrInfoRow}><span>Total Disponível (Livre):</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalDisponivelTecido} {unidadeMed}</strong></div>
+            <div style={styles.qrInfoRow}><span>Total de Retalhos / Sobras:</span> <strong style={{color: '#9333EA'}}>- {totalSobraTecido} {unidadeMed}</strong></div>
+            <div style={styles.qrInfoRow}><span>Total Real em Estoque (Livre):</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalDisponivelTecido} {unidadeMed}</strong></div>
 
             <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
 
             <div style={styles.qrInfoRow}><span>Valor Unitário Médio:</span> <strong style={{color: '#D97706'}}>R$ {precoMedio.toFixed(2)}</strong></div>
-            <div style={styles.qrInfoRow}><span>Valor Total em Estoque:</span> <strong style={{color: '#D97706'}}>R$ {valorTotalEstoque.toFixed(2)}</strong></div>
+            <div style={styles.qrInfoRow}><span>Valor Real em Estoque (R$):</span> <strong style={{color: '#059669'}}>R$ {valorTotalEstoque.toFixed(2)}</strong></div>
           </div>
 
           <button 
@@ -768,7 +781,7 @@ const SunnyWearTecidos = () => {
       </div>
     );
   }
-  // ========== FIM DO BLOCO DO QR CODE CORRIGIDO ==========
+  // ========== FIM DO BLOCO DO QR CODE COM SUBTRAÇÃO ==========
 
   return (
     <div style={styles.appLayout} className="app-layout-container">
@@ -1533,7 +1546,7 @@ const SunnyWearTecidos = () => {
               />
             </div>
             <span style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', maxWidth: '280px', lineHeight: '1.4' }}>
-              📱 Ao apontar a câmera do celular, ele carregará diretamente o status total deste rolo na cor exata.
+              📱 Ao apontar a câmera do celular, ele carregará diretamente o status total deste rolo na cor exata, já subtraindo reservas e retalhos.
             </span>
           </div>
         </div>
