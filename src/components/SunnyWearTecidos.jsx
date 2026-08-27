@@ -61,7 +61,8 @@ const SunnyWearTecidos = () => {
     localizacao: '',
     observacao: ''
   });
-  const [buscaSobra, setBuscaSobra] = useState('');
+  const [buscaSobraTexto, setBuscaSobraTexto] = useState(''); // Para a listagem
+  const [termoBuscaSobra, setTermoBuscaSobra] = useState(''); // Para o form
 
   const [formReserva, setFormReserva] = useState({
     codigo: '',
@@ -72,7 +73,9 @@ const SunnyWearTecidos = () => {
     localizacao: '',
     observacao: ''
   });
-  const [buscaReserva, setBuscaReserva] = useState('');
+  const [buscaReservaTexto, setBuscaReservaTexto] = useState(''); // Para a listagem
+  const [termoBuscaReserva, setTermoBuscaReserva] = useState(''); // Para o form
+  
   const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
 
@@ -97,6 +100,7 @@ const SunnyWearTecidos = () => {
   };
 
   const carregarDadosDoServidor = async () => {
+    setCarregando(true);
     try {
       const resposta = await fetch(`${API_URL}?_t=${Date.now()}`);
       if (resposta.ok) {
@@ -112,6 +116,8 @@ const SunnyWearTecidos = () => {
     } catch (erro) {
       console.error('Erro ao conectar com o back-end:', erro);
       setMovimentacoes([]);
+    } finally {
+      setCarregando(false);
     }
   };
 
@@ -133,19 +139,26 @@ const SunnyWearTecidos = () => {
   };
 
   // =======================================================================
-  // NOVA LÓGICA DE CLASSIFICAÇÃO: Trata a tag [RESERVA] e [RETALHO] como marcadores seguros
+  // CLASSIFICAÇÃO BLINDADA (Ignora maiúsculas/minúsculas no texto da observação)
   // =======================================================================
   const reservas = movimentacoes.filter(m => {
     const t = obterTipo(m);
-    return t === 'reserva' || (t === 'saida' && (m.observacao || '').includes('[RESERVA]'));
+    const obs = String(m.observacao || '').toUpperCase();
+    return t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
   });
 
   const sobras = movimentacoes.filter(m => {
     const t = obterTipo(m);
-    return t === 'sobra' || (t === 'saida' && (m.observacao || '').includes('[RETALHO]'));
+    const obs = String(m.observacao || '').toUpperCase();
+    return t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
   });
 
-  const sobrasSaidas = movimentacoes.filter(m => obterTipo(m) === 'saida_sobra' || (m.observacao || '').includes('[USO-RETALHO]'));
+  const sobrasSaidas = movimentacoes.filter(m => {
+    const t = obterTipo(m);
+    const obs = String(m.observacao || '').toUpperCase();
+    return t === 'saida_sobra' || (t === 'saida' && obs.includes('[USO-RETALHO]'));
+  });
+  
   const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
 
   const calcularEstoqueLivre = (codigo, cor, ignorarReservaId = null, ignorarSobraId = null) => {
@@ -161,7 +174,7 @@ const SunnyWearTecidos = () => {
         const mId = m.id || m._id;
         const q = Number(m.metros || m.quantidade || 0);
         const t = obterTipo(m);
-        const obs = m.observacao || '';
+        const obs = String(m.observacao || '').toUpperCase();
 
         const isReserva = t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
         const isRetalho = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
@@ -176,6 +189,48 @@ const SunnyWearTecidos = () => {
     });
 
     return bruto - res - sob;
+  };
+
+  // BUSCA PARA AUTOPREENCHER RESERVAS
+  const executarBuscaReserva = () => {
+    const termo = normalizarTexto(termoBuscaReserva);
+    if (!termo) { alert('Digite o código para buscar.'); return; }
+    
+    const tecidoEncontrado = listaSeguraCalculos.find(m => normalizarTexto(m?.codigo).includes(termo) || normalizarTexto(m?.nome).includes(termo));
+    if (tecidoEncontrado) {
+      setFormReserva(prev => ({
+        ...prev,
+        codigo: tecidoEncontrado.codigo,
+        nome: tecidoEncontrado.nome,
+        cor: tecidoEncontrado.cor || '',
+        localizacao: tecidoEncontrado.localizacao || '',
+        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm'
+      }));
+      alert(`✅ Item preenchido: ${tecidoEncontrado.nome} (Cor: ${tecidoEncontrado.cor})`);
+    } else {
+      alert('⚠️ Nenhum tecido encontrado.');
+    }
+  };
+
+  // BUSCA PARA AUTOPREENCHER SOBRAS
+  const executarBuscaSobra = () => {
+    const termo = normalizarTexto(termoBuscaSobra);
+    if (!termo) { alert('Digite o código para buscar.'); return; }
+    
+    const tecidoEncontrado = listaSeguraCalculos.find(m => normalizarTexto(m?.codigo).includes(termo) || normalizarTexto(m?.nome).includes(termo));
+    if (tecidoEncontrado) {
+      setFormSobra(prev => ({
+        ...prev,
+        codigo: tecidoEncontrado.codigo,
+        nome: tecidoEncontrado.nome,
+        cor: tecidoEncontrado.cor || '',
+        localizacao: tecidoEncontrado.localizacao || '',
+        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm'
+      }));
+      alert(`✅ Item preenchido: ${tecidoEncontrado.nome} (Cor: ${tecidoEncontrado.cor})`);
+    } else {
+      alert('⚠️ Nenhum tecido encontrado.');
+    }
   };
 
   const cadastrarSobra = async (e) => {
@@ -200,7 +255,7 @@ const SunnyWearTecidos = () => {
     const finalObs = obsVal.includes('[RETALHO]') ? obsVal : `[RETALHO] ${obsVal}`;
 
     const novaSobra = {
-      tipoMovimento: 'saida', // Força saída para o banco de dados abater
+      tipoMovimento: 'saida', // Força saída para o banco
       codigo: codigoLimpo,
       nome: formSobra.nome,
       cor: corLimpa,
@@ -244,7 +299,7 @@ const SunnyWearTecidos = () => {
     setIdEditandoSobra(item.id || item._id);
     setFormSobra({ 
       ...item, 
-      observacao: (item.observacao || '').replace('[RETALHO] ', '').replace('[RETALHO]', '')
+      observacao: (item.observacao || '').replace(/\[RETALHO\] /i, '').replace(/\[RETALHO\]/i, '')
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -255,13 +310,12 @@ const SunnyWearTecidos = () => {
     setCarregando(true);
     try {
       const itemId = item.id || item._id;
-      // Deleta a tag de sobra e registra saída oficial
       await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
       const registroSaida = {
         ...item,
         tipoMovimento: 'saida',
-        observacao: '[USO-RETALHO] ' + (item.observacao || '').replace('[RETALHO] ', ''),
+        observacao: '[USO-RETALHO] ' + (item.observacao || '').replace(/\[RETALHO\] /i, ''),
         data: new Date().toISOString()
       };
       delete registroSaida.id;
@@ -319,7 +373,7 @@ const SunnyWearTecidos = () => {
     const finalObs = obsVal.includes('[RESERVA]') ? obsVal : `[RESERVA] ${obsVal}`;
 
     const novaReserva = {
-      tipoMovimento: 'saida', // Força saída para o banco de dados abater
+      tipoMovimento: 'saida', // Força saída
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -363,7 +417,7 @@ const SunnyWearTecidos = () => {
     setIdEditandoReserva(item.id || item._id);
     setFormReserva({ 
       ...item, 
-      observacao: (item.observacao || '').replace('[RESERVA] ', '').replace('[RESERVA]', '')
+      observacao: (item.observacao || '').replace(/\[RESERVA\] /i, '').replace(/\[RESERVA\]/i, '')
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -374,10 +428,8 @@ const SunnyWearTecidos = () => {
     setCarregando(true);
     try {
       const itemId = item.id || item._id;
-      // Deleta a "falsa saída"
       await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
-      // Lança a saída real
       const dadosSaida = {
         tipoMovimento: 'saida',
         codigo: item.codigo,
@@ -387,7 +439,7 @@ const SunnyWearTecidos = () => {
         metros: item.quantidade || item.metros,
         unidadeMedida: item.unidadeMedida || item.unidademedida || 'm',
         localizacao: item.localizacao,
-        observacao: 'Baixa de reserva: ' + (item.observacao || '').replace('[RESERVA] ', ''),
+        observacao: 'Baixa de reserva: ' + (item.observacao || '').replace(/\[RESERVA\] /i, ''),
         data: new Date().toISOString()
       };
 
@@ -580,7 +632,8 @@ const SunnyWearTecidos = () => {
     const minReg = obterMinimo(m);
     
     const t = obterTipo(m);
-    const obs = m.observacao || '';
+    const obs = String(m.observacao || '').toUpperCase();
+    
     const isReserva = t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
     const isRetalho = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
     const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho;
@@ -608,7 +661,6 @@ const SunnyWearTecidos = () => {
       usoTecidos[chave] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
     }
     
-    // Contabiliza apenas consumo real nos tecidos mais usados
     if (isSaidaNormal || obs.includes('[USO-RETALHO]')) {
       usoTecidos[chave].totalUso += qtd;
     }
@@ -637,8 +689,9 @@ const SunnyWearTecidos = () => {
   const saidasMetros = listaSeguraCalculos
     .filter(m => {
       const t = obterTipo(m);
-      const isRes = t === 'reserva' || (t === 'saida' && (m.observacao || '').includes('[RESERVA]'));
-      const isRet = t === 'sobra' || (t === 'saida' && (m.observacao || '').includes('[RETALHO]'));
+      const obs = String(m.observacao || '').toUpperCase();
+      const isRes = t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
+      const isRet = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
       return t === 'saida' && !isRes && !isRet && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
     })
     .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
@@ -724,10 +777,10 @@ const SunnyWearTecidos = () => {
   }, {});
 
   const todosRegistrosHistorico = listaSeguraCalculos
-    .filter(m => obterTipo(m) !== 'saida_sobra' && !(m.observacao || '').includes('[USO-RETALHO]'))
+    .filter(m => obterTipo(m) !== 'saida_sobra' && !String(m.observacao || '').toUpperCase().includes('[USO-RETALHO]'))
     .map(m => {
       const t = obterTipo(m);
-      const obs = m.observacao || '';
+      const obs = String(m.observacao || '').toUpperCase();
       let tipoExibicao = t;
       let isExtra = false;
       
@@ -752,7 +805,7 @@ const SunnyWearTecidos = () => {
   });
 
   const sobrasFiltradas = sobras.filter(s => {
-    const termo = normalizarTexto(buscaSobra);
+    const termo = normalizarTexto(buscaSobraTexto);
     return (
       normalizarTexto(s.codigo).includes(termo) ||
       normalizarTexto(s.nome).includes(termo) ||
@@ -763,7 +816,7 @@ const SunnyWearTecidos = () => {
   });
 
   const reservasFiltradas = reservas.filter(r => {
-    const termo = normalizarTexto(buscaReserva);
+    const termo = normalizarTexto(buscaReservaTexto);
     return (
       normalizarTexto(r.codigo).includes(termo) ||
       normalizarTexto(r.nome).includes(termo) ||
@@ -802,7 +855,7 @@ const SunnyWearTecidos = () => {
     movimentosDoTecido.forEach(m => {
       const q = Number(m.metros || m.quantidade || 0);
       const t = obterTipo(m);
-      const obs = m.observacao || '';
+      const obs = String(m.observacao || '').toUpperCase();
 
       const isReserva = t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
       const isRetalho = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
@@ -831,11 +884,21 @@ const SunnyWearTecidos = () => {
     return (
       <div style={styles.qrViewContainer}>
         <div style={styles.qrViewCard}>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <div style={styles.logoBadge}>SW</div>
-            <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Sunny Wear • Consulta QR Code</h2>
-            <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Informações do Rolo</p>
+            <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta QR Code</h2>
+            <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Versão 2.8 • Sincronização Nuvem
+            </p>
           </div>
+
+          <button 
+            onClick={carregarDadosDoServidor}
+            disabled={carregando}
+            style={{...styles.qrBackBtn, backgroundColor: '#2563EB', color: '#FFF', marginBottom: '16px', border: 'none', boxShadow: '0 4px 10px rgba(37,99,235,0.3)'}}
+          >
+            {carregando ? '⏳ Sincronizando...' : '🔄 Forçar Atualização de Dados'}
+          </button>
 
           {infoTecido.foto ? (
             <img src={infoTecido.foto} alt="Tecido" style={styles.qrViewImg} onClick={() => setFotoSelecionada(infoTecido.foto)} />
@@ -852,7 +915,6 @@ const SunnyWearTecidos = () => {
             
             <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
 
-            {/* AS LINHAS VOLTARAM AQUI, EXATAMENTE COMO VOCÊ QUERIA NA TELA */}
             <div style={styles.qrInfoRow}><span>Total de Tecido (Bruto):</span> <strong style={{color: '#0F172A'}}>{estoqueBrutoReal} {unidadeMed}</strong></div>
             <div style={styles.qrInfoRow}><span>Total da Reserva/Sobras:</span> <strong style={{color: '#D97706'}}>- {totalReservado} {unidadeMed}</strong></div>
             <div style={styles.qrInfoRow}><span>Total Disponível (Livre):</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalDisponivelTecido} {unidadeMed}</strong></div>
@@ -929,7 +991,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v2.7 CLOUD</span>
+            <span style={styles.versionBadge}>v2.8 CLOUD</span>
           </div>
         </div>
 
@@ -1233,7 +1295,7 @@ const SunnyWearTecidos = () => {
                 <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
                 <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
                   <input type="text" placeholder="Ex: TEC-001 ou Malha" value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
-                  <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>OK / Buscar</button>
+                  <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>Buscar Tecido</button>
                 </div>
               </div>
 
@@ -1276,6 +1338,18 @@ const SunnyWearTecidos = () => {
             </div>
 
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
+              
+              {/* NOVA BARRA DE BUSCA NAS RESERVAS */}
+              {!idEditandoReserva && (
+                <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
+                  <label style={styles.formLabel}>Autopreencher (Evite erros de digitação!)</label>
+                  <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
+                    <input type="text" placeholder="Digite Código ou Nome do Tecido" value={termoBuscaReserva} onChange={(e) => setTermoBuscaReserva(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
+                    <button type="button" onClick={executarBuscaReserva} style={{padding: '12px 20px', background: '#475569', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px'}}>Buscar Tecido</button>
+                  </div>
+                </div>
+              )}
+
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
                 <input type="text" placeholder="Ex: TEC-001" value={formReserva.codigo} onChange={(e) => setFormReserva({...formReserva, codigo: e.target.value})} style={styles.input} required disabled={!!idEditandoReserva} />
@@ -1331,8 +1405,8 @@ const SunnyWearTecidos = () => {
               <input 
                 type="text" 
                 placeholder="Pesquisar reserva por nome, cor, código, local ou observação..." 
-                value={buscaReserva} 
-                onChange={(e) => setBuscaReserva(e.target.value)} 
+                value={buscaReservaTexto} 
+                onChange={(e) => setBuscaReservaTexto(e.target.value)} 
                 style={styles.inputFull}
               />
 
@@ -1362,7 +1436,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace('[RESERVA]', '')}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/\[RESERVA\]/i, '')}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => concluirReserva(item)} style={styles.btnUsarSobra} title="Consumir / Dar baixa definitiva">✅ Usar</button>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Reserva">🔲</button>
@@ -1387,6 +1461,18 @@ const SunnyWearTecidos = () => {
             </div>
 
             <form onSubmit={cadastrarSobra} style={styles.formGrid} className="form-grid-responsive">
+
+              {/* NOVA BARRA DE BUSCA NAS SOBRAS */}
+              {!idEditandoSobra && (
+                <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
+                  <label style={styles.formLabel}>Autopreencher (Evite erros de digitação!)</label>
+                  <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
+                    <input type="text" placeholder="Digite Código ou Nome do Tecido" value={termoBuscaSobra} onChange={(e) => setTermoBuscaSobra(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
+                    <button type="button" onClick={executarBuscaSobra} style={{padding: '12px 20px', background: '#475569', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px'}}>Buscar Tecido</button>
+                  </div>
+                </div>
+              )}
+
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
                 <input type="text" placeholder="Ex: TEC-001" value={formSobra.codigo} onChange={(e) => setFormSobra({...formSobra, codigo: e.target.value})} style={styles.input} required disabled={!!idEditandoSobra} />
@@ -1442,8 +1528,8 @@ const SunnyWearTecidos = () => {
               <input 
                 type="text" 
                 placeholder="Pesquisar sobra por nome, cor, código ou observação..." 
-                value={buscaSobra} 
-                onChange={(e) => setBuscaSobra(e.target.value)} 
+                value={buscaSobraTexto} 
+                onChange={(e) => setBuscaSobraTexto(e.target.value)} 
                 style={styles.inputFull}
               />
 
@@ -1474,7 +1560,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#9333EA', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace('[RETALHO]', '')}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/\[RETALHO\]/i, '')}</span></td>
                           <td style={styles.td}><span style={{ color: '#64748B' }}>{item.data}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => usarSobra(item)} style={styles.btnUsarSobra} title="Dar baixa e usar retalho">✅ Usar</button>
@@ -1518,7 +1604,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace('[USO-RETALHO]', '')}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/\[USO-RETALHO\]/i, '')}</span></td>
                           <td style={styles.td}><span style={{ color: '#64748B' }}>{item.dataBaixa || item.data}</span></td>
                         </tr>
                       ))
@@ -1584,7 +1670,7 @@ const SunnyWearTecidos = () => {
                       <strong style={{ fontSize: '13px', color: '#0F172A' }}>📌 Todas as Reservas (Detalhamento):</strong>
                       {resExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhuma reserva pendente.</div> : (
                         <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                          {resExatas.map(r => <li key={r.id || r._id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {(r.observacao || 'Sem obs.').replace('[RESERVA]', '')} (Cor: {r.cor} | 📍 {r.localizacao})</li>)}
+                          {resExatas.map(r => <li key={r.id || r._id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {(r.observacao || 'Sem obs.').replace(/\[RESERVA\]/i, '')} (Cor: {r.cor} | 📍 {r.localizacao})</li>)}
                         </ul>
                       )}
                     </div>
@@ -1592,7 +1678,7 @@ const SunnyWearTecidos = () => {
                       <strong style={{ fontSize: '13px', color: '#0F172A' }}>✂️ Todos os Retalhos (Detalhamento):</strong>
                       {sobExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhum retalho guardado.</div> : (
                         <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                          {sobExatas.map(s => <li key={s.id || s._id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {(s.observacao || 'Sem obs.').replace('[RETALHO]', '')} (Cor: {s.cor} | 📍 {s.localizacao})</li>)}
+                          {sobExatas.map(s => <li key={s.id || s._id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {(s.observacao || 'Sem obs.').replace(/\[RETALHO\]/i, '')} (Cor: {s.cor} | 📍 {s.localizacao})</li>)}
                         </ul>
                       )}
                     </div>
@@ -1733,7 +1819,7 @@ const SunnyWearTecidos = () => {
               />
             </div>
             <span style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', maxWidth: '280px', lineHeight: '1.4' }}>
-              📱 Ao apontar a câmera do celular, ele carregará diretamente o status deste rolo na cor exata, revelando exclusivamente a <strong>quantidade final disponível</strong> (já livre de reservas e retalhos).
+              📱 Ao apontar a câmera do celular, ele carregará diretamente o status deste rolo na cor exata, revelando exclusivamente a <strong>quantidade final disponível</strong>.
             </span>
           </div>
         </div>
