@@ -30,7 +30,6 @@ const SunnyWearTecidos = () => {
   const [qrSelecionado, setQrSelecionado] = useState(null);
   const [idEditando, setIdEditando] = useState(null);
   
-  // Novos estados para edição
   const [idEditandoReserva, setIdEditandoReserva] = useState(null);
   const [idEditandoSobra, setIdEditandoSobra] = useState(null);
   
@@ -51,36 +50,6 @@ const SunnyWearTecidos = () => {
     fornecedor: '',
     foto: '',
     largura: ''
-  });
-
-  const [sobras, setSobras] = useState(() => {
-    try {
-      if (typeof window === 'undefined') return [];
-      const salvas = localStorage.getItem('sunny_sobras');
-      return salvas ? JSON.parse(salvas) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const [sobrasSaidas, setSobrasSaidas] = useState(() => {
-    try {
-      if (typeof window === 'undefined') return [];
-      const salvas = localStorage.getItem('sunny_sobras_saidas');
-      return salvas ? JSON.parse(salvas) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const [reservas, setReservas] = useState(() => {
-    try {
-      if (typeof window === 'undefined') return [];
-      const salvas = localStorage.getItem('sunny_reservas');
-      return salvas ? JSON.parse(salvas) : [];
-    } catch (e) {
-      return [];
-    }
   });
 
   const [formSobra, setFormSobra] = useState({
@@ -147,24 +116,6 @@ const SunnyWearTecidos = () => {
   };
 
   useEffect(() => {
-    try {
-      localStorage.setItem('sunny_sobras', JSON.stringify(sobras));
-    } catch (e) {}
-  }, [sobras]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sunny_sobras_saidas', JSON.stringify(sobrasSaidas));
-    } catch (e) {}
-  }, [sobrasSaidas]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sunny_reservas', JSON.stringify(reservas));
-    } catch (e) {}
-  }, [reservas]);
-
-  useEffect(() => {
     carregarDadosDoServidor();
     const intervalo = setInterval(carregarDadosDoServidor, 5000);
     return () => clearInterval(intervalo);
@@ -181,36 +132,31 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Função central para calcular estoque livre abatendo reservas E retalhos (com suporte a edição)
+  // Separação de Dados Baseada Exclusivamente na API
+  const reservas = movimentacoes.filter(m => obterTipo(m) === 'reserva');
+  const sobras = movimentacoes.filter(m => obterTipo(m) === 'sobra');
+  const sobrasSaidas = movimentacoes.filter(m => obterTipo(m) === 'saida_sobra');
+  const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
+
   const calcularEstoqueLivre = (codigo, cor, ignorarReservaId = null, ignorarSobraId = null) => {
-    let bruto = 0;
+    let estoque = 0;
     movimentacoes.forEach(m => {
-      if (normalizarTexto(m.codigo) === normalizarTexto(codigo) && normalizarTexto(m.cor || 'N/D') === normalizarTexto(cor)) {
+      const codM = normalizarTexto(m.codigo);
+      const corM = normalizarTexto(m.cor || 'N/D');
+      if (codM === normalizarTexto(codigo) && corM === normalizarTexto(cor)) {
+        const mId = m.id || m._id;
+        if (mId && (mId === ignorarReservaId || mId === ignorarSobraId)) return;
+        
         const q = Number(m.metros || m.quantidade || 0);
         const t = obterTipo(m);
-        if (t === 'entrada') bruto += q;
-        else if (t === 'saida') bruto -= q;
+        if (t === 'entrada') estoque += q;
+        else if (t === 'saida' || t === 'reserva' || t === 'sobra') estoque -= q;
       }
     });
-
-    let res = 0;
-    reservas.forEach(r => {
-      if (normalizarTexto(r.codigo) === normalizarTexto(codigo) && normalizarTexto(r.cor || 'N/D') === normalizarTexto(cor)) {
-        if (r.id !== ignorarReservaId) res += Number(r.quantidade || r.metros || 0);
-      }
-    });
-
-    let sob = 0;
-    sobras.forEach(s => {
-      if (normalizarTexto(s.codigo) === normalizarTexto(codigo) && normalizarTexto(s.cor || 'N/D') === normalizarTexto(cor)) {
-        if (s.id !== ignorarSobraId) sob += Number(s.quantidade || 0);
-      }
-    });
-
-    return bruto - res - sob;
+    return estoque;
   };
 
-  const cadastrarSobra = (e) => {
+  const cadastrarSobra = async (e) => {
     e.preventDefault();
     if (!formSobra.codigo || !formSobra.nome || !formSobra.quantidade || !formSobra.localizacao) {
       alert('Preencha os campos obrigatórios da sobra.');
@@ -224,58 +170,104 @@ const SunnyWearTecidos = () => {
     const estoqueLivreAtual = calcularEstoqueLivre(codigoLimpo, corLimpa, null, idEditandoSobra);
     
     if (qtdSobra > estoqueLivreAtual) {
-      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido/cor é de apenas ${estoqueLivreAtual}. (O valor em edição foi temporariamente devolvido ao cálculo)`);
+      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido/cor é de apenas ${estoqueLivreAtual}. (O valor em edição foi devolvido ao cálculo temporariamente)`);
       return;
     }
 
     const novaSobra = {
-      id: idEditandoSobra || 'SOBRA-' + Date.now(),
+      tipoMovimento: 'sobra',
       codigo: codigoLimpo,
       nome: formSobra.nome,
       cor: corLimpa,
       quantidade: qtdSobra,
+      metros: qtdSobra,
       unidadeMedida: formSobra.unidadeMedida,
       localizacao: formSobra.localizacao,
       observacao: formSobra.observacao || 'Retalho / Sobra',
       data: new Date().toLocaleDateString('pt-BR')
     };
 
-    if (idEditandoSobra) {
-      setSobras(prev => prev.map(s => s.id === idEditandoSobra ? novaSobra : s));
+    setCarregando(true);
+    try {
+      if (idEditandoSobra) {
+        await fetch(`${API_URL}/${encodeURIComponent(idEditandoSobra)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(novaSobra)
+        });
+        alert('✂️ Retalho ajustado e abatido do estoque com sucesso no servidor!');
+      } else {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(novaSobra)
+        });
+        alert('✂️ Sobra cadastrada e abatida do estoque com sucesso!');
+      }
       setIdEditandoSobra(null);
-      alert('✂️ Retalho ajustado e estoque atualizado com sucesso!');
-    } else {
-      setSobras(prev => [novaSobra, ...prev]);
-      alert('✂️ Sobra cadastrada e abatida do estoque com sucesso!');
+      setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+      await carregarDadosDoServidor();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar no servidor.');
+    } finally {
+      setCarregando(false);
     }
-
-    setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
   };
 
   const iniciarEdicaoSobra = (item) => {
-    setIdEditandoSobra(item.id);
+    setIdEditandoSobra(item.id || item._id);
     setFormSobra({ ...item });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const usarSobra = (item) => {
+  const usarSobra = async (item) => {
     if (!window.confirm(`Confirma a baixa e reuso deste retalho de ${item.nome} (${item.quantidade} ${item.unidadeMedida})?`)) return;
-    setSobras(prev => prev.filter(s => s.id !== item.id));
-    const registroSaida = {
-      ...item,
-      id: 'SAIDA-SOBRA-' + Date.now(),
-      dataBaixa: new Date().toLocaleDateString('pt-BR')
-    };
-    setSobrasSaidas(prev => [registroSaida, ...prev]);
-    alert('✅ Retalho utilizado na produção!');
+    
+    setCarregando(true);
+    try {
+      const itemId = item.id || item._id;
+      await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
+
+      const registroSaida = {
+        ...item,
+        tipoMovimento: 'saida_sobra',
+        dataBaixa: new Date().toLocaleDateString('pt-BR')
+      };
+      delete registroSaida.id;
+      delete registroSaida._id;
+
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(registroSaida)
+      });
+
+      alert('✅ Retalho utilizado na produção e registrado na nuvem!');
+      await carregarDadosDoServidor();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao processar baixa.');
+    } finally {
+      setCarregando(false);
+    }
   };
 
-  const deletarSobra = (id) => {
+  const deletarSobra = async (id) => {
     if (!window.confirm('Confirma a exclusão deste retalho? Ele retornará ao estoque principal.')) return;
-    setSobras(prev => prev.filter(s => s.id !== id));
+    setCarregando(true);
+    try {
+      await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      alert('Retalho excluído. O tecido retornou ao estoque geral.');
+      await carregarDadosDoServidor();
+    } catch (err) {
+      alert('Erro de conexão ao excluir.');
+    } finally {
+      setCarregando(false);
+    }
   };
 
-  const cadastrarReserva = (e) => {
+  const cadastrarReserva = async (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
       alert('Preencha os campos obrigatórios da reserva.');
@@ -294,7 +286,7 @@ const SunnyWearTecidos = () => {
     }
 
     const novaReserva = {
-      id: idEditandoReserva || 'RESERVA-' + Date.now(),
+      tipoMovimento: 'reserva',
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -306,20 +298,36 @@ const SunnyWearTecidos = () => {
       data: new Date().toLocaleDateString('pt-BR')
     };
 
-    if (idEditandoReserva) {
-      setReservas(prev => prev.map(r => r.id === idEditandoReserva ? novaReserva : r));
-      setIdEditandoReserva(null);
-      alert('📌 Reserva ajustada e estoque atualizado com sucesso!');
-    } else {
-      setReservas(prev => [novaReserva, ...prev]);
-      alert('📌 Reserva salva com sucesso e abatida do estoque!');
+    setCarregando(true);
+    try {
+      if (idEditandoReserva) {
+        await fetch(`${API_URL}/${encodeURIComponent(idEditandoReserva)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(novaReserva)
+        });
+        alert('📌 Reserva ajustada e estoque atualizado na base com sucesso!');
+        setIdEditandoReserva(null);
+      } else {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(novaReserva)
+        });
+        alert('📌 Reserva salva com sucesso e abatida do estoque do servidor!');
+      }
+      setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+      await carregarDadosDoServidor();
+    } catch (err) {
+      console.error(err);
+      alert('Erro de conexão ao salvar reserva.');
+    } finally {
+      setCarregando(false);
     }
-    
-    setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
   };
 
   const iniciarEdicaoReserva = (item) => {
-    setIdEditandoReserva(item.id);
+    setIdEditandoReserva(item.id || item._id);
     setFormReserva({ ...item });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -329,7 +337,8 @@ const SunnyWearTecidos = () => {
     
     setCarregando(true);
     try {
-      setReservas(prev => prev.filter(r => r.id !== item.id));
+      const itemId = item.id || item._id;
+      await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
       const dadosSaida = {
         tipoMovimento: 'saida',
@@ -351,7 +360,7 @@ const SunnyWearTecidos = () => {
       });
 
       alert('✅ Reserva consumida e registrada como saída na base!');
-      carregarDadosDoServidor();
+      await carregarDadosDoServidor();
     } catch (erro) {
       console.error(erro);
       alert('Erro ao concluir reserva.');
@@ -360,10 +369,18 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  const cancelarReserva = (id) => {
+  const cancelarReserva = async (id) => {
     if (!window.confirm('Confirma o cancelamento desta reserva (o tecido voltará para o estoque livre)?')) return;
-    setReservas(prev => prev.filter(r => r.id !== id));
-    alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
+    setCarregando(true);
+    try {
+      await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      alert('🔄 Reserva cancelada e tecido retornado ao estoque livre do sistema.');
+      await carregarDadosDoServidor();
+    } catch (err) {
+      alert('Erro de conexão ao cancelar reserva.');
+    } finally {
+      setCarregando(false);
+    }
   };
 
   const executarBuscaSaida = () => {
@@ -372,8 +389,7 @@ const SunnyWearTecidos = () => {
       alert('Informe um código ou nome para realizar a busca.');
       return;
     }
-    const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
-    const tecidoEncontrado = listaSegura.find(
+    const tecidoEncontrado = listaSeguraCalculos.find(
       m => normalizarTexto(m?.codigo).includes(termo) || 
            normalizarTexto(m?.nome).includes(termo)
     );
@@ -516,7 +532,6 @@ const SunnyWearTecidos = () => {
 
   const tecidosConsolidados = {};
   const usoTecidos = {};
-  const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
 
   listaSeguraCalculos.forEach(m => {
     if (!m || !m.codigo) return;
@@ -545,45 +560,22 @@ const SunnyWearTecidos = () => {
       tecidosConsolidados[chave].totalBruto += qtd;
     } else if (tipoM === 'saida') {
       tecidosConsolidados[chave].totalBruto -= qtd;
+    } else if (tipoM === 'reserva') {
+      tecidosConsolidados[chave].totalReservas += qtd;
+    } else if (tipoM === 'sobra') {
+      tecidosConsolidados[chave].totalSobras += qtd;
     }
 
     if (!usoTecidos[chave]) {
       usoTecidos[chave] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
     }
-    if (tipoM === 'saida') {
+    if (tipoM === 'saida' || tipoM === 'saida_sobra') {
       usoTecidos[chave].totalUso += qtd;
     }
 
     if (minReg > 0) tecidosConsolidados[chave].minimo = minReg;
   });
 
-  reservas.forEach(r => {
-    if (!r || !r.codigo) return;
-    const cod = normalizarTexto(r.codigo);
-    const cor = normalizarTexto(r.cor || 'ndef');
-    const chave = `${cod}_${cor}`;
-    const qtd = Number(r.quantidade || r.metros || 0);
-
-    if (!tecidosConsolidados[chave]) {
-      tecidosConsolidados[chave] = { codigo: r.codigo, nome: r.nome, cor: r.cor, minimo: 0, unidade: r.unidadeMedida || 'm', totalBruto: 0, totalReservas: 0, totalSobras: 0, total: 0 };
-    }
-    tecidosConsolidados[chave].totalReservas += qtd;
-  });
-
-  sobras.forEach(s => {
-    if (!s || !s.codigo) return;
-    const cod = normalizarTexto(s.codigo);
-    const cor = normalizarTexto(s.cor || 'ndef');
-    const chave = `${cod}_${cor}`;
-    const qtd = Number(s.quantidade || 0);
-
-    if (!tecidosConsolidados[chave]) {
-      tecidosConsolidados[chave] = { codigo: s.codigo, nome: s.nome, cor: s.cor, minimo: 0, unidade: s.unidadeMedida || 'm', totalBruto: 0, totalReservas: 0, totalSobras: 0, total: 0 };
-    }
-    tecidosConsolidados[chave].totalSobras += qtd;
-  });
-
-  // Cálculo final subtraindo reservas E retalhos
   Object.keys(tecidosConsolidados).forEach(chave => {
     const item = tecidosConsolidados[chave];
     item.total = item.totalBruto - item.totalReservas - item.totalSobras;
@@ -641,7 +633,7 @@ const SunnyWearTecidos = () => {
         if (tipoM === 'entrada') {
           if (un === 'kg') kgTotal += qtd;
           else mTotal += qtd;
-        } else if (tipoM === 'saida') {
+        } else if (tipoM === 'saida' || tipoM === 'reserva' || tipoM === 'sobra') {
           if (un === 'kg') kgTotal -= qtd;
           else mTotal -= qtd;
         }
@@ -679,18 +671,23 @@ const SunnyWearTecidos = () => {
     if (tipoM === 'entrada') {
       if (acc[chaveLoc][unidade] !== undefined) acc[chaveLoc][unidade] += qtd;
       else acc[chaveLoc][unidade] = qtd;
-    } else if (tipoM === 'saida') {
+    } else if (tipoM === 'saida' || tipoM === 'reserva' || tipoM === 'sobra') {
       if (acc[chaveLoc][unidade] !== undefined) acc[chaveLoc][unidade] -= qtd;
       else acc[chaveLoc][unidade] = -qtd;
     }
     return acc;
   }, {});
 
-  const todosRegistrosHistorico = [
-    ...listaSeguraCalculos.map(m => ({ ...m, _tipoExibicao: obterTipo(m) })),
-    ...reservas.map(r => ({ ...r, _tipoExibicao: 'Reserva', isExtra: true })),
-    ...sobras.map(s => ({ ...s, _tipoExibicao: 'Retalhos', isExtra: true }))
-  ];
+  const todosRegistrosHistorico = listaSeguraCalculos
+    .filter(m => obterTipo(m) !== 'saida_sobra')
+    .map(m => {
+      const t = obterTipo(m);
+      let tipoExibicao = t;
+      let isExtra = false;
+      if (t === 'reserva') { tipoExibicao = 'Reserva'; isExtra = true; }
+      if (t === 'sobra') { tipoExibicao = 'Retalhos'; isExtra = true; }
+      return { ...m, _tipoExibicao: tipoExibicao, isExtra };
+    });
 
   const movFiltradas = todosRegistrosHistorico.filter(m => {
     if (!m) return false; 
@@ -726,7 +723,6 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // ========== BLOCO DO QR CODE COM ESTOQUE TOTAL DISPONÍVEL ==========
   if (codigoQrUrl) {
     const paramCodigoLpo = normalizarTexto(codigoQrUrl);
     const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
@@ -745,32 +741,18 @@ const SunnyWearTecidos = () => {
     };
     
     let totalQtdBruta = 0;
+    let totalReservaTecido = 0;
+    let totalSobraTecido = 0;
+
     movimentosDoTecido.forEach(m => {
       const q = Number(m.metros || m.quantidade || 0);
       const t = obterTipo(m);
       if (t === 'entrada') totalQtdBruta += q;
       else if (t === 'saida') totalQtdBruta -= q;
-    });
-    
-    let totalReservaTecido = 0;
-    reservas.forEach(r => {
-      const rCod = normalizarTexto(r?.codigo);
-      const rCor = normalizarTexto(r?.cor || 'N/D');
-      if (rCod === paramCodigoLpo && (paramCorLpo ? (rCor === paramCorLpo) : true)) {
-        totalReservaTecido += Number(r.quantidade || r.metros || 0);
-      }
+      else if (t === 'reserva') totalReservaTecido += q;
+      else if (t === 'sobra') totalSobraTecido += q;
     });
 
-    let totalSobraTecido = 0;
-    sobras.forEach(s => {
-      const sCod = normalizarTexto(s?.codigo);
-      const sCor = normalizarTexto(s?.cor || 'N/D');
-      if (sCod === paramCodigoLpo && (paramCorLpo ? (sCor === paramCorLpo) : true)) {
-        totalSobraTecido += Number(s.quantidade || 0);
-      }
-    });
-
-    // Subtração aplicada para exibir apenas o saldo final
     const totalDisponivelTecido = totalQtdBruta - totalReservaTecido - totalSobraTecido;
     const unidadeMed = infoTecido.unidademedida || infoTecido.unidadeMedida || 'm';
 
@@ -823,7 +805,6 @@ const SunnyWearTecidos = () => {
       </div>
     );
   }
-  // ========== FIM DO BLOCO DO QR CODE ==========
 
   return (
     <div style={styles.appLayout} className="app-layout-container">
@@ -1213,7 +1194,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditandoReserva ? '✏️ Ajustar Reserva' : '📌 Cadastro e Consulta de Reservas'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre automaticamente.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre instantaneamente.</p>
             </div>
 
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
@@ -1253,7 +1234,7 @@ const SunnyWearTecidos = () => {
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
                 <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoReserva ? '#D97706' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff'}}>
-                  {idEditandoReserva ? '💾 Salvar Ajuste da Reserva' : '📌 Salvar Reserva (Abater do Estoque)'}
+                  {idEditandoReserva ? '💾 Salvar Ajuste da Reserva na Base' : '📌 Salvar Reserva (Abater do Estoque Central)'}
                 </button>
                 {idEditandoReserva && (
                   <button type="button" onClick={() => { setIdEditandoReserva(null); setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' }); }} style={{...styles.button, background: '#64748B', color: '#fff', marginTop: '8px'}}>
@@ -1292,7 +1273,7 @@ const SunnyWearTecidos = () => {
                   <tbody>
                     {reservasFiltradas.length === 0 ? (
                       <tr>
-                        <td colSpan="6" style={styles.empty}>Nenhuma reserva registrada no momento.</td>
+                        <td colSpan="6" style={styles.empty}>Nenhuma reserva registrada no banco.</td>
                       </tr>
                     ) : (
                       reservasFiltradas.map((item) => (
@@ -1324,7 +1305,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditandoSobra ? '✏️ Ajustar Retalho' : '✂️ Cadastro e Consulta de Sobras e Retalhos'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre os pedaços que sobraram, consulte o estoque e dê baixa ao reutilizá-los. (Também deduzido do estoque livre)</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre os pedaços que sobraram, consulte e dê baixa ao reutilizá-los. Abate automaticamente do estoque central.</p>
             </div>
 
             <form onSubmit={cadastrarSobra} style={styles.formGrid} className="form-grid-responsive">
@@ -1363,8 +1344,8 @@ const SunnyWearTecidos = () => {
               </div>
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-                <button type="submit" style={{...styles.button, background: idEditandoSobra ? '#D97706' : 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)', color: '#fff'}}>
-                  {idEditandoSobra ? '💾 Salvar Ajuste de Retalho' : '💾 Salvar Retalho e Abater Estoque'}
+                <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoSobra ? '#D97706' : 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)', color: '#fff'}}>
+                  {idEditandoSobra ? '💾 Salvar Ajuste de Retalho na Base' : '💾 Salvar Retalho e Abater Estoque'}
                 </button>
                 {idEditandoSobra && (
                   <button type="button" onClick={() => { setIdEditandoSobra(null); setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' }); }} style={{...styles.button, background: '#64748B', color: '#fff', marginTop: '8px'}}>
@@ -1404,7 +1385,7 @@ const SunnyWearTecidos = () => {
                   <tbody>
                     {sobrasFiltradas.length === 0 ? (
                       <tr>
-                        <td colSpan="7" style={styles.empty}>Nenhuma sobra cadastrada ainda.</td>
+                        <td colSpan="7" style={styles.empty}>Nenhuma sobra cadastrada no banco.</td>
                       </tr>
                     ) : (
                       sobrasFiltradas.map((item) => (
@@ -1487,7 +1468,6 @@ const SunnyWearTecidos = () => {
               style={styles.inputFull}
             />
 
-            {/* BLOCO DE RESUMO DO TECIDO AO PESQUISAR CÓDIGO EXATO */}
             {(() => {
               const termo = normalizarTexto(busca);
               if (!termo) return null;
@@ -1526,7 +1506,7 @@ const SunnyWearTecidos = () => {
                       <strong style={{ fontSize: '13px', color: '#0F172A' }}>📌 Todas as Reservas (Detalhamento):</strong>
                       {resExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhuma reserva pendente.</div> : (
                         <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                          {resExatas.map(r => <li key={r.id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {r.observacao || 'Sem obs.'} (Cor: {r.cor} | 📍 {r.localizacao})</li>)}
+                          {resExatas.map(r => <li key={r.id || r._id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {r.observacao || 'Sem obs.'} (Cor: {r.cor} | 📍 {r.localizacao})</li>)}
                         </ul>
                       )}
                     </div>
@@ -1534,7 +1514,7 @@ const SunnyWearTecidos = () => {
                       <strong style={{ fontSize: '13px', color: '#0F172A' }}>✂️ Todos os Retalhos (Detalhamento):</strong>
                       {sobExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhum retalho guardado.</div> : (
                         <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                          {sobExatas.map(s => <li key={s.id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {s.observacao || 'Sem obs.'} (Cor: {s.cor} | 📍 {s.localizacao})</li>)}
+                          {sobExatas.map(s => <li key={s.id || s._id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {s.observacao || 'Sem obs.'} (Cor: {s.cor} | 📍 {s.localizacao})</li>)}
                         </ul>
                       )}
                     </div>
