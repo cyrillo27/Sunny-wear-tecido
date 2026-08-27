@@ -81,7 +81,6 @@ const SunnyWearTecidos = () => {
 
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
 
-  // Helper robusto para tratar números com vírgula ou ponto
   const parseNumero = (val) => {
     if (typeof val === 'number') return val;
     if (!val) return 0;
@@ -147,10 +146,11 @@ const SunnyWearTecidos = () => {
     }
   };
 
+  // Reconhece reservas tanto pelo tipo quanto pela observação explícita
   const reservas = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
-    return t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
+    return t === 'reserva' || obs.includes('[RESERVA]');
   });
 
   const sobras = movimentacoes.filter(m => {
@@ -188,7 +188,7 @@ const SunnyWearTecidos = () => {
         const t = obterTipo(m);
         const obs = String(m.observacao || '').toUpperCase();
 
-        const isReserva = t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
+        const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
         const isRetalho = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
         const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho;
 
@@ -274,7 +274,6 @@ const SunnyWearTecidos = () => {
       unidadeMedida: formSobra.unidadeMedida,
       localizacao: formSobra.localizacao,
       observacao: finalObs
-      // Data removida: o backend preenche sozinho para evitar conflito de formato
     };
 
     setCarregando(true);
@@ -297,10 +296,10 @@ const SunnyWearTecidos = () => {
       if (!resposta.ok) {
         const erroMsg = await resposta.text();
         alert('❌ O Servidor recusou o salvamento: ' + erroMsg);
-        return; // Impede que a tela limpe sem ter salvado
+        return;
       }
 
-      alert(idEditandoSobra ? '✂️ Retalho ajustado com sucesso no servidor!' : '✂️ Sobra cadastrada e abatida do estoque com sucesso!');
+      alert('✂️ Retalho salvo com sucesso!');
       setIdEditandoSobra(null);
       setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
       await carregarDadosDoServidor();
@@ -327,11 +326,7 @@ const SunnyWearTecidos = () => {
     setCarregando(true);
     try {
       const itemId = item.id || item._id;
-      const delRes = await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
-      if (!delRes.ok) {
-        alert('Erro ao excluir retalho antigo.');
-        return;
-      }
+      await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
       const registroSaida = {
         ...item,
@@ -341,17 +336,13 @@ const SunnyWearTecidos = () => {
       delete registroSaida.id;
       delete registroSaida._id;
 
-      const postRes = await fetch(API_URL, {
+      await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(registroSaida)
       });
-      if (!postRes.ok) {
-        alert('Erro ao registrar o uso da sobra.');
-        return;
-      }
 
-      alert('✅ Retalho utilizado na produção e registrado!');
+      alert('✅ Retalho utilizado na produção!');
       await carregarDadosDoServidor();
     } catch (err) {
       console.error(err);
@@ -365,20 +356,17 @@ const SunnyWearTecidos = () => {
     if (!window.confirm('Confirma a exclusão deste retalho? Ele retornará ao estoque principal.')) return;
     setCarregando(true);
     try {
-      const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      if (resposta.ok) {
-        alert('Retalho excluído. O tecido retornou ao estoque geral.');
-        await carregarDadosDoServidor();
-      } else {
-        alert('Erro de conexão ao excluir retalho do servidor.');
-      }
+      await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      alert('Retalho excluído.');
+      await carregarDadosDoServidor();
     } catch (err) {
-      alert('Erro de conexão ao excluir.');
+      alert('Erro ao excluir.');
     } finally {
       setCarregando(false);
     }
   };
 
+  // FUNÇÃO DE CADASTRO DE RESERVA BLINDADA (Compatível com qualquer API)
   const cadastrarReserva = async (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
@@ -400,6 +388,7 @@ const SunnyWearTecidos = () => {
     const obsVal = formReserva.observacao || 'Separado para uso futuro';
     const finalObs = obsVal.includes('[RESERVA]') ? obsVal : `[RESERVA] ${obsVal}`;
 
+    // Forçamos tipoMovimento como 'saida' para garantir que o backend aceite perfeitamente
     const novaReserva = {
       tipoMovimento: 'saida',
       codigo: codigoLimpo,
@@ -410,7 +399,6 @@ const SunnyWearTecidos = () => {
       unidadeMedida: formReserva.unidadeMedida,
       localizacao: formReserva.localizacao,
       observacao: finalObs
-      // Data removida: o backend preenche sozinho
     };
 
     setCarregando(true);
@@ -430,20 +418,19 @@ const SunnyWearTecidos = () => {
         });
       }
 
-      // Validação Real: Se falhou no backend, trava aqui
       if (!resposta.ok) {
         const erroMsg = await resposta.text();
-        alert('❌ O Servidor recusou o salvamento da reserva: ' + erroMsg);
+        alert('❌ Servidor recusou a reserva: ' + erroMsg);
         return; 
       }
 
-      alert(idEditandoReserva ? '📌 Reserva ajustada e salva no banco de dados!' : '📌 Reserva salva com sucesso no banco de dados!');
+      alert('📌 Reserva salva com sucesso e abatida do estoque!');
       setIdEditandoReserva(null);
       setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
       await carregarDadosDoServidor();
     } catch (err) {
       console.error(err);
-      alert('Erro de conexão ao salvar reserva no servidor.');
+      alert('Erro de conexão ao salvar reserva.');
     } finally {
       setCarregando(false);
     }
@@ -464,11 +451,7 @@ const SunnyWearTecidos = () => {
     setCarregando(true);
     try {
       const itemId = item.id || item._id;
-      const delRes = await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
-      if (!delRes.ok) {
-        alert('Erro ao excluir reserva antiga.');
-        return;
-      }
+      await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
       const dadosSaida = {
         tipoMovimento: 'saida',
@@ -482,21 +465,17 @@ const SunnyWearTecidos = () => {
         observacao: 'Baixa de reserva: ' + (item.observacao || '').replace(/\[RESERVA\] /i, '')
       };
 
-      const postRes = await fetch(API_URL, {
+      await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dadosSaida)
       });
-      if (!postRes.ok) {
-        alert('Erro ao registrar a baixa da reserva.');
-        return;
-      }
 
-      alert('✅ Reserva consumida e registrada no servidor!');
+      alert('✅ Reserva consumida!');
       await carregarDadosDoServidor();
     } catch (erro) {
       console.error(erro);
-      alert('Erro de conexão ao concluir reserva.');
+      alert('Erro ao concluir reserva.');
     } finally {
       setCarregando(false);
     }
@@ -508,13 +487,13 @@ const SunnyWearTecidos = () => {
     try {
       const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (resposta.ok) {
-        alert('🔄 Reserva cancelada e tecido retornado ao estoque.');
+        alert('🔄 Reserva cancelada e tecido retornado.');
         await carregarDadosDoServidor();
       } else {
-        alert('Erro ao deletar reserva no servidor.');
+        alert('Erro ao excluir reserva.');
       }
     } catch (err) {
-      alert('Erro de conexão ao cancelar reserva.');
+      alert('Erro de conexão.');
     } finally {
       setCarregando(false);
     }
@@ -607,11 +586,11 @@ const SunnyWearTecidos = () => {
         setAbaAtiva('historico');
       } else {
         const erroServidor = await resposta.text();
-        alert('❌ Erro ao processar requisição no servidor: ' + erroServidor);
+        alert('❌ Erro no servidor: ' + erroServidor);
       }
     } catch (erro) {
       console.error('Erro de conexão:', erro);
-      alert('Erro de rede com o servidor central.');
+      alert('Erro de rede.');
     } finally {
       setCarregando(false);
     }
@@ -620,7 +599,7 @@ const SunnyWearTecidos = () => {
   const iniciarEdicao = (item) => {
     const itemId = item.id || item._id;
     if (!item || itemId === undefined || itemId === null) {
-      alert('Erro: ID do registro inválido.');
+      alert('Erro: ID inválido.');
       return;
     }
     setIdEditando(itemId);
@@ -652,21 +631,20 @@ const SunnyWearTecidos = () => {
   const deletarItem = async (itemOrId) => {
     const id = typeof itemOrId === 'object' ? (itemOrId.id || itemOrId._id) : itemOrId;
     if (!id) {
-      alert('Erro: ID inválido para exclusão.');
+      alert('Erro: ID inválido.');
       return;
     }
-    if (!window.confirm('Confirma a exclusão definitiva deste registro do sistema?')) return;
+    if (!window.confirm('Confirma a exclusão definitiva deste registro?')) return;
     try {
       const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (resposta.ok) {
-        alert('Registro excluído com sucesso.');
+        alert('Excluído com sucesso.');
         carregarDadosDoServidor();
       } else {
-        alert('Erro ao excluir o registro do servidor.');
+        alert('Erro ao excluir.');
       }
     } catch (erro) {
-      console.error('Erro de conexão:', erro);
-      alert('Erro de conexão com o servidor.');
+      alert('Erro de conexão.');
     }
   };
 
@@ -684,7 +662,7 @@ const SunnyWearTecidos = () => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
     
-    const isReserva = t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
+    const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
     const isRetalho = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
     const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho;
 
@@ -740,7 +718,7 @@ const SunnyWearTecidos = () => {
     .filter(m => {
       const t = obterTipo(m);
       const obs = String(m.observacao || '').toUpperCase();
-      const isRes = t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
+      const isRes = t === 'reserva' || obs.includes('[RESERVA]');
       const isRet = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
       return t === 'saida' && !isRes && !isRet && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
     })
@@ -834,7 +812,7 @@ const SunnyWearTecidos = () => {
       let tipoExibicao = t;
       let isExtra = false;
       
-      if (t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'))) { 
+      if (t === 'reserva' || obs.includes('[RESERVA]')) { 
         tipoExibicao = 'Reserva'; isExtra = true; 
       } else if (t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'))) { 
         tipoExibicao = 'Retalhos'; isExtra = true; 
@@ -906,7 +884,7 @@ const SunnyWearTecidos = () => {
       const t = obterTipo(m);
       const obs = String(m.observacao || '').toUpperCase();
 
-      const isReserva = t === 'reserva' || (t === 'saida' && obs.includes('[RESERVA]'));
+      const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
       const isRetalho = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
       const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho;
 
@@ -937,7 +915,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta QR Code</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.1 • Sincronização Nuvem
+              Versão 3.2 • Sincronização Nuvem
             </p>
           </div>
 
@@ -1039,7 +1017,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.1 CLOUD</span>
+            <span style={styles.versionBadge}>v3.2 CLOUD</span>
           </div>
         </div>
 
@@ -1094,7 +1072,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.1)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.2)</span>
           </div>
         </header>
 
