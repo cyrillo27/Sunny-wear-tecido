@@ -81,6 +81,15 @@ const SunnyWearTecidos = () => {
 
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
 
+  // Helper robusto para tratar números com vírgula ou ponto
+  const parseNumero = (val) => {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    const limpo = String(val).replace(',', '.');
+    const num = Number(limpo);
+    return isNaN(num) ? 0 : num;
+  };
+
   const normalizarTexto = (str) => {
     if (!str) return '';
     return String(str)
@@ -91,7 +100,7 @@ const SunnyWearTecidos = () => {
   };
 
   const obterMinimo = (item) => {
-    return Number(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
+    return parseNumero(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
   };
   
   const obterTipo = (item) => {
@@ -158,9 +167,6 @@ const SunnyWearTecidos = () => {
   
   const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
 
-  // =======================================================================
-  // CÁLCULO BLINDADO: Foca primariamente no Código do Tecido para nunca dar 0 incorretamente
-  // =======================================================================
   const calcularEstoqueLivre = (codigo, cor, ignorarReservaId = null, ignorarSobraId = null) => {
     let bruto = 0;
     let res = 0;
@@ -173,13 +179,12 @@ const SunnyWearTecidos = () => {
       const codM = normalizarTexto(m.codigo);
       const corM = normalizarTexto(m.cor || 'N/D');
       
-      // Se o código bate, consideramos o item (flexível com a cor para evitar bloqueio indesejado)
       const codigoBate = codM === codBusca;
       const corBate = !corBusca || corBusca === 'n/d' || corM === corBusca || corM === 'n/d';
 
       if (codigoBate && corBate) {
         const mId = m.id || m._id;
-        const q = Number(m.metros || m.quantidade || 0);
+        const q = parseNumero(m.metros || m.quantidade || 0);
         const t = obterTipo(m);
         const obs = String(m.observacao || '').toUpperCase();
 
@@ -247,7 +252,7 @@ const SunnyWearTecidos = () => {
 
     const codigoLimpo = formSobra.codigo.trim();
     const corLimpa = (formSobra.cor || 'N/D').trim();
-    const qtdSobra = Number(formSobra.quantidade);
+    const qtdSobra = parseNumero(formSobra.quantidade);
 
     const estoqueLivreAtual = calcularEstoqueLivre(codigoLimpo, corLimpa, null, idEditandoSobra);
     
@@ -280,7 +285,7 @@ const SunnyWearTecidos = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(novaSobra)
         });
-        alert('✂️ Retalho ajustado e abatido do estoque com sucesso no servidor!');
+        alert('✂️ Retalho ajustado com sucesso!');
       } else {
         await fetch(API_URL, {
           method: 'POST',
@@ -332,7 +337,7 @@ const SunnyWearTecidos = () => {
         body: JSON.stringify(registroSaida)
       });
 
-      alert('✅ Retalho utilizado na produção e registrado na nuvem!');
+      alert('✅ Retalho utilizado na produção!');
       await carregarDadosDoServidor();
     } catch (err) {
       console.error(err);
@@ -365,7 +370,7 @@ const SunnyWearTecidos = () => {
 
     const codigoLimpo = formReserva.codigo.trim();
     const corLimpa = (formReserva.cor || 'N/D').trim();
-    const qtdReserva = Number(formReserva.quantidade);
+    const qtdReserva = parseNumero(formReserva.quantidade);
 
     const estoqueLivreAtual = calcularEstoqueLivre(codigoLimpo, corLimpa, idEditandoReserva, null);
     
@@ -398,7 +403,7 @@ const SunnyWearTecidos = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(novaReserva)
         });
-        alert('📌 Reserva ajustada e estoque atualizado na base com sucesso!');
+        alert('📌 Reserva ajustada com sucesso!');
         setIdEditandoReserva(null);
       } else {
         await fetch(API_URL, {
@@ -406,7 +411,7 @@ const SunnyWearTecidos = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(novaReserva)
         });
-        alert('📌 Reserva salva com sucesso e abatida do estoque do servidor!');
+        alert('📌 Reserva salva com sucesso e abatida do estoque!');
       }
       setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
       await carregarDadosDoServidor();
@@ -440,8 +445,8 @@ const SunnyWearTecidos = () => {
         codigo: item.codigo,
         nome: item.nome,
         cor: item.cor,
-        quantidade: item.quantidade || item.metros,
-        metros: item.quantidade || item.metros,
+        quantidade: parseNumero(item.quantidade || item.metros),
+        metros: parseNumero(item.quantidade || item.metros),
         unidadeMedida: item.unidadeMedida || item.unidademedida || 'm',
         localizacao: item.localizacao,
         observacao: 'Baixa de reserva: ' + (item.observacao || '').replace(/\[RESERVA\] /i, ''),
@@ -454,7 +459,7 @@ const SunnyWearTecidos = () => {
         body: JSON.stringify(dadosSaida)
       });
 
-      alert('✅ Reserva consumida e registrada como saída na base!');
+      alert('✅ Reserva consumida e registrada como saída!');
       await carregarDadosDoServidor();
     } catch (erro) {
       console.error(erro);
@@ -469,7 +474,7 @@ const SunnyWearTecidos = () => {
     setCarregando(true);
     try {
       await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      alert('🔄 Reserva cancelada e tecido retornado ao estoque livre do sistema.');
+      alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
       await carregarDadosDoServidor();
     } catch (err) {
       alert('Erro de conexão ao cancelar reserva.');
@@ -520,11 +525,14 @@ const SunnyWearTecidos = () => {
 
   const registrarOuAtualizarMovimento = async (e) => {
     e.preventDefault();
-    const qtdValida = form.quantidade || form.metros;
-    if (!form.codigo || !form.nome || !form.cor || !form.localizacao || !qtdValida) return;
+    const qtdValida = parseNumero(form.quantidade || form.metros);
+    if (!form.codigo || !form.nome || !form.cor || !form.localizacao || qtdValida <= 0) {
+      alert('Preencha os campos obrigatórios corretamente.');
+      return;
+    }
 
     const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
-    let minFinal = form.estoqueMinimo !== '' && form.estoqueMinimo !== null ? Number(form.estoqueMinimo) : 0;
+    let minFinal = parseNumero(form.estoqueMinimo);
 
     const dadosParaEnviar = {
       ...form,
@@ -580,7 +588,7 @@ const SunnyWearTecidos = () => {
     }
     setIdEditando(itemId);
     const qtdItem = item.quantidade || item.metros || '';
-    const minItem = Number(item.estoqueminimo !== undefined ? item.estoqueminimo : (item.estoqueMinimo !== undefined ? item.estoqueMinimo : 0));
+    const minItem = obterMinimo(item);
     const tipoItem = obterTipo(item);
     
     setForm({
@@ -633,7 +641,7 @@ const SunnyWearTecidos = () => {
     const cod = normalizarTexto(m.codigo);
     const cor = normalizarTexto(m.cor || 'ndef');
     const chave = `${cod}_${cor}`;
-    const qtd = Number(m.metros || m.quantidade || 0);
+    const qtd = parseNumero(m.metros || m.quantidade || 0);
     const minReg = obterMinimo(m);
     
     const t = obterTipo(m);
@@ -689,7 +697,7 @@ const SunnyWearTecidos = () => {
 
   const entradasMetros = listaSeguraCalculos
     .filter(m => obterTipo(m) === 'entrada' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
-    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
+    .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
 
   const saidasMetros = listaSeguraCalculos
     .filter(m => {
@@ -699,15 +707,15 @@ const SunnyWearTecidos = () => {
       const isRet = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
       return t === 'saida' && !isRes && !isRet && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
     })
-    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
+    .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
 
   const totalReservasMetros = reservas
     .filter(r => (r?.unidadeMedida === 'm' || !r?.unidadeMedida))
-    .reduce((acc, r) => acc + Number(r.quantidade || r.metros || 0), 0);
+    .reduce((acc, r) => acc + parseNumero(r.quantidade || r.metros || 0), 0);
     
   const totalSobrasMetros = sobras
     .filter(s => s.unidadeMedida === 'm')
-    .reduce((acc, s) => acc + Number(s.quantidade || 0), 0);
+    .reduce((acc, s) => acc + parseNumero(s.quantidade || 0), 0);
 
   const estoqueBrutoMetros = entradasMetros - saidasMetros;
   const estoqueDisponivelMetros = estoqueBrutoMetros - totalReservasMetros - totalSobrasMetros;
@@ -729,7 +737,7 @@ const SunnyWearTecidos = () => {
     listaSeguraCalculos.forEach(m => {
       const mData = (m.data || '').split('T')[0];
       if (mData && mData <= dataStrYYYYMMDD) {
-        const qtd = Number(m.metros || m.quantidade || 0);
+        const qtd = parseNumero(m.metros || m.quantidade || 0);
         const un = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
         const t = obterTipo(m);
 
@@ -767,7 +775,7 @@ const SunnyWearTecidos = () => {
       acc[chaveLoc] = { nomeExibicao: rawLoc.trim().toUpperCase(), m: 0, kg: 0 };
     }
 
-    const qtd = Number(m.metros || m.quantidade || 0);
+    const qtd = parseNumero(m.metros || m.quantidade || 0);
     const unidade = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
     const tipoM = obterTipo(m);
     
@@ -857,7 +865,7 @@ const SunnyWearTecidos = () => {
     let qtdPrecos = 0;
 
     movimentosDoTecido.forEach(m => {
-      const q = Number(m.metros || m.quantidade || 0);
+      const q = parseNumero(m.metros || m.quantidade || 0);
       const t = obterTipo(m);
       const obs = String(m.observacao || '').toUpperCase();
 
@@ -870,8 +878,8 @@ const SunnyWearTecidos = () => {
       if (isReserva) totalReservaTecido += q;
       if (isRetalho) totalSobraTecido += q;
 
-      const p = Number(m.preco);
-      if (!isNaN(p) && p > 0 && t === 'entrada') {
+      const p = parseNumero(m.preco);
+      if (p > 0 && t === 'entrada') {
         somaPrecos += p;
         qtdPrecos++;
       }
@@ -882,7 +890,7 @@ const SunnyWearTecidos = () => {
     const totalDisponivelTecido = estoqueBrutoReal - totalReservado;
     const unidadeMed = infoTecido.unidademedida || infoTecido.unidadeMedida || 'm';
 
-    const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : Number(infoTecido.preco || 0);
+    const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : parseNumero(infoTecido.preco || 0);
     const valorTotalEstoque = totalDisponivelTecido * precoMedio;
 
     return (
@@ -892,7 +900,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta QR Code</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 2.9 • Sincronização Nuvem
+              Versão 3.0 • Sincronização Nuvem
             </p>
           </div>
 
@@ -994,7 +1002,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v2.9 CLOUD</span>
+            <span style={styles.versionBadge}>v3.0 CLOUD</span>
           </div>
         </div>
 
@@ -1049,7 +1057,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.0)</span>
           </div>
         </header>
 
@@ -1226,7 +1234,7 @@ const SunnyWearTecidos = () => {
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Largura (m)</label>
-                <input type="number" step="0.01" placeholder="Ex: 1.50" value={form.largura} onChange={(e) => setForm({...form, largura: e.target.value})} style={styles.input} />
+                <input type="text" placeholder="Ex: 1.50" value={form.largura} onChange={(e) => setForm({...form, largura: e.target.value})} style={styles.input} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Localização / Galpão *</label>
@@ -1235,7 +1243,7 @@ const SunnyWearTecidos = () => {
               <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade *</label>
-                  <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
+                  <input type="text" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Unidade</label>
@@ -1247,11 +1255,11 @@ const SunnyWearTecidos = () => {
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
-                <input type="number" step="0.01" placeholder="Ex: 180" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
+                <input type="text" placeholder="Ex: 180" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Valor Unitário (R$)</label>
-                <input type="number" step="0.01" placeholder="Ex: 15.90" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
+                <input type="text" placeholder="Ex: 15.90" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Número da Nota Fiscal</label>
@@ -1305,7 +1313,7 @@ const SunnyWearTecidos = () => {
               <div style={{gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade Utilizada *</label>
-                  <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
+                  <input type="text" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Unidade</label>
@@ -1371,7 +1379,7 @@ const SunnyWearTecidos = () => {
               <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px', gridColumn: '1 / -1'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade Reservada *</label>
-                  <input type="number" step="0.01" placeholder="Ex: 50" value={formReserva.quantidade} onChange={(e) => setFormReserva({...formReserva, quantidade: e.target.value})} style={styles.input} required />
+                  <input type="text" placeholder="Ex: 50" value={formReserva.quantidade} onChange={(e) => setFormReserva({...formReserva, quantidade: e.target.value})} style={styles.input} required />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Unidade</label>
@@ -1493,7 +1501,7 @@ const SunnyWearTecidos = () => {
               <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px', gridColumn: '1 / -1'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade da Sobra *</label>
-                  <input type="number" step="0.01" placeholder="Ex: 2.5" value={formSobra.quantidade} onChange={(e) => setFormSobra({...formSobra, quantidade: e.target.value})} style={styles.input} required />
+                  <input type="text" placeholder="Ex: 2.5" value={formSobra.quantidade} onChange={(e) => setFormSobra({...formSobra, quantidade: e.target.value})} style={styles.input} required />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Unidade</label>
@@ -1711,8 +1719,8 @@ const SunnyWearTecidos = () => {
                   ) : (
                     movFiltradas.map((item) => {
                       const itemId = item.id || item._id;
-                      const precoUnit = Number(item.preco) || 0;
-                      const qtd = Number(item.metros || item.quantidade || 0);
+                      const precoUnit = parseNumero(item.preco) || 0;
+                      const qtd = parseNumero(item.metros || item.quantidade || 0);
                       const unidade = item.unidademedida || item.unidadeMedida || 'm';
                       const tipoMovimentoReal = item._tipoExibicao;
                       
