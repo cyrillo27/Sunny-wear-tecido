@@ -61,8 +61,8 @@ const SunnyWearTecidos = () => {
     localizacao: '',
     observacao: ''
   });
-  const [buscaSobraTexto, setBuscaSobraTexto] = useState(''); // Para a listagem
-  const [termoBuscaSobra, setTermoBuscaSobra] = useState(''); // Para o form
+  const [buscaSobraTexto, setBuscaSobraTexto] = useState('');
+  const [termoBuscaSobra, setTermoBuscaSobra] = useState('');
 
   const [formReserva, setFormReserva] = useState({
     codigo: '',
@@ -73,8 +73,8 @@ const SunnyWearTecidos = () => {
     localizacao: '',
     observacao: ''
   });
-  const [buscaReservaTexto, setBuscaReservaTexto] = useState(''); // Para a listagem
-  const [termoBuscaReserva, setTermoBuscaReserva] = useState(''); // Para o form
+  const [buscaReservaTexto, setBuscaReservaTexto] = useState('');
+  const [termoBuscaReserva, setTermoBuscaReserva] = useState('');
   
   const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
@@ -138,9 +138,6 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // =======================================================================
-  // CLASSIFICAÇÃO BLINDADA (Ignora maiúsculas/minúsculas no texto da observação)
-  // =======================================================================
   const reservas = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
@@ -161,16 +158,26 @@ const SunnyWearTecidos = () => {
   
   const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
 
+  // =======================================================================
+  // CÁLCULO BLINDADO: Foca primariamente no Código do Tecido para nunca dar 0 incorretamente
+  // =======================================================================
   const calcularEstoqueLivre = (codigo, cor, ignorarReservaId = null, ignorarSobraId = null) => {
     let bruto = 0;
     let res = 0;
     let sob = 0;
 
+    const codBusca = normalizarTexto(codigo);
+    const corBusca = normalizarTexto(cor);
+
     movimentacoes.forEach(m => {
       const codM = normalizarTexto(m.codigo);
       const corM = normalizarTexto(m.cor || 'N/D');
       
-      if (codM === normalizarTexto(codigo) && corM === normalizarTexto(cor)) {
+      // Se o código bate, consideramos o item (flexível com a cor para evitar bloqueio indesejado)
+      const codigoBate = codM === codBusca;
+      const corBate = !corBusca || corBusca === 'n/d' || corM === corBusca || corM === 'n/d';
+
+      if (codigoBate && corBate) {
         const mId = m.id || m._id;
         const q = Number(m.metros || m.quantidade || 0);
         const t = obterTipo(m);
@@ -191,7 +198,6 @@ const SunnyWearTecidos = () => {
     return bruto - res - sob;
   };
 
-  // BUSCA PARA AUTOPREENCHER RESERVAS
   const executarBuscaReserva = () => {
     const termo = normalizarTexto(termoBuscaReserva);
     if (!termo) { alert('Digite o código para buscar.'); return; }
@@ -212,7 +218,6 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // BUSCA PARA AUTOPREENCHER SOBRAS
   const executarBuscaSobra = () => {
     const termo = normalizarTexto(termoBuscaSobra);
     if (!termo) { alert('Digite o código para buscar.'); return; }
@@ -247,7 +252,7 @@ const SunnyWearTecidos = () => {
     const estoqueLivreAtual = calcularEstoqueLivre(codigoLimpo, corLimpa, null, idEditandoSobra);
     
     if (qtdSobra > estoqueLivreAtual) {
-      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido/cor é de apenas ${estoqueLivreAtual}.`);
+      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido é de apenas ${estoqueLivreAtual}.`);
       return;
     }
 
@@ -255,7 +260,7 @@ const SunnyWearTecidos = () => {
     const finalObs = obsVal.includes('[RETALHO]') ? obsVal : `[RETALHO] ${obsVal}`;
 
     const novaSobra = {
-      tipoMovimento: 'saida', // Força saída para o banco
+      tipoMovimento: 'saida',
       codigo: codigoLimpo,
       nome: formSobra.nome,
       cor: corLimpa,
@@ -365,7 +370,7 @@ const SunnyWearTecidos = () => {
     const estoqueLivreAtual = calcularEstoqueLivre(codigoLimpo, corLimpa, idEditandoReserva, null);
     
     if (qtdReserva > estoqueLivreAtual) {
-      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido/cor é de apenas ${estoqueLivreAtual}.`);
+      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido é de apenas ${estoqueLivreAtual}.`);
       return;
     }
 
@@ -373,7 +378,7 @@ const SunnyWearTecidos = () => {
     const finalObs = obsVal.includes('[RESERVA]') ? obsVal : `[RESERVA] ${obsVal}`;
 
     const novaReserva = {
-      tipoMovimento: 'saida', // Força saída
+      tipoMovimento: 'saida',
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -826,7 +831,6 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // ========== BLOCO DO QR CODE RESTAURADO (COM CÁLCULOS PERFEITOS) ==========
   if (codigoQrUrl) {
     const paramCodigoLpo = normalizarTexto(codigoQrUrl);
     const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
@@ -873,9 +877,9 @@ const SunnyWearTecidos = () => {
       }
     });
 
-    const estoqueBrutoReal = totalQtdBruta - totalSaidaNormal; // Total físico no galpão
-    const totalReservado = totalReservaTecido + totalSobraTecido; // Separados/Cortados
-    const totalDisponivelTecido = estoqueBrutoReal - totalReservado; // Livre
+    const estoqueBrutoReal = totalQtdBruta - totalSaidaNormal;
+    const totalReservado = totalReservaTecido + totalSobraTecido;
+    const totalDisponivelTecido = estoqueBrutoReal - totalReservado;
     const unidadeMed = infoTecido.unidademedida || infoTecido.unidadeMedida || 'm';
 
     const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : Number(infoTecido.preco || 0);
@@ -888,7 +892,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta QR Code</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 2.8 • Sincronização Nuvem
+              Versão 2.9 • Sincronização Nuvem
             </p>
           </div>
 
@@ -944,7 +948,6 @@ const SunnyWearTecidos = () => {
       </div>
     );
   }
-  // ========== FIM DO BLOCO DO QR CODE ==========
 
   return (
     <div style={styles.appLayout} className="app-layout-container">
@@ -991,7 +994,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v2.8 CLOUD</span>
+            <span style={styles.versionBadge}>v2.9 CLOUD</span>
           </div>
         </div>
 
@@ -1339,7 +1342,6 @@ const SunnyWearTecidos = () => {
 
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
               
-              {/* NOVA BARRA DE BUSCA NAS RESERVAS */}
               {!idEditandoReserva && (
                 <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
                   <label style={styles.formLabel}>Autopreencher (Evite erros de digitação!)</label>
@@ -1462,7 +1464,6 @@ const SunnyWearTecidos = () => {
 
             <form onSubmit={cadastrarSobra} style={styles.formGrid} className="form-grid-responsive">
 
-              {/* NOVA BARRA DE BUSCA NAS SOBRAS */}
               {!idEditandoSobra && (
                 <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
                   <label style={styles.formLabel}>Autopreencher (Evite erros de digitação!)</label>
@@ -1811,7 +1812,7 @@ const SunnyWearTecidos = () => {
             <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px', textAlign: 'center' }}>
               <strong>{qrSelecionado.codigo}</strong> - {qrSelecionado.nome} (<span style={{color: '#2563EB', fontWeight: '700'}}>{qrSelecionado.cor}</span>)
             </p>
-            <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #CBD5E1', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '14px' }}>
+            <div style={styles.qrCodeBox}>
               <img 
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`${window.location.origin}/?codigo=${qrSelecionado.codigo}&cor=${encodeURIComponent(qrSelecionado.cor)}`)}`} 
                 alt="QR Code" 
@@ -1819,7 +1820,7 @@ const SunnyWearTecidos = () => {
               />
             </div>
             <span style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', maxWidth: '280px', lineHeight: '1.4' }}>
-              📱 Ao apontar a câmera do celular, ele carregará diretamente o status deste rolo na cor exata, revelando exclusivamente a <strong>quantidade final disponível</strong>.
+              📱 Ao apontar a câmera do celular, ele carregará diretamente o status deste rolo, revelando a quantidade livre.
             </span>
           </div>
         </div>
