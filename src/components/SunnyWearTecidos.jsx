@@ -146,7 +146,7 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Reconhece reservas tanto pelo tipo quanto pela observação explícita
+  // Reconhece reservas pelo tipo 'reserva' ou por observação contendo [RESERVA]
   const reservas = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
@@ -366,7 +366,7 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // FUNÇÃO DE CADASTRO DE RESERVA BLINDADA (Compatível com qualquer API)
+  // CADASTRO DE RESERVA COM TIPO EXPLICITO 'reserva' PARA APARECER COMO RESERVA DE FATO
   const cadastrarReserva = async (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
@@ -388,9 +388,8 @@ const SunnyWearTecidos = () => {
     const obsVal = formReserva.observacao || 'Separado para uso futuro';
     const finalObs = obsVal.includes('[RESERVA]') ? obsVal : `[RESERVA] ${obsVal}`;
 
-    // Forçamos tipoMovimento como 'saida' para garantir que o backend aceite perfeitamente
     const novaReserva = {
-      tipoMovimento: 'saida',
+      tipoMovimento: 'reserva',
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -915,7 +914,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta QR Code</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.2 • Sincronização Nuvem
+              Versão 3.3 • Sincronização Nuvem
             </p>
           </div>
 
@@ -1017,7 +1016,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.2 CLOUD</span>
+            <span style={styles.versionBadge}>v3.3 CLOUD</span>
           </div>
         </div>
 
@@ -1072,7 +1071,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.2)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.3)</span>
           </div>
         </header>
 
