@@ -146,7 +146,6 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Reconhece reservas pelo tipo 'reserva' ou por observação contendo [RESERVA]
   const reservas = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
@@ -156,13 +155,13 @@ const SunnyWearTecidos = () => {
   const sobras = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
-    return t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
+    return t === 'sobra' || obs.includes('[RETALHO]');
   });
 
   const sobrasSaidas = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
-    return t === 'saida_sobra' || (t === 'saida' && obs.includes('[USO-RETALHO]'));
+    return t === 'saida_sobra' || obs.includes('[USO-RETALHO]');
   });
   
   const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
@@ -189,10 +188,11 @@ const SunnyWearTecidos = () => {
         const obs = String(m.observacao || '').toUpperCase();
 
         const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
-        const isRetalho = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
-        const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho;
+        const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
+        const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('[USO-RETALHO]');
+        const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho; // Proteção contra erro do servidor
 
-        if (t === 'entrada') bruto += q;
+        if (isEntradaNormal) bruto += q;
         if (isSaidaNormal) bruto -= q;
         
         if (isReserva && mId !== ignorarReservaId) res += q;
@@ -265,7 +265,7 @@ const SunnyWearTecidos = () => {
     const finalObs = obsVal.includes('[RETALHO]') ? obsVal : `[RETALHO] ${obsVal}`;
 
     const novaSobra = {
-      tipoMovimento: 'sobra', // Usando tipo oficial
+      tipoMovimento: 'saida', // O servidor só aceita 'saida'
       codigo: codigoLimpo,
       nome: formSobra.nome,
       cor: corLimpa,
@@ -366,7 +366,6 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // CADASTRO DE RESERVA COM TIPO EXPLICITO 'reserva'
   const cadastrarReserva = async (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
@@ -389,7 +388,7 @@ const SunnyWearTecidos = () => {
     const finalObs = obsVal.includes('[RESERVA]') ? obsVal : `[RESERVA] ${obsVal}`;
 
     const novaReserva = {
-      tipoMovimento: 'reserva', // TIPO OFICIAL PARA O BADGE AMARELO
+      tipoMovimento: 'saida', // Servidor só aceita saida, a identificação se dá pela observacao
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -662,8 +661,9 @@ const SunnyWearTecidos = () => {
     const obs = String(m.observacao || '').toUpperCase();
     
     const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
-    const isRetalho = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
-    const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho;
+    const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
+    const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('[USO-RETALHO]');
+    const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
     if (!tecidosConsolidados[chave]) {
       tecidosConsolidados[chave] = {
@@ -679,7 +679,7 @@ const SunnyWearTecidos = () => {
       };
     }
 
-    if (t === 'entrada') tecidosConsolidados[chave].totalBruto += qtd;
+    if (isEntradaNormal) tecidosConsolidados[chave].totalBruto += qtd;
     if (isSaidaNormal) tecidosConsolidados[chave].totalBruto -= qtd;
     if (isReserva) tecidosConsolidados[chave].totalReservas += qtd;
     if (isRetalho) tecidosConsolidados[chave].totalSobras += qtd;
@@ -710,7 +710,11 @@ const SunnyWearTecidos = () => {
   const maxUsoTop = topTecidosMaisUsados.length > 0 ? Math.max(...topTecidosMaisUsados.map(t => t.totalUso)) : 100;
 
   const entradasMetros = listaSeguraCalculos
-    .filter(m => obterTipo(m) === 'entrada' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
+    .filter(m => {
+      const t = obterTipo(m);
+      const obs = String(m.observacao || '').toUpperCase();
+      return t === 'entrada' && !obs.includes('[RESERVA]') && !obs.includes('[RETALHO]') && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
+    })
     .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
 
   const saidasMetros = listaSeguraCalculos
@@ -718,7 +722,7 @@ const SunnyWearTecidos = () => {
       const t = obterTipo(m);
       const obs = String(m.observacao || '').toUpperCase();
       const isRes = t === 'reserva' || obs.includes('[RESERVA]');
-      const isRet = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
+      const isRet = t === 'sobra' || obs.includes('[RETALHO]');
       return t === 'saida' && !isRes && !isRet && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
     })
     .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
@@ -754,11 +758,16 @@ const SunnyWearTecidos = () => {
         const qtd = parseNumero(m.metros || m.quantidade || 0);
         const un = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
         const t = obterTipo(m);
+        const obs = String(m.observacao || '').toUpperCase();
+        
+        const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
+        const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
+        const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
-        if (t === 'entrada') {
+        if (isEntradaNormal) {
           if (un === 'kg') kgTotal += qtd;
           else mTotal += qtd;
-        } else if (t === 'saida' || t === 'reserva' || t === 'sobra') {
+        } else if (t === 'saida' || isReserva || isRetalho) {
           if (un === 'kg') kgTotal -= qtd;
           else mTotal -= qtd;
         }
@@ -791,12 +800,17 @@ const SunnyWearTecidos = () => {
 
     const qtd = parseNumero(m.metros || m.quantidade || 0);
     const unidade = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
-    const tipoM = obterTipo(m);
+    const t = obterTipo(m);
+    const obs = String(m.observacao || '').toUpperCase();
     
-    if (tipoM === 'entrada') {
+    const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
+    const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
+    const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
+    
+    if (isEntradaNormal) {
       if (acc[chaveLoc][unidade] !== undefined) acc[chaveLoc][unidade] += qtd;
       else acc[chaveLoc][unidade] = qtd;
-    } else if (tipoM === 'saida' || tipoM === 'reserva' || tipoM === 'sobra') {
+    } else if (t === 'saida' || isReserva || isRetalho) {
       if (acc[chaveLoc][unidade] !== undefined) acc[chaveLoc][unidade] -= qtd;
       else acc[chaveLoc][unidade] = -qtd;
     }
@@ -804,7 +818,10 @@ const SunnyWearTecidos = () => {
   }, {});
 
   const todosRegistrosHistorico = listaSeguraCalculos
-    .filter(m => obterTipo(m) !== 'saida_sobra' && !String(m.observacao || '').toUpperCase().includes('[USO-RETALHO]'))
+    .filter(m => {
+      const obs = String(m.observacao || '').toUpperCase();
+      return !obs.includes('[USO-RETALHO]') && obterTipo(m) !== 'saida_sobra';
+    })
     .map(m => {
       const t = obterTipo(m);
       const obs = String(m.observacao || '').toUpperCase();
@@ -813,7 +830,7 @@ const SunnyWearTecidos = () => {
       
       if (t === 'reserva' || obs.includes('[RESERVA]')) { 
         tipoExibicao = 'reserva'; isExtra = true; 
-      } else if (t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'))) { 
+      } else if (t === 'sobra' || obs.includes('[RETALHO]')) { 
         tipoExibicao = 'retalhos'; isExtra = true; 
       }
       return { ...m, _tipoExibicao: tipoExibicao, isExtra };
@@ -853,7 +870,7 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // TELA DO QR CODE SIMPLIFICADA
+  // TELA DO QR CODE COM VALORES FINANCEIROS RESTAURADOS
   if (codigoQrUrl) {
     const paramCodigoLpo = normalizarTexto(codigoQrUrl);
     const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
@@ -875,6 +892,9 @@ const SunnyWearTecidos = () => {
     let totalReservaTecido = 0;
     let totalSobraTecido = 0;
     let totalSaidaNormal = 0;
+    
+    let somaPrecos = 0;
+    let qtdPrecos = 0;
 
     movimentosDoTecido.forEach(m => {
       const q = parseNumero(m.metros || m.quantidade || 0);
@@ -882,19 +902,29 @@ const SunnyWearTecidos = () => {
       const obs = String(m.observacao || '').toUpperCase();
 
       const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
-      const isRetalho = t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'));
-      const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho;
+      const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
+      const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('[USO-RETALHO]');
+      const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
-      if (t === 'entrada') totalQtdBruta += q;
-      if (isSaidaNormal) totalSaidaNormal += q;
-      if (isReserva) totalReservaTecido += q;
-      if (isRetalho) totalSobraTecido += q;
+      if (isEntradaNormal) { totalQtdBruta += q; }
+      if (isSaidaNormal) { totalSaidaNormal += q; }
+      if (isReserva) { totalReservaTecido += q; }
+      if (isRetalho) { totalSobraTecido += q; }
+      
+      const p = parseNumero(m.preco);
+      if (p > 0 && isEntradaNormal) {
+        somaPrecos += p;
+        qtdPrecos++;
+      }
     });
 
     const estoqueBrutoReal = totalQtdBruta - totalSaidaNormal;
     const totalReservado = totalReservaTecido + totalSobraTecido;
     const totalDisponivelTecido = estoqueBrutoReal - totalReservado;
     const unidadeMed = infoTecido.unidademedida || infoTecido.unidadeMedida || 'm';
+
+    const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : parseNumero(infoTecido.preco || 0);
+    const valorTotalEstoque = totalDisponivelTecido * precoMedio;
 
     return (
       <div style={styles.qrViewContainer}>
@@ -903,7 +933,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.4 • Nuvem
+              Versão 3.5 • Nuvem
             </p>
           </div>
 
@@ -929,12 +959,19 @@ const SunnyWearTecidos = () => {
             
             <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
 
+            <div style={styles.qrInfoRow}><span>Total de Tecido (Bruto):</span> <strong style={{color: '#0F172A'}}>{estoqueBrutoReal} {unidadeMed}</strong></div>
+            
             {/* CAIXA DE ESTOQUE LIVRE SIMPLIFICADA E DESTACADA */}
-            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#ECFDF5', padding: '16px', borderRadius: '12px', border: '1px solid #A7F3D0', marginTop: '10px'}}>
+            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#ECFDF5', padding: '16px', borderRadius: '12px', border: '1px solid #A7F3D0', margin: '10px 0'}}>
               <span style={{fontSize: '12px', color: '#065F46', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px'}}>Estoque Atual Disponível</span>
               <strong style={{color: '#059669', fontSize: '26px'}}>{totalDisponivelTecido} {unidadeMed}</strong>
               <span style={{fontSize: '11px', color: '#047857', marginTop: '4px'}}>(Já subtraindo reservas e retalhos)</span>
             </div>
+
+            <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
+
+            <div style={styles.qrInfoRow}><span>Valor Unitário Médio:</span> <strong style={{color: '#D97706'}}>R$ {precoMedio.toFixed(2)}</strong></div>
+            <div style={styles.qrInfoRow}><span>Valor Total (Estoque Livre):</span> <strong style={{color: '#D97706'}}>R$ {valorTotalEstoque.toFixed(2)}</strong></div>
           </div>
 
           <button 
@@ -1002,7 +1039,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.4 CLOUD</span>
+            <span style={styles.versionBadge}>v3.5 CLOUD</span>
           </div>
         </div>
 
@@ -1057,7 +1094,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.4)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.5)</span>
           </div>
         </header>
 
