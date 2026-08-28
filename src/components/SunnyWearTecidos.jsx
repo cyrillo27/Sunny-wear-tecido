@@ -2309,5 +2309,5 @@ const styles = {
   tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '1px solid #CBD5E1' },
   noFoto: { fontSize: '11px', color: '#94A3B8', fontStyle: 'italic' }
 };
-
+// Atualizacao v3.7
 export default SunnyWearTecidos;
