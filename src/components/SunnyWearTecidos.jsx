@@ -265,7 +265,7 @@ const SunnyWearTecidos = () => {
     const finalObs = obsVal.includes('[RETALHO]') ? obsVal : `[RETALHO] ${obsVal}`;
 
     const novaSobra = {
-      tipoMovimento: 'saida',
+      tipoMovimento: 'sobra', // Usando tipo oficial
       codigo: codigoLimpo,
       nome: formSobra.nome,
       cor: corLimpa,
@@ -366,7 +366,7 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // CADASTRO DE RESERVA COM TIPO EXPLICITO 'reserva' PARA APARECER COMO RESERVA DE FATO
+  // CADASTRO DE RESERVA COM TIPO EXPLICITO 'reserva'
   const cadastrarReserva = async (e) => {
     e.preventDefault();
     if (!formReserva.codigo || !formReserva.nome || !formReserva.quantidade || !formReserva.localizacao) {
@@ -389,7 +389,7 @@ const SunnyWearTecidos = () => {
     const finalObs = obsVal.includes('[RESERVA]') ? obsVal : `[RESERVA] ${obsVal}`;
 
     const novaReserva = {
-      tipoMovimento: 'reserva',
+      tipoMovimento: 'reserva', // TIPO OFICIAL PARA O BADGE AMARELO
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -812,9 +812,9 @@ const SunnyWearTecidos = () => {
       let isExtra = false;
       
       if (t === 'reserva' || obs.includes('[RESERVA]')) { 
-        tipoExibicao = 'Reserva'; isExtra = true; 
+        tipoExibicao = 'reserva'; isExtra = true; 
       } else if (t === 'sobra' || (t === 'saida' && obs.includes('[RETALHO]'))) { 
-        tipoExibicao = 'Retalhos'; isExtra = true; 
+        tipoExibicao = 'retalhos'; isExtra = true; 
       }
       return { ...m, _tipoExibicao: tipoExibicao, isExtra };
     });
@@ -853,6 +853,7 @@ const SunnyWearTecidos = () => {
     );
   });
 
+  // TELA DO QR CODE SIMPLIFICADA
   if (codigoQrUrl) {
     const paramCodigoLpo = normalizarTexto(codigoQrUrl);
     const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
@@ -874,9 +875,6 @@ const SunnyWearTecidos = () => {
     let totalReservaTecido = 0;
     let totalSobraTecido = 0;
     let totalSaidaNormal = 0;
-    
-    let somaPrecos = 0;
-    let qtdPrecos = 0;
 
     movimentosDoTecido.forEach(m => {
       const q = parseNumero(m.metros || m.quantidade || 0);
@@ -891,12 +889,6 @@ const SunnyWearTecidos = () => {
       if (isSaidaNormal) totalSaidaNormal += q;
       if (isReserva) totalReservaTecido += q;
       if (isRetalho) totalSobraTecido += q;
-
-      const p = parseNumero(m.preco);
-      if (p > 0 && t === 'entrada') {
-        somaPrecos += p;
-        qtdPrecos++;
-      }
     });
 
     const estoqueBrutoReal = totalQtdBruta - totalSaidaNormal;
@@ -904,17 +896,14 @@ const SunnyWearTecidos = () => {
     const totalDisponivelTecido = estoqueBrutoReal - totalReservado;
     const unidadeMed = infoTecido.unidademedida || infoTecido.unidadeMedida || 'm';
 
-    const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : parseNumero(infoTecido.preco || 0);
-    const valorTotalEstoque = totalDisponivelTecido * precoMedio;
-
     return (
       <div style={styles.qrViewContainer}>
         <div style={styles.qrViewCard}>
           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <div style={styles.logoBadge}>SW</div>
-            <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta QR Code</h2>
+            <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.3 • Sincronização Nuvem
+              Versão 3.4 • Nuvem
             </p>
           </div>
 
@@ -923,7 +912,7 @@ const SunnyWearTecidos = () => {
             disabled={carregando}
             style={{...styles.qrBackBtn, backgroundColor: '#2563EB', color: '#FFF', marginBottom: '16px', border: 'none', boxShadow: '0 4px 10px rgba(37,99,235,0.3)'}}
           >
-            {carregando ? '⏳ Sincronizando...' : '🔄 Forçar Atualização de Dados'}
+            {carregando ? '⏳ Sincronizando...' : '🔄 Atualizar Dados'}
           </button>
 
           {infoTecido.foto ? (
@@ -936,26 +925,23 @@ const SunnyWearTecidos = () => {
             <div style={styles.qrInfoRow}><span>Código:</span> <strong>{infoTecido.codigo}</strong></div>
             <div style={styles.qrInfoRow}><span>Nome:</span> <strong>{infoTecido.nome || 'N/D'}</strong></div>
             <div style={styles.qrInfoRow}><span>Cor:</span> <strong style={{color: '#2563EB'}}>{infoTecido.cor || 'N/D'}</strong></div>
-            <div style={styles.qrInfoRow}><span>Largura:</span> <strong>{infoTecido.largura ? `${infoTecido.largura}m` : 'Não informada'}</strong></div>
             <div style={styles.qrInfoRow}><span>Galpão / Local:</span> <strong style={{color: '#2563EB'}}>📍 {infoTecido.localizacao || 'N/D'}</strong></div>
             
             <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
 
-            <div style={styles.qrInfoRow}><span>Total de Tecido (Bruto):</span> <strong style={{color: '#0F172A'}}>{estoqueBrutoReal} {unidadeMed}</strong></div>
-            <div style={styles.qrInfoRow}><span>Total da Reserva/Sobras:</span> <strong style={{color: '#D97706'}}>- {totalReservado} {unidadeMed}</strong></div>
-            <div style={styles.qrInfoRow}><span>Total Disponível (Livre):</span> <strong style={{color: '#059669', fontSize: '15px'}}>{totalDisponivelTecido} {unidadeMed}</strong></div>
-
-            <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
-
-            <div style={styles.qrInfoRow}><span>Valor Unitário Médio:</span> <strong style={{color: '#D97706'}}>R$ {precoMedio.toFixed(2)}</strong></div>
-            <div style={styles.qrInfoRow}><span>Valor Total Livre:</span> <strong style={{color: '#D97706'}}>R$ {valorTotalEstoque.toFixed(2)}</strong></div>
+            {/* CAIXA DE ESTOQUE LIVRE SIMPLIFICADA E DESTACADA */}
+            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#ECFDF5', padding: '16px', borderRadius: '12px', border: '1px solid #A7F3D0', marginTop: '10px'}}>
+              <span style={{fontSize: '12px', color: '#065F46', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px'}}>Estoque Atual Disponível</span>
+              <strong style={{color: '#059669', fontSize: '26px'}}>{totalDisponivelTecido} {unidadeMed}</strong>
+              <span style={{fontSize: '11px', color: '#047857', marginTop: '4px'}}>(Já subtraindo reservas e retalhos)</span>
+            </div>
           </div>
 
           <button 
             onClick={() => { window.location.href = window.location.pathname; }} 
             style={styles.qrBackBtn}
           >
-            🏠 Acessar Sistema Completo
+            🏠 Acessar Sistema
           </button>
         </div>
 
@@ -1016,7 +1002,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.3 CLOUD</span>
+            <span style={styles.versionBadge}>v3.4 CLOUD</span>
           </div>
         </div>
 
@@ -1071,7 +1057,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.3)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.4)</span>
           </div>
         </header>
 
@@ -1747,15 +1733,17 @@ const SunnyWearTecidos = () => {
                       let badgeColor = '#03543F';
                       let badgeText = '📥 Entrada';
                       
-                      if (tipoMovimentoReal === 'saida') {
+                      const tReal = (tipoMovimentoReal || '').toLowerCase();
+                      
+                      if (tReal === 'saida') {
                         badgeBg = '#FDE8E8';
                         badgeColor = '#9B1C1C';
                         badgeText = '📤 Saída';
-                      } else if (tipoMovimentoReal === 'Reserva') {
+                      } else if (tReal === 'reserva') {
                         badgeBg = '#FEF3C7';
                         badgeColor = '#92400E';
                         badgeText = '📌 Reserva';
-                      } else if (tipoMovimentoReal === 'Retalhos') {
+                      } else if (tReal === 'retalhos') {
                         badgeBg = '#F3E8FF';
                         badgeColor = '#6B21A8';
                         badgeText = '✂️ Retalhos';
