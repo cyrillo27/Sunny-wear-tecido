@@ -932,7 +932,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.7 • Nuvem
+              Versão 3.8 • Nuvem
             </p>
           </div>
 
@@ -1037,7 +1037,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.7 CLOUD</span>
+            <span style={styles.versionBadge}>v3.8 CLOUD</span>
           </div>
         </div>
 
@@ -1092,7 +1092,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.7)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.8)</span>
           </div>
         </header>
 
@@ -1764,7 +1764,6 @@ const SunnyWearTecidos = () => {
                       const fornecedor = item.fornecedor || '';
                       const obsItem = String(item.observacao || '').toUpperCase();
 
-                      // Determina se é reserva ou retalho baseado na observação
                       const isReservaTag = obsItem.includes('RESERVA');
                       const isRetalhoTag = obsItem.includes('RETALHO') || obsItem.includes('SOBRA');
 
@@ -1775,9 +1774,19 @@ const SunnyWearTecidos = () => {
                       const tReal = (item.tipomovimento || item.tipoMovimento || '').toLowerCase();
                       
                       if (tReal === 'saida') {
-                        badgeBg = '#FDE8E8';
-                        badgeColor = '#9B1C1C';
-                        badgeText = '📤 Saída';
+                        if (isReservaTag) {
+                          badgeBg = '#FEF3C7';
+                          badgeColor = '#92400E';
+                          badgeText = '📌 Reserva';
+                        } else if (isRetalhoTag) {
+                          badgeBg = '#F3E8FF';
+                          badgeColor = '#6B21A8';
+                          badgeText = '✂️ Retalho';
+                        } else {
+                          badgeBg = '#FDE8E8';
+                          badgeColor = '#9B1C1C';
+                          badgeText = '📤 Saída';
+                        }
                       }
 
                       return (
@@ -1790,15 +1799,7 @@ const SunnyWearTecidos = () => {
                             )}
                           </td>
                           <td style={styles.td}>
-                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
-                              <span style={{...styles.badge, background: badgeBg, color: badgeColor}}>{badgeText}</span>
-                              {isReservaTag && (
-                                <span style={{...styles.badge, background: '#FEF3C7', color: '#92400E'}}>📌 Reserva</span>
-                              )}
-                              {isRetalhoTag && (
-                                <span style={{...styles.badge, background: '#F3E8FF', color: '#6B21A8'}}>✂️ Retalho</span>
-                              )}
-                            </div>
+                            <span style={{...styles.badge, background: badgeBg, color: badgeColor}}>{badgeText}</span>
                           </td>
                           <td style={styles.td}><strong style={{color: '#0F172A'}}>{item.codigo}</strong></td>
                           <td style={styles.td}>
@@ -2309,5 +2310,5 @@ const styles = {
   tableImgClickable: { width: '40px', height: '40px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', border: '1px solid #CBD5E1' },
   noFoto: { fontSize: '11px', color: '#94A3B8', fontStyle: 'italic' }
 };
-// Atualizacao v3.7
+
 export default SunnyWearTecidos;
