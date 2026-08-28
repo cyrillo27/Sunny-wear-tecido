@@ -146,7 +146,6 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  // Identificação robusta sem depender de colchetes do Render
   const reservas = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
@@ -386,7 +385,6 @@ const SunnyWearTecidos = () => {
     }
 
     const obsVal = formReserva.observacao || 'Separado para uso futuro';
-    // Usando palavra clara sem colchetes para o Render não apagar
     const finalObs = obsVal.toUpperCase().includes('RESERVA') ? obsVal : `RESERVA - ${obsVal}`;
 
     const novaReserva = {
@@ -831,9 +829,9 @@ const SunnyWearTecidos = () => {
       let isExtra = false;
       
       if (t === 'reserva' || obs.includes('RESERVA')) { 
-        tipoExibicao = 'reserva'; isExtra = true; 
+        tipoExibicao = 'reserva'; isExtra = false; 
       } else if (t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA')) { 
-        tipoExibicao = 'retalhos'; isExtra = true; 
+        tipoExibicao = 'retalhos'; isExtra = false; 
       }
       return { ...m, _tipoExibicao: tipoExibicao, isExtra };
     });
@@ -934,7 +932,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.6 • Nuvem
+              Versão 3.7 • Nuvem
             </p>
           </div>
 
@@ -1039,7 +1037,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.6 CLOUD</span>
+            <span style={styles.versionBadge}>v3.7 CLOUD</span>
           </div>
         </div>
 
@@ -1094,7 +1092,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.6)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.7)</span>
           </div>
         </header>
 
@@ -1738,7 +1736,7 @@ const SunnyWearTecidos = () => {
                 <thead>
                   <tr style={styles.thTr}>
                     <th style={styles.th}>Foto</th>
-                    <th style={styles.th}>Tipo</th>
+                    <th style={styles.th}>Tipo / Finalidade</th>
                     <th style={styles.th}>Código</th>
                     <th style={styles.th}>Tecido / Cor</th>
                     <th style={styles.th}>Fornecedor & NF</th>
@@ -1759,31 +1757,27 @@ const SunnyWearTecidos = () => {
                       const precoUnit = parseNumero(item.preco) || 0;
                       const qtd = parseNumero(item.metros || item.quantidade || 0);
                       const unidade = item.unidademedida || item.unidadeMedida || 'm';
-                      const tipoMovimentoReal = item._tipoExibicao;
                       
                       const minimo = obterMinimo(item);
                       const custoTotal = qtd * precoUnit;
                       const nf = item.notafiscal || item.notaFiscal || '';
                       const fornecedor = item.fornecedor || '';
+                      const obsItem = String(item.observacao || '').toUpperCase();
+
+                      // Determina se é reserva ou retalho baseado na observação
+                      const isReservaTag = obsItem.includes('RESERVA');
+                      const isRetalhoTag = obsItem.includes('RETALHO') || obsItem.includes('SOBRA');
 
                       let badgeBg = '#DEF7EC';
                       let badgeColor = '#03543F';
                       let badgeText = '📥 Entrada';
                       
-                      const tReal = (tipoMovimentoReal || '').toLowerCase();
+                      const tReal = (item.tipomovimento || item.tipoMovimento || '').toLowerCase();
                       
                       if (tReal === 'saida') {
                         badgeBg = '#FDE8E8';
                         badgeColor = '#9B1C1C';
                         badgeText = '📤 Saída';
-                      } else if (tReal === 'reserva') {
-                        badgeBg = '#FEF3C7';
-                        badgeColor = '#92400E';
-                        badgeText = '📌 Reserva';
-                      } else if (tReal === 'retalhos') {
-                        badgeBg = '#F3E8FF';
-                        badgeColor = '#6B21A8';
-                        badgeText = '✂️ Retalhos';
                       }
 
                       return (
@@ -1796,7 +1790,15 @@ const SunnyWearTecidos = () => {
                             )}
                           </td>
                           <td style={styles.td}>
-                            <span style={{...styles.badge, background: badgeBg, color: badgeColor}}>{badgeText}</span>
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+                              <span style={{...styles.badge, background: badgeBg, color: badgeColor}}>{badgeText}</span>
+                              {isReservaTag && (
+                                <span style={{...styles.badge, background: '#FEF3C7', color: '#92400E'}}>📌 Reserva</span>
+                              )}
+                              {isRetalhoTag && (
+                                <span style={{...styles.badge, background: '#F3E8FF', color: '#6B21A8'}}>✂️ Retalho</span>
+                              )}
+                            </div>
                           </td>
                           <td style={styles.td}><strong style={{color: '#0F172A'}}>{item.codigo}</strong></td>
                           <td style={styles.td}>
@@ -1810,26 +1812,16 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                           <td style={styles.td}>
                             <strong style={{ color: '#0F172A' }}>{qtd} {unidade}</strong>
-                            {!item.isExtra && (
-                              <>
-                                <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
-                                <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
-                                  R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
-                                </div>
-                              </>
-                            )}
+                            <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
+                            <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
+                              R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
+                            </div>
                           </td>
                           <td style={styles.td}><span style={{color: '#64748B'}}>{item.data}</span></td>
                           <td style={styles.td}>
-                            {item.isExtra ? (
-                              <span style={{ fontSize: '11px', color: '#64748B' }}>Gerencie na aba<br/>correspondente</span>
-                            ) : (
-                              <>
-                                <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
-                                <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
-                                <button onClick={() => deletarItem(itemId)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
-                              </>
-                            )}
+                            <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
+                            <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
+                            <button onClick={() => deletarItem(itemId)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
                           </td>
                         </tr>
                       );
