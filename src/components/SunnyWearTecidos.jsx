@@ -146,22 +146,23 @@ const SunnyWearTecidos = () => {
     }
   };
 
+  // Identificação robusta sem depender de colchetes do Render
   const reservas = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
-    return t === 'reserva' || obs.includes('[RESERVA]');
+    return t === 'reserva' || obs.includes('RESERVA');
   });
 
   const sobras = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
-    return t === 'sobra' || obs.includes('[RETALHO]');
+    return t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
   });
 
   const sobrasSaidas = movimentacoes.filter(m => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
-    return t === 'saida_sobra' || obs.includes('[USO-RETALHO]');
+    return t === 'saida_sobra' || obs.includes('USO-RETALHO') || obs.includes('USO RETALHO');
   });
   
   const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
@@ -187,10 +188,10 @@ const SunnyWearTecidos = () => {
         const t = obterTipo(m);
         const obs = String(m.observacao || '').toUpperCase();
 
-        const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
-        const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
-        const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('[USO-RETALHO]');
-        const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho; // Proteção contra erro do servidor
+        const isReserva = t === 'reserva' || obs.includes('RESERVA');
+        const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
+        const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('USO-RETALHO');
+        const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
         if (isEntradaNormal) bruto += q;
         if (isSaidaNormal) bruto -= q;
@@ -261,11 +262,11 @@ const SunnyWearTecidos = () => {
       return;
     }
 
-    const obsVal = formSobra.observacao || 'Retalho / Sobra guardada';
-    const finalObs = obsVal.includes('[RETALHO]') ? obsVal : `[RETALHO] ${obsVal}`;
+    const obsVal = formSobra.observacao || 'Retalho guardado';
+    const finalObs = obsVal.toUpperCase().includes('RETALHO') ? obsVal : `RETALHO - ${obsVal}`;
 
     const novaSobra = {
-      tipoMovimento: 'saida', // O servidor só aceita 'saida'
+      tipoMovimento: 'saida',
       codigo: codigoLimpo,
       nome: formSobra.nome,
       cor: corLimpa,
@@ -315,7 +316,7 @@ const SunnyWearTecidos = () => {
     setIdEditandoSobra(item.id || item._id);
     setFormSobra({ 
       ...item, 
-      observacao: (item.observacao || '').replace(/\[RETALHO\] /i, '').replace(/\[RETALHO\]/i, '')
+      observacao: (item.observacao || '').replace(/RETALHO(\s-\s)?/gi, '')
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -331,7 +332,7 @@ const SunnyWearTecidos = () => {
       const registroSaida = {
         ...item,
         tipoMovimento: 'saida',
-        observacao: '[USO-RETALHO] ' + (item.observacao || '').replace(/\[RETALHO\] /i, '')
+        observacao: 'USO-RETALHO - ' + (item.observacao || '').replace(/RETALHO(\s-\s)?/gi, '')
       };
       delete registroSaida.id;
       delete registroSaida._id;
@@ -385,10 +386,11 @@ const SunnyWearTecidos = () => {
     }
 
     const obsVal = formReserva.observacao || 'Separado para uso futuro';
-    const finalObs = obsVal.includes('[RESERVA]') ? obsVal : `[RESERVA] ${obsVal}`;
+    // Usando palavra clara sem colchetes para o Render não apagar
+    const finalObs = obsVal.toUpperCase().includes('RESERVA') ? obsVal : `RESERVA - ${obsVal}`;
 
     const novaReserva = {
-      tipoMovimento: 'saida', // Servidor só aceita saida, a identificação se dá pela observacao
+      tipoMovimento: 'saida',
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -438,7 +440,7 @@ const SunnyWearTecidos = () => {
     setIdEditandoReserva(item.id || item._id);
     setFormReserva({ 
       ...item, 
-      observacao: (item.observacao || '').replace(/\[RESERVA\] /i, '').replace(/\[RESERVA\]/i, '')
+      observacao: (item.observacao || '').replace(/RESERVA(\s-\s)?/gi, '')
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -460,7 +462,7 @@ const SunnyWearTecidos = () => {
         metros: parseNumero(item.quantidade || item.metros),
         unidadeMedida: item.unidadeMedida || item.unidademedida || 'm',
         localizacao: item.localizacao,
-        observacao: 'Baixa de reserva: ' + (item.observacao || '').replace(/\[RESERVA\] /i, '')
+        observacao: 'Baixa de reserva: ' + (item.observacao || '').replace(/RESERVA(\s-\s)?/gi, '')
       };
 
       await fetch(API_URL, {
@@ -660,9 +662,9 @@ const SunnyWearTecidos = () => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
     
-    const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
-    const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
-    const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('[USO-RETALHO]');
+    const isReserva = t === 'reserva' || obs.includes('RESERVA');
+    const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
+    const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('USO-RETALHO');
     const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
     if (!tecidosConsolidados[chave]) {
@@ -688,7 +690,7 @@ const SunnyWearTecidos = () => {
       usoTecidos[chave] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
     }
     
-    if (isSaidaNormal || obs.includes('[USO-RETALHO]')) {
+    if (isSaidaNormal || obs.includes('USO-RETALHO')) {
       usoTecidos[chave].totalUso += qtd;
     }
 
@@ -713,7 +715,7 @@ const SunnyWearTecidos = () => {
     .filter(m => {
       const t = obterTipo(m);
       const obs = String(m.observacao || '').toUpperCase();
-      return t === 'entrada' && !obs.includes('[RESERVA]') && !obs.includes('[RETALHO]') && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
+      return t === 'entrada' && !obs.includes('RESERVA') && !obs.includes('RETALHO') && !obs.includes('SOBRA') && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
     })
     .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
 
@@ -721,8 +723,8 @@ const SunnyWearTecidos = () => {
     .filter(m => {
       const t = obterTipo(m);
       const obs = String(m.observacao || '').toUpperCase();
-      const isRes = t === 'reserva' || obs.includes('[RESERVA]');
-      const isRet = t === 'sobra' || obs.includes('[RETALHO]');
+      const isRes = t === 'reserva' || obs.includes('RESERVA');
+      const isRet = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
       return t === 'saida' && !isRes && !isRet && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
     })
     .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
@@ -760,8 +762,8 @@ const SunnyWearTecidos = () => {
         const t = obterTipo(m);
         const obs = String(m.observacao || '').toUpperCase();
         
-        const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
-        const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
+        const isReserva = t === 'reserva' || obs.includes('RESERVA');
+        const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
         const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
         if (isEntradaNormal) {
@@ -803,8 +805,8 @@ const SunnyWearTecidos = () => {
     const t = obterTipo(m);
     const obs = String(m.observacao || '').toUpperCase();
     
-    const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
-    const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
+    const isReserva = t === 'reserva' || obs.includes('RESERVA');
+    const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
     const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
     
     if (isEntradaNormal) {
@@ -820,7 +822,7 @@ const SunnyWearTecidos = () => {
   const todosRegistrosHistorico = listaSeguraCalculos
     .filter(m => {
       const obs = String(m.observacao || '').toUpperCase();
-      return !obs.includes('[USO-RETALHO]') && obterTipo(m) !== 'saida_sobra';
+      return !obs.includes('USO-RETALHO') && obterTipo(m) !== 'saida_sobra';
     })
     .map(m => {
       const t = obterTipo(m);
@@ -828,9 +830,9 @@ const SunnyWearTecidos = () => {
       let tipoExibicao = t;
       let isExtra = false;
       
-      if (t === 'reserva' || obs.includes('[RESERVA]')) { 
+      if (t === 'reserva' || obs.includes('RESERVA')) { 
         tipoExibicao = 'reserva'; isExtra = true; 
-      } else if (t === 'sobra' || obs.includes('[RETALHO]')) { 
+      } else if (t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA')) { 
         tipoExibicao = 'retalhos'; isExtra = true; 
       }
       return { ...m, _tipoExibicao: tipoExibicao, isExtra };
@@ -870,7 +872,6 @@ const SunnyWearTecidos = () => {
     );
   });
 
-  // TELA DO QR CODE COM VALORES FINANCEIROS RESTAURADOS
   if (codigoQrUrl) {
     const paramCodigoLpo = normalizarTexto(codigoQrUrl);
     const paramCorLpo = corQrUrl ? normalizarTexto(corQrUrl) : '';
@@ -901,9 +902,9 @@ const SunnyWearTecidos = () => {
       const t = obterTipo(m);
       const obs = String(m.observacao || '').toUpperCase();
 
-      const isReserva = t === 'reserva' || obs.includes('[RESERVA]');
-      const isRetalho = t === 'sobra' || obs.includes('[RETALHO]');
-      const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('[USO-RETALHO]');
+      const isReserva = t === 'reserva' || obs.includes('RESERVA');
+      const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
+      const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('USO-RETALHO');
       const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
       if (isEntradaNormal) { totalQtdBruta += q; }
@@ -933,7 +934,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.5 • Nuvem
+              Versão 3.6 • Nuvem
             </p>
           </div>
 
@@ -961,7 +962,6 @@ const SunnyWearTecidos = () => {
 
             <div style={styles.qrInfoRow}><span>Total de Tecido (Bruto):</span> <strong style={{color: '#0F172A'}}>{estoqueBrutoReal} {unidadeMed}</strong></div>
             
-            {/* CAIXA DE ESTOQUE LIVRE SIMPLIFICADA E DESTACADA */}
             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#ECFDF5', padding: '16px', borderRadius: '12px', border: '1px solid #A7F3D0', margin: '10px 0'}}>
               <span style={{fontSize: '12px', color: '#065F46', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px'}}>Estoque Atual Disponível</span>
               <strong style={{color: '#059669', fontSize: '26px'}}>{totalDisponivelTecido} {unidadeMed}</strong>
@@ -1039,7 +1039,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.5 CLOUD</span>
+            <span style={styles.versionBadge}>v3.6 CLOUD</span>
           </div>
         </div>
 
@@ -1094,7 +1094,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.5)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.6)</span>
           </div>
         </header>
 
@@ -1483,7 +1483,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/\[RESERVA\]/i, '')}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/RESERVA(\s-\s)?/gi, '')}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => concluirReserva(item)} style={styles.btnUsarSobra} title="Consumir / Dar baixa definitiva">✅ Usar</button>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Reserva">🔲</button>
@@ -1606,7 +1606,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#9333EA', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/\[RETALHO\]/i, '')}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/RETALHO(\s-\s)?/gi, '')}</span></td>
                           <td style={styles.td}><span style={{ color: '#64748B' }}>{item.data}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => usarSobra(item)} style={styles.btnUsarSobra} title="Dar baixa e usar retalho">✅ Usar</button>
@@ -1650,7 +1650,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/\[USO-RETALHO\]/i, '')}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/USO-RETALHO(\s-\s)?/gi, '')}</span></td>
                           <td style={styles.td}><span style={{ color: '#64748B' }}>{item.dataBaixa || item.data}</span></td>
                         </tr>
                       ))
@@ -1716,7 +1716,7 @@ const SunnyWearTecidos = () => {
                       <strong style={{ fontSize: '13px', color: '#0F172A' }}>📌 Todas as Reservas (Detalhamento):</strong>
                       {resExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhuma reserva pendente.</div> : (
                         <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                          {resExatas.map(r => <li key={r.id || r._id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {(r.observacao || 'Sem obs.').replace(/\[RESERVA\]/i, '')} (Cor: {r.cor} | 📍 {r.localizacao})</li>)}
+                          {resExatas.map(r => <li key={r.id || r._id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {(r.observacao || 'Sem obs.').replace(/RESERVA(\s-\s)?/gi, '')} (Cor: {r.cor} | 📍 {r.localizacao})</li>)}
                         </ul>
                       )}
                     </div>
@@ -1724,7 +1724,7 @@ const SunnyWearTecidos = () => {
                       <strong style={{ fontSize: '13px', color: '#0F172A' }}>✂️ Todos os Retalhos (Detalhamento):</strong>
                       {sobExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhum retalho guardado.</div> : (
                         <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                          {sobExatas.map(s => <li key={s.id || s._id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {(s.observacao || 'Sem obs.').replace(/\[RETALHO\]/i, '')} (Cor: {s.cor} | 📍 {s.localizacao})</li>)}
+                          {sobExatas.map(s => <li key={s.id || s._id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {(s.observacao || 'Sem obs.').replace(/RETALHO(\s-\s)?/gi, '')} (Cor: {s.cor} | 📍 {s.localizacao})</li>)}
                         </ul>
                       )}
                     </div>
