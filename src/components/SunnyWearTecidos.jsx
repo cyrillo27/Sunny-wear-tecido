@@ -932,7 +932,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.9 • Nuvem
+              Versão 3.10 • Nuvem
             </p>
           </div>
 
@@ -1037,7 +1037,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.9 CLOUD</span>
+            <span style={styles.versionBadge}>v3.10 CLOUD</span>
           </div>
         </div>
 
@@ -1092,7 +1092,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.9)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.10)</span>
           </div>
         </header>
 
@@ -1762,7 +1762,7 @@ const SunnyWearTecidos = () => {
                       const custoTotal = qtd * precoUnit;
                       const nf = item.notafiscal || item.notaFiscal || '';
                       const fornecedor = item.fornecedor || '';
-                      const obsItem = normalizarTx = normalizarTexto(item.observacao);
+                      const obsItem = normalizarTexto(item.observacao);
 
                       const isReservaTag = obsItem.includes('reserva');
                       const isRetalhoTag = obsItem.includes('retalho') || obsItem.includes('sobra');
