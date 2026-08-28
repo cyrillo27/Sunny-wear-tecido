@@ -148,20 +148,20 @@ const SunnyWearTecidos = () => {
 
   const reservas = movimentacoes.filter(m => {
     const t = obterTipo(m);
-    const obs = String(m.observacao || '').toUpperCase();
-    return t === 'reserva' || obs.includes('RESERVA');
+    const obs = normalizarTexto(m.observacao);
+    return t === 'reserva' || obs.includes('reserva');
   });
 
   const sobras = movimentacoes.filter(m => {
     const t = obterTipo(m);
-    const obs = String(m.observacao || '').toUpperCase();
-    return t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
+    const obs = normalizarTexto(m.observacao);
+    return t === 'sobra' || obs.includes('retalho') || obs.includes('sobra');
   });
 
   const sobrasSaidas = movimentacoes.filter(m => {
     const t = obterTipo(m);
-    const obs = String(m.observacao || '').toUpperCase();
-    return t === 'saida_sobra' || obs.includes('USO-RETALHO') || obs.includes('USO RETALHO');
+    const obs = normalizarTexto(m.observacao);
+    return t === 'saida_sobra' || obs.includes('uso-retalho') || obs.includes('uso retalho');
   });
   
   const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
@@ -185,11 +185,11 @@ const SunnyWearTecidos = () => {
         const mId = m.id || m._id;
         const q = parseNumero(m.metros || m.quantidade || 0);
         const t = obterTipo(m);
-        const obs = String(m.observacao || '').toUpperCase();
+        const obs = normalizarTexto(m.observacao);
 
-        const isReserva = t === 'reserva' || obs.includes('RESERVA');
-        const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
-        const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('USO-RETALHO');
+        const isReserva = t === 'reserva' || obs.includes('reserva');
+        const isRetalho = t === 'sobra' || obs.includes('retalho') || obs.includes('sobra');
+        const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('uso-retalho');
         const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
         if (isEntradaNormal) bruto += q;
@@ -262,7 +262,7 @@ const SunnyWearTecidos = () => {
     }
 
     const obsVal = formSobra.observacao || 'Retalho guardado';
-    const finalObs = obsVal.toUpperCase().includes('RETALHO') ? obsVal : `RETALHO - ${obsVal}`;
+    const finalObs = normalizarTexto(obsVal).includes('retalho') ? obsVal : `RETALHO - ${obsVal}`;
 
     const novaSobra = {
       tipoMovimento: 'saida',
@@ -385,7 +385,7 @@ const SunnyWearTecidos = () => {
     }
 
     const obsVal = formReserva.observacao || 'Separado para uso futuro';
-    const finalObs = obsVal.toUpperCase().includes('RESERVA') ? obsVal : `RESERVA - ${obsVal}`;
+    const finalObs = normalizarTexto(obsVal).includes('reserva') ? obsVal : `RESERVA - ${obsVal}`;
 
     const novaReserva = {
       tipoMovimento: 'saida',
@@ -658,11 +658,11 @@ const SunnyWearTecidos = () => {
     const minReg = obterMinimo(m);
     
     const t = obterTipo(m);
-    const obs = String(m.observacao || '').toUpperCase();
+    const obs = normalizarTexto(m.observacao);
     
-    const isReserva = t === 'reserva' || obs.includes('RESERVA');
-    const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
-    const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('USO-RETALHO');
+    const isReserva = t === 'reserva' || obs.includes('reserva');
+    const isRetalho = t === 'sobra' || obs.includes('retalho') || obs.includes('sobra');
+    const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('uso-retalho');
     const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
     if (!tecidosConsolidados[chave]) {
@@ -688,7 +688,7 @@ const SunnyWearTecidos = () => {
       usoTecidos[chave] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
     }
     
-    if (isSaidaNormal || obs.includes('USO-RETALHO')) {
+    if (isSaidaNormal || obs.includes('uso-retalho')) {
       usoTecidos[chave].totalUso += qtd;
     }
 
@@ -712,17 +712,17 @@ const SunnyWearTecidos = () => {
   const entradasMetros = listaSeguraCalculos
     .filter(m => {
       const t = obterTipo(m);
-      const obs = String(m.observacao || '').toUpperCase();
-      return t === 'entrada' && !obs.includes('RESERVA') && !obs.includes('RETALHO') && !obs.includes('SOBRA') && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
+      const obs = normalizarTexto(m.observacao);
+      return t === 'entrada' && !obs.includes('reserva') && !obs.includes('retalho') && !obs.includes('sobra') && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
     })
     .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
 
   const saidasMetros = listaSeguraCalculos
     .filter(m => {
       const t = obterTipo(m);
-      const obs = String(m.observacao || '').toUpperCase();
-      const isRes = t === 'reserva' || obs.includes('RESERVA');
-      const isRet = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
+      const obs = normalizarTexto(m.observacao);
+      const isRes = t === 'reserva' || obs.includes('reserva');
+      const isRet = t === 'sobra' || obs.includes('retalho') || obs.includes('sobra');
       return t === 'saida' && !isRes && !isRet && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida);
     })
     .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
@@ -758,10 +758,10 @@ const SunnyWearTecidos = () => {
         const qtd = parseNumero(m.metros || m.quantidade || 0);
         const un = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
         const t = obterTipo(m);
-        const obs = String(m.observacao || '').toUpperCase();
+        const obs = normalizarTexto(m.observacao);
         
-        const isReserva = t === 'reserva' || obs.includes('RESERVA');
-        const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
+        const isReserva = t === 'reserva' || obs.includes('reserva');
+        const isRetalho = t === 'sobra' || obs.includes('retalho') || obs.includes('sobra');
         const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
         if (isEntradaNormal) {
@@ -801,10 +801,10 @@ const SunnyWearTecidos = () => {
     const qtd = parseNumero(m.metros || m.quantidade || 0);
     const unidade = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
     const t = obterTipo(m);
-    const obs = String(m.observacao || '').toUpperCase();
+    const obs = normalizarTexto(m.observacao);
     
-    const isReserva = t === 'reserva' || obs.includes('RESERVA');
-    const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
+    const isReserva = t === 'reserva' || obs.includes('reserva');
+    const isRetalho = t === 'sobra' || obs.includes('retalho') || obs.includes('sobra');
     const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
     
     if (isEntradaNormal) {
@@ -819,18 +819,18 @@ const SunnyWearTecidos = () => {
 
   const todosRegistrosHistorico = listaSeguraCalculos
     .filter(m => {
-      const obs = String(m.observacao || '').toUpperCase();
-      return !obs.includes('USO-RETALHO') && obterTipo(m) !== 'saida_sobra';
+      const obs = normalizarTexto(m.observacao);
+      return !obs.includes('uso-retalho') && obterTipo(m) !== 'saida_sobra';
     })
     .map(m => {
       const t = obterTipo(m);
-      const obs = String(m.observacao || '').toUpperCase();
+      const obs = normalizarTexto(m.observacao);
       let tipoExibicao = t;
       let isExtra = false;
       
-      if (t === 'reserva' || obs.includes('RESERVA')) { 
+      if (t === 'reserva' || obs.includes('reserva')) { 
         tipoExibicao = 'reserva'; isExtra = false; 
-      } else if (t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA')) { 
+      } else if (t === 'sobra' || obs.includes('retalho') || obs.includes('sobra')) { 
         tipoExibicao = 'retalhos'; isExtra = false; 
       }
       return { ...m, _tipoExibicao: tipoExibicao, isExtra };
@@ -898,11 +898,11 @@ const SunnyWearTecidos = () => {
     movimentosDoTecido.forEach(m => {
       const q = parseNumero(m.metros || m.quantidade || 0);
       const t = obterTipo(m);
-      const obs = String(m.observacao || '').toUpperCase();
+      const obs = normalizarTexto(m.observacao);
 
-      const isReserva = t === 'reserva' || obs.includes('RESERVA');
-      const isRetalho = t === 'sobra' || obs.includes('RETALHO') || obs.includes('SOBRA');
-      const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('USO-RETALHO');
+      const isReserva = t === 'reserva' || obs.includes('reserva');
+      const isRetalho = t === 'sobra' || obs.includes('retalho') || obs.includes('sobra');
+      const isSaidaNormal = t === 'saida' && !isReserva && !isRetalho && !obs.includes('uso-retalho');
       const isEntradaNormal = t === 'entrada' && !isReserva && !isRetalho;
 
       if (isEntradaNormal) { totalQtdBruta += q; }
@@ -932,7 +932,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.8 • Nuvem
+              Versão 3.9 • Nuvem
             </p>
           </div>
 
@@ -1037,7 +1037,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.8 CLOUD</span>
+            <span style={styles.versionBadge}>v3.9 CLOUD</span>
           </div>
         </div>
 
@@ -1092,7 +1092,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.8)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.9)</span>
           </div>
         </header>
 
@@ -1762,18 +1762,22 @@ const SunnyWearTecidos = () => {
                       const custoTotal = qtd * precoUnit;
                       const nf = item.notafiscal || item.notaFiscal || '';
                       const fornecedor = item.fornecedor || '';
-                      const obsItem = String(item.observacao || '').toUpperCase();
+                      const obsItem = normalizarTx = normalizarTexto(item.observacao);
 
-                      const isReservaTag = obsItem.includes('RESERVA');
-                      const isRetalhoTag = obsItem.includes('RETALHO') || obsItem.includes('SOBRA');
+                      const isReservaTag = obsItem.includes('reserva');
+                      const isRetalhoTag = obsItem.includes('retalho') || obsItem.includes('sobra');
 
                       let badgeBg = '#DEF7EC';
                       let badgeColor = '#03543F';
                       let badgeText = '📥 Entrada';
                       
-                      const tReal = (item.tipomovimento || item.tipoMovimento || '').toLowerCase();
+                      const tReal = obterTipo(item);
                       
-                      if (tReal === 'saida') {
+                      if (tReal === 'entrada') {
+                        badgeBg = '#DEF7EC';
+                        badgeColor = '#03543F';
+                        badgeText = '📥 Entrada';
+                      } else {
                         if (isReservaTag) {
                           badgeBg = '#FEF3C7';
                           badgeColor = '#92400E';
