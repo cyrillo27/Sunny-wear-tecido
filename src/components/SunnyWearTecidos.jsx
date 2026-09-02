@@ -521,15 +521,14 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  const limparFormularioGeral = async () => {
+  // 💡 CORREÇÃO APLICADA AQUI: Apenas limpa os dados, sem forçar navegação
+  const limparFormularioGeral = () => {
     setForm({ 
       tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', 
       quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', 
       notaFiscal: '', fornecedor: '', foto: '', largura: '', observacao: '' 
     });
     setIdEditando(null);
-    await carregarDadosDoServidor();
-    setAbaAtiva('historico');
   };
 
   const registrarOuAtualizarMovimento = async (e) => {
@@ -549,7 +548,6 @@ const SunnyWearTecidos = () => {
       let resposta;
       const targetId = idEditando || form.id || form._id;
 
-      // 💡 SOMA AUTOMÁTICA SE FOR ENTRADA DE ALGO QUE JÁ EXISTE (e não estivermos editando)
       if (tipoFinal === 'entrada' && !targetId) {
         const codBuscado = normalizarTexto(form.codigo);
         const corBuscada = normalizarTexto(form.cor);
@@ -567,7 +565,7 @@ const SunnyWearTecidos = () => {
 
           const dadosAtualizados = {
             ...existente,
-            ...form, // Sobrescreve com novos preços, NFs, fotos caso tenham mudado
+            ...form,
             quantidade: novaQtd,
             metros: novaQtd,
             estoqueMinimo: minFinal || parseNumero(existente.estoqueMinimo),
@@ -583,7 +581,9 @@ const SunnyWearTecidos = () => {
 
           if (resposta.ok) {
             alert(`✅ Material já existia no sistema! A nova quantidade foi somada.\nNovo total na entrada: ${novaQtd} ${form.unidadeMedida}`);
-            await limparFormularioGeral();
+            limparFormularioGeral();
+            await carregarDadosDoServidor();
+            setAbaAtiva('historico');
             return;
           } else {
             throw new Error(await resposta.text());
@@ -591,7 +591,6 @@ const SunnyWearTecidos = () => {
         }
       }
 
-      // FLUXO NORMAL (Se for Saída manual, ou Entrada de um item novo, ou Edição direta)
       const dadosParaEnviar = {
         ...form,
         tipoMovimento: tipoFinal,
@@ -617,7 +616,9 @@ const SunnyWearTecidos = () => {
 
       if (resposta.ok) {
         alert(targetId ? 'Registro atualizado com sucesso!' : 'Lançamento efetuado com sucesso!');
-        await limparFormularioGeral();
+        limparFormularioGeral();
+        await carregarDadosDoServidor();
+        setAbaAtiva('historico');
       } else {
         const erroServidor = await resposta.text();
         alert('❌ Erro no servidor: ' + erroServidor);
@@ -914,7 +915,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.13 • Nuvem
+              Versão 3.14 • Nuvem
             </p>
           </div>
 
@@ -1019,7 +1020,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.13 CLOUD</span>
+            <span style={styles.versionBadge}>v3.14 CLOUD</span>
           </div>
         </div>
 
@@ -1082,7 +1083,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.13)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.14)</span>
           </div>
         </header>
 
