@@ -49,7 +49,8 @@ const SunnyWearTecidos = () => {
     notaFiscal: '',
     fornecedor: '',
     foto: '',
-    largura: ''
+    largura: '',
+    observacao: ''
   });
 
   const [formSobra, setFormSobra] = useState({
@@ -76,7 +77,6 @@ const SunnyWearTecidos = () => {
   const [buscaReservaTexto, setBuscaReservaTexto] = useState('');
   const [termoBuscaReserva, setTermoBuscaReserva] = useState('');
   
-  const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
 
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
@@ -107,7 +107,6 @@ const SunnyWearTecidos = () => {
     return normalizarTexto(tipo);
   };
 
-  // Trava de segurança para impedir que falhas no Back-end apaguem o tipo do item
   const isItemReserva = (item) => {
     if (!item) return false;
     const t = obterTipo(item);
@@ -282,7 +281,7 @@ const SunnyWearTecidos = () => {
     const finalObs = normalizarTexto(obsVal).includes('retalho') ? obsVal : `RETALHO - ${obsVal}`;
 
     const novaSobra = {
-      tipoMovimento: 'saida', // Usa saida pro banco aceitar sem bugs
+      tipoMovimento: 'saida',
       codigo: codigoLimpo,
       nome: formSobra.nome,
       cor: corLimpa,
@@ -409,7 +408,7 @@ const SunnyWearTecidos = () => {
     const finalObs = normalizarTexto(obsVal).includes('reserva') ? obsVal : `RESERVA - ${obsVal}`;
 
     const novaReserva = {
-      tipoMovimento: 'saida', // Mantém 'saida' pro banco não rejeitar o JSON
+      tipoMovimento: 'saida', 
       codigo: codigoLimpo,
       nome: formReserva.nome,
       cor: corLimpa,
@@ -418,8 +417,8 @@ const SunnyWearTecidos = () => {
       unidadeMedida: formReserva.unidadeMedida,
       localizacao: formReserva.localizacao,
       observacao: finalObs,
-      fornecedor: '📌 RESERVA',  // TRAVA DE SEGURANÇA NO BD
-      notaFiscal: 'USO FUTURO'   // TRAVA DE SEGURANÇA 2
+      fornecedor: '📌 RESERVA',
+      notaFiscal: 'USO FUTURO'
     };
 
     setCarregando(true);
@@ -522,49 +521,21 @@ const SunnyWearTecidos = () => {
     }
   };
 
-  const executarBuscaSaida = () => {
-    const termo = normalizarTexto(termoBuscaSaida);
-    if (!termo) {
-      alert('Informe um código ou nome para realizar a busca.');
-      return;
-    }
-    const tecidoEncontrado = listaSeguraCalculos.find(
-      m => normalizarTexto(m?.codigo).includes(termo) || 
-           normalizarTexto(m?.nome).includes(termo)
-    );
-
-    if (tecidoEncontrado) {
-      const minEncontrado = obterMinimo(tecidoEncontrado) !== 0 ? obterMinimo(tecidoEncontrado) : '';
-      setForm(prev => ({
-        ...prev,
-        tipoMovimento: 'saida',
-        codigo: tecidoEncontrado.codigo || termoBuscaSaida,
-        nome: tecidoEncontrado.nome || '',
-        cor: tecidoEncontrado.cor || '',
-        localizacao: tecidoEncontrado.localizacao || '',
-        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm',
-        preco: tecidoEncontrado.preco || '',
-        estoqueMinimo: minEncontrado,
-        notaFiscal: tecidoEncontrado.notafiscal || tecidoEncontrado.notaFiscal || '',
-        fornecedor: tecidoEncontrado.fornecedor || '',
-        foto: tecidoEncontrado.foto || '',
-        largura: tecidoEncontrado.largura || ''
-      }));
-      alert(`✅ Item localizado: ${tecidoEncontrado.nome} (Cód: ${tecidoEncontrado.codigo} - Cor: ${tecidoEncontrado.cor})`);
-    } else {
-      alert('⚠️ Nenhum registro correspondente encontrado.');
-      setForm(prev => ({
-        ...prev,
-        tipoMovimento: 'saida',
-        codigo: termoBuscaSaida,
-        nome: termoBuscaSaida
-      }));
-    }
+  const limparFormularioGeral = async () => {
+    setForm({ 
+      tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', 
+      quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', 
+      notaFiscal: '', fornecedor: '', foto: '', largura: '', observacao: '' 
+    });
+    setIdEditando(null);
+    await carregarDadosDoServidor();
+    setAbaAtiva('historico');
   };
 
   const registrarOuAtualizarMovimento = async (e) => {
     e.preventDefault();
     const qtdValida = parseNumero(form.quantidade || form.metros);
+    
     if (!form.codigo || !form.nome || !form.cor || !form.localizacao || qtdValida <= 0) {
       alert('Preencha os campos obrigatórios corretamente.');
       return;
@@ -573,19 +544,63 @@ const SunnyWearTecidos = () => {
     const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
     let minFinal = parseNumero(form.estoqueMinimo);
 
-    const dadosParaEnviar = {
-      ...form,
-      tipoMovimento: tipoFinal,
-      quantidade: qtdValida,
-      metros: qtdValida,
-      estoqueMinimo: minFinal,
-      estoqueminimo: minFinal
-    };
-
     setCarregando(true);
     try {
       let resposta;
       const targetId = idEditando || form.id || form._id;
+
+      // 💡 SOMA AUTOMÁTICA SE FOR ENTRADA DE ALGO QUE JÁ EXISTE (e não estivermos editando)
+      if (tipoFinal === 'entrada' && !targetId) {
+        const codBuscado = normalizarTexto(form.codigo);
+        const corBuscada = normalizarTexto(form.cor);
+
+        const existente = movimentacoes.find(m =>
+          isItemEntradaNormal(m) &&
+          normalizarTexto(m.codigo) === codBuscado &&
+          normalizarTexto(m.cor) === corBuscada
+        );
+
+        if (existente) {
+          const idExistente = existente.id || existente._id;
+          const qtdAntiga = parseNumero(existente.quantidade || existente.metros);
+          const novaQtd = qtdAntiga + qtdValida;
+
+          const dadosAtualizados = {
+            ...existente,
+            ...form, // Sobrescreve com novos preços, NFs, fotos caso tenham mudado
+            quantidade: novaQtd,
+            metros: novaQtd,
+            estoqueMinimo: minFinal || parseNumero(existente.estoqueMinimo),
+            estoqueminimo: minFinal || parseNumero(existente.estoqueminimo),
+            tipoMovimento: 'entrada'
+          };
+
+          resposta = await fetch(`${API_URL}/${encodeURIComponent(idExistente)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosAtualizados)
+          });
+
+          if (resposta.ok) {
+            alert(`✅ Material já existia no sistema! A nova quantidade foi somada.\nNovo total na entrada: ${novaQtd} ${form.unidadeMedida}`);
+            await limparFormularioGeral();
+            return;
+          } else {
+            throw new Error(await resposta.text());
+          }
+        }
+      }
+
+      // FLUXO NORMAL (Se for Saída manual, ou Entrada de um item novo, ou Edição direta)
+      const dadosParaEnviar = {
+        ...form,
+        tipoMovimento: tipoFinal,
+        quantidade: qtdValida,
+        metros: qtdValida,
+        estoqueMinimo: minFinal,
+        estoqueminimo: minFinal
+      };
+
       if (targetId) {
         resposta = await fetch(`${API_URL}/${encodeURIComponent(targetId)}`, {
           method: 'PUT',
@@ -602,11 +617,7 @@ const SunnyWearTecidos = () => {
 
       if (resposta.ok) {
         alert(targetId ? 'Registro atualizado com sucesso!' : 'Lançamento efetuado com sucesso!');
-        setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' });
-        setTermoBuscaSaida('');
-        setIdEditando(null);
-        await carregarDadosDoServidor();
-        setAbaAtiva('historico');
+        await limparFormularioGeral();
       } else {
         const erroServidor = await resposta.text();
         alert('❌ Erro no servidor: ' + erroServidor);
@@ -645,9 +656,9 @@ const SunnyWearTecidos = () => {
       notaFiscal: item.notafiscal || item.notaFiscal || '',
       fornecedor: item.fornecedor || '',
       foto: item.foto || '',
-      largura: item.largura || ''
+      largura: item.largura || '',
+      observacao: item.observacao || ''
     });
-    setTermoBuscaSaida(item.codigo || '');
     setAbaAtiva(tipoItem === 'saida' ? 'saida' : 'entrada');
   };
 
@@ -903,7 +914,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.12 • Nuvem
+              Versão 3.13 • Nuvem
             </p>
           </div>
 
@@ -1008,7 +1019,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.12 CLOUD</span>
+            <span style={styles.versionBadge}>v3.13 CLOUD</span>
           </div>
         </div>
 
@@ -1020,13 +1031,21 @@ const SunnyWearTecidos = () => {
             📊 Visão Geral
           </button>
           <button 
-            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('entrada'); setMenuMobileAberto(false); }} 
+            onClick={() => { 
+              limparFormularioGeral(); 
+              setAbaAtiva('entrada'); 
+              setMenuMobileAberto(false); 
+            }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'entrada' ? styles.sidebarLinkActive : {}) }}
           >
             📥 Registrar Entrada
           </button>
           <button 
-            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); setMenuMobileAberto(false); }} 
+            onClick={() => { 
+              limparFormularioGeral(); 
+              setAbaAtiva('saida'); 
+              setMenuMobileAberto(false); 
+            }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'saida' ? styles.sidebarLinkActive : {}) }}
           >
             📤 Registrar Saída
@@ -1063,7 +1082,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.12)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.13)</span>
           </div>
         </header>
 
@@ -1303,20 +1322,28 @@ const SunnyWearTecidos = () => {
         {abaAtiva === 'saida' && (
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento Manual de Saída'}</h3>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os dados manualmente para registrar a saída/consumo do tecido.</p>
             </div>
 
             <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
-              <div style={{gridColumn: '1 / -1'}}>
-                <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
-                <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
-                  <input type="text" placeholder="Ex: TEC-001 ou Malha" value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
-                  <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>Buscar Tecido</button>
-                </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Código do Tecido *</label>
+                <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
               </div>
-
-              <div style={{gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome do Tecido *</label>
+                <input type="text" placeholder="Ex: Malha Canelada" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Cor do Tecido *</label>
+                <input type="text" placeholder="Ex: Azul Marinho" value={form.cor} onChange={(e) => setForm({...form, cor: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Localização / Galpão *</label>
+                <input type="text" placeholder="Ex: Produção - Mesa 1" value={form.localizacao} onChange={(e) => setForm({...form, localizacao: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade Utilizada *</label>
                   <input type="text" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
@@ -1329,13 +1356,9 @@ const SunnyWearTecidos = () => {
                   </select>
                 </div>
               </div>
-
-              <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.6)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-                <span style={{fontSize: '11px', color: '#2563EB', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados Carregados do Cadastro:</span>
-                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
-                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
-                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
-                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
+              <div style={{gridColumn: '1 / -1'}}>
+                <label style={styles.formLabel}>Observação / Motivo (Opcional)</label>
+                <input type="text" placeholder="Ex: Lote de vestidos da coleção Verão" value={form.observacao || ''} onChange={(e) => setForm({...form, observacao: e.target.value})} style={styles.input} />
               </div>
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
