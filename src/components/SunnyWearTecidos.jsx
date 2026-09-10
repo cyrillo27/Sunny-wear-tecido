@@ -1116,21 +1116,69 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída (Manual)'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha manualmente todos os dados do tecido e a quantidade consumida na produção.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os dados abaixo. Se o código tiver várias cores, use os botões de seleção rápida que aparecerão ao digitar o código.</p>
             </div>
 
             <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
-                <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
+                <input type="text" placeholder="Ex: 01.01.0255" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
               </div>
+
+              {/* ASSISTENTE DE CORES INTELIGENTE: Se houver cores cadastradas para este código, exibe botões de seleção rápida */}
+              {form.codigo && (
+                (() => {
+                  const coresDoCodigo = Object.values(tecidosConsolidados).filter(
+                    t => normalizarTexto(t.codigo) === normalizarTexto(form.codigo)
+                  );
+                  if (coresDoCodigo.length === 0) return null;
+                  return (
+                    <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '14px', borderRadius: '10px', border: '1px solid #BFDBFE'}}>
+                      <span style={{fontSize: '11px', color: '#1D4ED8', fontWeight: '700', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
+                        🎨 Cores cadastradas para o código "{form.codigo}" (Clique para selecionar a correta):
+                      </span>
+                      <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                        {coresDoCodigo.map((tItem, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setForm(prev => ({
+                                ...prev,
+                                nome: tItem.nome || '',
+                                cor: tItem.cor || '',
+                                unidadeMedida: tItem.unidade || 'm',
+                                estoqueMinimo: tItem.minimo || ''
+                              }));
+                            }}
+                            style={{
+                              padding: '8px 14px',
+                              backgroundColor: normalizarTexto(form.cor) === normalizarTexto(tItem.cor) ? '#2563EB' : '#FFFFFF',
+                              color: normalizarTexto(form.cor) === normalizarTexto(tItem.cor) ? '#FFFFFF' : '#1D4ED8',
+                              border: '1px solid #93C5FD',
+                              borderRadius: '8px',
+                              fontSize: '12px',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 5px rgba(37,99,235,0.1)'
+                            }}
+                          >
+                            ✓ {tItem.cor} ({tItem.total} {tItem.unidade} disp.)
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Nome do Tecido *</label>
-                <input type="text" placeholder="Ex: Malha Canelada" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} style={styles.input} required />
+                <input type="text" placeholder="Ex: NEWPRENE LIGHT" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} style={styles.input} required />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Cor do Tecido *</label>
-                <input type="text" placeholder="Ex: Azul Marinho" value={form.cor} onChange={(e) => setForm({...form, cor: e.target.value})} style={styles.input} required />
+                <input type="text" placeholder="Ex: ARMY GREEN" value={form.cor} onChange={(e) => setForm({...form, cor: e.target.value})} style={styles.input} required />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Largura (m)</label>
@@ -1138,7 +1186,7 @@ const SunnyWearTecidos = () => {
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Localização / Galpão *</label>
-                <input type="text" placeholder="Ex: Galpão A - Setor 2" value={form.localizacao} onChange={(e) => setForm({...form, localizacao: e.target.value})} style={styles.input} required />
+                <input type="text" placeholder="Ex: GALPAO FRENTE" value={form.localizacao} onChange={(e) => setForm({...form, localizacao: e.target.value})} style={styles.input} required />
               </div>
               <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
                 <div style={styles.formGroup}>
@@ -1155,15 +1203,15 @@ const SunnyWearTecidos = () => {
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
-                <input type="number" step="0.01" placeholder="Ex: 180" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
+                <input type="number" step="0.01" placeholder="Ex: 20" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Valor Unitário (R$)</label>
-                <input type="number" step="0.01" placeholder="Ex: 15.90" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
+                <input type="number" step="0.01" placeholder="Ex: 0.00" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Número da Nota Fiscal / Ref</label>
-                <input type="text" placeholder="Ex: 45892" value={form.notaFiscal} onChange={(e) => setForm({...form, notaFiscal: e.target.value})} style={styles.input} />
+                <input type="text" placeholder="Ex: N/D" value={form.notaFiscal} onChange={(e) => setForm({...form, notaFiscal: e.target.value})} style={styles.input} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Destino / Fornecedor</label>
