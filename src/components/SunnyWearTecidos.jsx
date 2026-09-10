@@ -103,7 +103,6 @@ const SunnyWearTecidos = () => {
     observacao: ''
   });
   const [buscaReserva, setBuscaReserva] = useState('');
-  const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
   const [busca, setBusca] = useState('');
 
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
@@ -364,47 +363,6 @@ const SunnyWearTecidos = () => {
     alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
   };
 
-  const executarBuscaSaida = () => {
-    const termo = normalizarTexto(termoBuscaSaida);
-    if (!termo) {
-      alert('Informe um código ou nome para realizar a busca.');
-      return;
-    }
-    const listaSegura = Array.isArray(movimentacoes) ? movimentacoes : [];
-    const tecidoEncontrado = listaSegura.find(
-      m => normalizarTexto(m?.codigo).includes(termo) || 
-           normalizarTexto(m?.nome).includes(termo)
-    );
-
-    if (tecidoEncontrado) {
-      const minEncontrado = obterMinimo(tecidoEncontrado) !== 0 ? obterMinimo(tecidoEncontrado) : '';
-      setForm(prev => ({
-        ...prev,
-        tipoMovimento: 'saida',
-        codigo: tecidoEncontrado.codigo || termoBuscaSaida,
-        nome: tecidoEncontrado.nome || '',
-        cor: tecidoEncontrado.cor || '',
-        localizacao: tecidoEncontrado.localizacao || '',
-        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm',
-        preco: tecidoEncontrado.preco || '',
-        estoqueMinimo: minEncontrado,
-        notaFiscal: tecidoEncontrado.notafiscal || tecidoEncontrado.notaFiscal || '',
-        fornecedor: tecidoEncontrado.fornecedor || '',
-        foto: tecidoEncontrado.foto || '',
-        largura: tecidoEncontrado.largura || ''
-      }));
-      alert(`✅ Item localizado: ${tecidoEncontrado.nome} (Cód: ${tecidoEncontrado.codigo} - Cor: ${tecidoEncontrado.cor})`);
-    } else {
-      alert('⚠️ Nenhum registro correspondente encontrado.');
-      setForm(prev => ({
-        ...prev,
-        tipoMovimento: 'saida',
-        codigo: termoBuscaSaida,
-        nome: termoBuscaSaida
-      }));
-    }
-  };
-
   const registrarOuAtualizarMovimento = async (e) => {
     e.preventDefault();
     const qtdValida = form.quantidade || form.metros;
@@ -443,7 +401,6 @@ const SunnyWearTecidos = () => {
       if (resposta.ok) {
         alert(targetId ? 'Registro atualizado com sucesso!' : 'Lançamento efetuado com sucesso!');
         setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' });
-        setTermoBuscaSaida('');
         setIdEditando(null);
         await carregarDadosDoServidor();
         setAbaAtiva('historico');
@@ -487,7 +444,6 @@ const SunnyWearTecidos = () => {
       foto: item.foto || '',
       largura: item.largura || ''
     });
-    setTermoBuscaSaida(item.codigo || '');
     setAbaAtiva(tipoItem === 'saida' ? 'saida' : 'entrada');
   };
 
@@ -876,13 +832,13 @@ const SunnyWearTecidos = () => {
             📊 Visão Geral
           </button>
           <button 
-            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('entrada'); setMenuMobileAberto(false); }} 
+            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setAbaAtiva('entrada'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'entrada' ? styles.sidebarLinkActive : {}) }}
           >
             📥 Registrar Entrada
           </button>
           <button 
-            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setTermoBuscaSaida(''); setAbaAtiva('saida'); setMenuMobileAberto(false); }} 
+            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setAbaAtiva('saida'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'saida' ? styles.sidebarLinkActive : {}) }}
           >
             📤 Registrar Saída
@@ -1159,20 +1115,32 @@ const SunnyWearTecidos = () => {
         {abaAtiva === 'saida' && (
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Busque pelo código ou nome do tecido e informe a quantidade consumida na produção.</p>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída (Manual)'}</h3>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha manualmente todos os dados do tecido e a quantidade consumida na produção.</p>
             </div>
 
             <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
-              <div style={{gridColumn: '1 / -1'}}>
-                <label style={styles.formLabel}>Localizar Tecido (Código ou Nome)</label>
-                <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
-                  <input type="text" placeholder="Ex: TEC-001 ou Malha" value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
-                  <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '13px'}}>OK / Buscar</button>
-                </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Código do Tecido *</label>
+                <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
               </div>
-
-              <div style={{gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome do Tecido *</label>
+                <input type="text" placeholder="Ex: Malha Canelada" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Cor do Tecido *</label>
+                <input type="text" placeholder="Ex: Azul Marinho" value={form.cor} onChange={(e) => setForm({...form, cor: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Largura (m)</label>
+                <input type="number" step="0.01" placeholder="Ex: 1.50" value={form.largura} onChange={(e) => setForm({...form, largura: e.target.value})} style={styles.input} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Localização / Galpão *</label>
+                <input type="text" placeholder="Ex: Galpão A - Setor 2" value={form.localizacao} onChange={(e) => setForm({...form, localizacao: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade Utilizada *</label>
                   <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
@@ -1185,13 +1153,21 @@ const SunnyWearTecidos = () => {
                   </select>
                 </div>
               </div>
-
-              <div style={{gridColumn: '1 / -1', background: 'rgba(255,255,255,0.6)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-                <span style={{fontSize: '11px', color: '#2563EB', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px'}}>📋 Dados Carregados do Cadastro:</span>
-                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Tecido:</strong> {form.codigo || '-'} / {form.nome || 'Aguardando busca...'} ({form.cor || '-'})</div>
-                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Largura:</strong> {form.largura ? `${form.largura}m` : 'Não informada'}</div>
-                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Localização:</strong> {form.localizacao || '-'}</div>
-                <div style={{fontSize: '13px', color: '#0F172A'}}><strong>Estoque Mínimo:</strong> {form.estoqueMinimo || '0'} {form.unidadeMedida}</div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
+                <input type="number" step="0.01" placeholder="Ex: 180" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Valor Unitário (R$)</label>
+                <input type="number" step="0.01" placeholder="Ex: 15.90" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Número da Nota Fiscal / Ref</label>
+                <input type="text" placeholder="Ex: 45892" value={form.notaFiscal} onChange={(e) => setForm({...form, notaFiscal: e.target.value})} style={styles.input} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Destino / Fornecedor</label>
+                <input type="text" placeholder="Ex: Produção Interna" value={form.fornecedor} onChange={(e) => setForm({...form, fornecedor: e.target.value})} style={styles.input} />
               </div>
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
@@ -1481,12 +1457,10 @@ const SunnyWearTecidos = () => {
               style={styles.inputFull}
             />
 
-            {/* PAINEL DE RESUMO ANALÍTICO AMPLIADO (APARECE QUANDO QUALQUER TERMO É BUSCADO) */}
             {(() => {
               const termo = normalizarTexto(busca);
               if (!termo) return null;
               
-              // Busca todos os tecidos consolidados que correspondem parcialmente ou totalmente à busca (código, nome ou cor)
               const tecidosEncontradosResumo = Object.values(tecidosConsolidados).filter(t => 
                 normalizarTexto(t.codigo).includes(termo) || 
                 normalizarTexto(t.nome).includes(termo) || 
