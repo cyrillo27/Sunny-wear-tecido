@@ -29,6 +29,7 @@ const SunnyWearTecidos = () => {
   const [fotoSelecionada, setFotoSelecionada] = useState(null);
   const [qrSelecionado, setQrSelecionado] = useState(null);
   const [idEditando, setIdEditando] = useState(null);
+  const [corSelecionadaDetalhe, setCorSelecionadaDetalhe] = useState(null);
   
   const [idEditandoReserva, setIdEditandoReserva] = useState(null);
   const [idEditandoSobra, setIdEditandoSobra] = useState(null);
@@ -104,6 +105,7 @@ const SunnyWearTecidos = () => {
   });
   const [buscaReserva, setBuscaReserva] = useState('');
   const [busca, setBusca] = useState('');
+  const [buscaEstoque, setBuscaEstoque] = useState('');
 
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
 
@@ -832,6 +834,12 @@ const SunnyWearTecidos = () => {
             📊 Visão Geral
           </button>
           <button 
+            onClick={() => { setAbaAtiva('estoque'); setMenuMobileAberto(false); }} 
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'estoque' ? styles.sidebarLinkActive : {}) }}
+          >
+            📦 Estoque Total
+          </button>
+          <button 
             onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setAbaAtiva('entrada'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'entrada' ? styles.sidebarLinkActive : {}) }}
           >
@@ -929,7 +937,7 @@ const SunnyWearTecidos = () => {
               <div style={styles.chartBoxWide}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
-                  <button style={styles.verTodosBtn}>Ver todos</button>
+                  <button style={styles.verTodosBtn} onClick={() => setAbaAtiva('historico')}>Ver todos</button>
                 </div>
 
                 {topTecidosMaisUsados.length === 0 ? (
@@ -1030,6 +1038,114 @@ const SunnyWearTecidos = () => {
           </div>
         )}
 
+        {abaAtiva === 'estoque' && (
+          <div style={styles.cardSection}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📦 Estoque Total Consolidado</h3>
+              <span style={{ fontSize: '12px', color: '#64748B' }}>Visão agrupada por tecidos e cores</span>
+            </div>
+
+            <input 
+              type="text" 
+              placeholder="Pesquisar tecido por código ou nome..." 
+              value={buscaEstoque} 
+              onChange={(e) => setBuscaEstoque(e.target.value)} 
+              style={styles.inputFull}
+            />
+
+            {(() => {
+              const agrupadoPorCodigo = {};
+              Object.values(tecidosConsolidados).forEach(t => {
+                const codOriginal = t.codigo;
+                const codNorm = normalizarTexto(t.codigo);
+                if (!agrupadoPorCodigo[codNorm]) {
+                  agrupadoPorCodigo[codNorm] = {
+                    codigoOriginal: codOriginal,
+                    nomeOriginal: t.nome,
+                    unidade: t.unidade,
+                    totalGeral: 0,
+                    cores: []
+                  };
+                }
+                agrupadoPorCodigo[codNorm].totalGeral += t.total;
+                agrupadoPorCodigo[codNorm].cores.push({
+                  cor: t.cor,
+                  total: t.total,
+                  bruto: t.totalBruto,
+                  reservas: t.totalReservas,
+                  sobras: t.totalSobras,
+                  minimo: t.minimo
+                });
+              });
+
+              const tecidosAgrupadosFiltrados = Object.values(agrupadoPorCodigo).filter(t => {
+                const termo = normalizarTexto(buscaEstoque);
+                if (!termo) return true;
+                return normalizarTexto(t.codigoOriginal).includes(termo) || normalizarTexto(t.nomeOriginal).includes(termo);
+              });
+
+              if (tecidosAgrupadosFiltrados.length === 0) {
+                return <div style={styles.empty}>Nenhum tecido encontrado no estoque.</div>;
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {tecidosAgrupadosFiltrados.map((item, idx) => (
+                    <div key={idx} style={{ background: '#FFFFFF', padding: '20px', borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                        <h4 style={{ margin: 0, fontSize: '16px', color: '#0F172A' }}>{item.codigoOriginal} - {item.nomeOriginal}</h4>
+                        <span style={{ fontSize: '14px', fontWeight: '800', color: '#2563EB', backgroundColor: '#EFF6FF', padding: '6px 12px', borderRadius: '8px' }}>
+                          Total do Modelo: {item.totalGeral} {item.unidade}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>
+                          🎨 Cores Disponíveis (Clique na cor para ver detalhes):
+                        </span>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {item.cores.map((c, cIdx) => (
+                            <button 
+                              key={cIdx}
+                              onClick={() => setCorSelecionadaDetalhe({ codigo: item.codigoOriginal, nome: item.nomeOriginal, unidade: item.unidade, ...c })}
+                              style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#F8FAFC',
+                                border: '1px solid #CBD5E1',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                color: '#0F172A',
+                                fontWeight: '600',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                              }}
+                              onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#EFF6FF'; e.currentTarget.style.borderColor = '#93C5FD'; }}
+                              onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
+                            >
+                              <span style={{ 
+                                width: '14px', 
+                                height: '14px', 
+                                borderRadius: '50%', 
+                                backgroundColor: c.cor.toLowerCase().includes('black') || c.cor.toLowerCase().includes('preto') ? '#000' : c.cor.toLowerCase().includes('white') || c.cor.toLowerCase().includes('branco') ? '#FFF' : '#CBD5E1', 
+                                display: 'inline-block', 
+                                border: '1px solid #94A3B8' 
+                              }}></span>
+                              {c.cor} 
+                              <span style={{ color: c.total < 0 ? '#DC2626' : '#059669', marginLeft: '4px' }}>({c.total} {item.unidade})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {abaAtiva === 'entrada' && (
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
@@ -1125,7 +1241,6 @@ const SunnyWearTecidos = () => {
                 <input type="text" placeholder="Ex: 01.01.0255" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
               </div>
 
-              {/* ASSISTENTE DE CORES INTELIGENTE: Se houver cores cadastradas para este código, exibe botões de seleção rápida */}
               {form.codigo && (
                 (() => {
                   const coresDoCodigo = Object.values(tecidosConsolidados).filter(
@@ -1505,74 +1620,6 @@ const SunnyWearTecidos = () => {
               style={styles.inputFull}
             />
 
-            {(() => {
-              const termo = normalizarTexto(busca);
-              if (!termo) return null;
-              
-              const tecidosEncontradosResumo = Object.values(tecidosConsolidados).filter(t => 
-                normalizarTexto(t.codigo).includes(termo) || 
-                normalizarTexto(t.nome).includes(termo) || 
-                normalizarTexto(t.cor).includes(termo)
-              );
-
-              if (tecidosEncontradosResumo.length === 0) return null;
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
-                  {tecidosEncontradosResumo.map((tecidoResumo, idx) => {
-                    const codKey = normalizarTexto(tecidoResumo.codigo);
-                    const corKey = normalizarTexto(tecidoResumo.cor);
-                    const resExatas = reservas.filter(r => normalizarTexto(r.codigo) === codKey && normalizarTexto(r.cor || 'N/D') === corKey);
-                    const sobExatas = sobras.filter(s => normalizarTexto(s.codigo) === codKey && normalizarTexto(s.cor || 'N/D') === corKey);
-
-                    return (
-                      <div key={idx} style={{ background: '#FFFFFF', border: '2px solid #2563EB', padding: '20px', borderRadius: '12px', boxShadow: '0 8px 20px rgba(37,99,235,0.1)' }}>
-                        <h4 style={{ margin: '0 0 16px 0', color: '#1E3A8A', fontSize: '16px' }}>📊 Resumo Analítico: {tecidoResumo.codigo} - {tecidoResumo.nome} ({tecidoResumo.cor})</h4>
-                        
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-                          <div style={{ background: '#F1F5F9', padding: '12px', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700' }}>ESTOQUE TOTAL (BRUTO)</div>
-                            <div style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A' }}>{tecidoResumo.totalBruto} {tecidoResumo.unidade}</div>
-                          </div>
-                          <div style={{ background: '#FEF3C7', padding: '12px', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '11px', color: '#92400E', fontWeight: '700' }}>TOTAL RESERVADO</div>
-                            <div style={{ fontSize: '18px', fontWeight: '800', color: '#B45309' }}>- {tecidoResumo.totalReservas} {tecidoResumo.unidade}</div>
-                          </div>
-                          <div style={{ background: '#F3E8FF', padding: '12px', borderRadius: '8px' }}>
-                            <div style={{ fontSize: '11px', color: '#6B21A8', fontWeight: '700' }}>TOTAL DE RETALHOS</div>
-                            <div style={{ fontSize: '18px', fontWeight: '800', color: '#7E22CE' }}>- {tecidoResumo.totalSobras || 0} {tecidoResumo.unidade}</div>
-                          </div>
-                          <div style={{ background: '#DEF7EC', padding: '12px', borderRadius: '8px', border: '1px solid #31C48D' }}>
-                            <div style={{ fontSize: '11px', color: '#03543F', fontWeight: '700' }}>QUANTIDADE FINAL DISPONÍVEL</div>
-                            <div style={{ fontSize: '20px', fontWeight: '900', color: '#059669' }}>{tecidoResumo.total} {tecidoResumo.unidade}</div>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-                          <div>
-                            <strong style={{ fontSize: '13px', color: '#0F172A' }}>📌 Todas as Reservas (Detalhamento):</strong>
-                            {resExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhuma reserva pendente.</div> : (
-                              <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                                {resExatas.map(r => <li key={r.id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {r.observacao || 'Sem obs.'} (Cor: {r.cor} | 📍 {r.localizacao})</li>)}
-                              </ul>
-                            )}
-                          </div>
-                          <div>
-                            <strong style={{ fontSize: '13px', color: '#0F172A' }}>✂️ Todos os Retalhos (Detalhamento):</strong>
-                            {sobExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhum retalho guardado.</div> : (
-                              <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                                {sobExatas.map(s => <li key={s.id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {s.observacao || 'Sem obs.'} (Cor: {s.cor} | 📍 {s.localizacao})</li>)}
-                              </ul>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
             <div style={styles.tableResponsive}>
               <table style={styles.table}>
                 <thead>
@@ -1685,6 +1732,48 @@ const SunnyWearTecidos = () => {
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <button style={styles.modalCloseBtn} onClick={() => setFotoSelecionada(null)}>✕ Fechar Visualização</button>
             <img src={fotoSelecionada} alt="Zoom" style={styles.modalImg} />
+          </div>
+        </div>
+      )}
+
+      {corSelecionadaDetalhe && (
+        <div style={styles.modalOverlay} onClick={() => setCorSelecionadaDetalhe(null)}>
+          <div style={{...styles.modalContent, alignItems: 'flex-start', maxWidth: '600px', width: '100%'}} onClick={(e) => e.stopPropagation()}>
+            <button style={styles.modalCloseBtn} onClick={() => setCorSelecionadaDetalhe(null)}>✕ Fechar</button>
+            
+            <h3 style={{ margin: '0 0 8px 0', color: '#1E3A8A', fontSize: '18px' }}>
+              {corSelecionadaDetalhe.codigo} - {corSelecionadaDetalhe.nome}
+            </h3>
+            <h4 style={{ margin: '0 0 20px 0', color: '#2563EB', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              🎨 Cor selecionada: {corSelecionadaDetalhe.cor}
+            </h4>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', width: '100%' }}>
+              <div style={{ background: '#F1F5F9', padding: '16px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700' }}>ESTOQUE TOTAL (BRUTO)</div>
+                <div style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A' }}>{corSelecionadaDetalhe.bruto} {corSelecionadaDetalhe.unidade}</div>
+              </div>
+              <div style={{ background: '#FEF3C7', padding: '16px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '11px', color: '#92400E', fontWeight: '700' }}>TOTAL RESERVADO</div>
+                <div style={{ fontSize: '18px', fontWeight: '800', color: '#B45309' }}>- {corSelecionadaDetalhe.reservas} {corSelecionadaDetalhe.unidade}</div>
+              </div>
+              <div style={{ background: '#F3E8FF', padding: '16px', borderRadius: '8px' }}>
+                <div style={{ fontSize: '11px', color: '#6B21A8', fontWeight: '700' }}>TOTAL DE RETALHOS</div>
+                <div style={{ fontSize: '18px', fontWeight: '800', color: '#7E22CE' }}>- {corSelecionadaDetalhe.sobras} {corSelecionadaDetalhe.unidade}</div>
+              </div>
+              <div style={{ background: '#DEF7EC', padding: '16px', borderRadius: '8px', border: '1px solid #31C48D' }}>
+                <div style={{ fontSize: '11px', color: '#03543F', fontWeight: '700' }}>QUANTIDADE FINAL DISPONÍVEL</div>
+                <div style={{ fontSize: '22px', fontWeight: '900', color: corSelecionadaDetalhe.total < 0 ? '#DC2626' : '#059669' }}>
+                  {corSelecionadaDetalhe.total} {corSelecionadaDetalhe.unidade}
+                </div>
+              </div>
+            </div>
+            
+            {corSelecionadaDetalhe.total < 0 && (
+              <div style={{ marginTop: '16px', padding: '12px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', color: '#991B1B', fontSize: '13px' }}>
+                ⚠️ <strong>Atenção:</strong> O estoque desta cor está negativo. Verifique se as entradas foram lançadas sem usar o ponto de milhar (ex: digite 5681 em vez de 5.681).
+              </div>
+            )}
           </div>
         </div>
       )}
