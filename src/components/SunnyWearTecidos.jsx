@@ -220,6 +220,13 @@ const SunnyWearTecidos = () => {
     const corLimpa = (formSobra.cor || 'N/D').trim();
     const qtdSobra = Number(formSobra.quantidade);
 
+    // Trava para não cadastrar sobra de tecido inexistente
+    const chaveValidacao = `${normalizarTexto(codigoLimpo)}_${normalizarTexto(corLimpa)}`;
+    if (!tecidosConsolidados[chaveValidacao] && !idEditandoSobra) {
+      alert('⚠️ AÇÃO BLOQUEADA: Este tecido/cor não está cadastrado no estoque livre.');
+      return;
+    }
+
     const estoqueLivreAtual = calcularEstoqueLivre(codigoLimpo, corLimpa, null, idEditandoSobra);
     
     if (qtdSobra > estoqueLivreAtual) {
@@ -284,6 +291,13 @@ const SunnyWearTecidos = () => {
     const codigoLimpo = formReserva.codigo.trim();
     const corLimpa = (formReserva.cor || 'N/D').trim();
     const qtdReserva = Number(formReserva.quantidade);
+
+    // Trava para não reservar tecido inexistente
+    const chaveValidacao = `${normalizarTexto(codigoLimpo)}_${normalizarTexto(corLimpa)}`;
+    if (!tecidosConsolidados[chaveValidacao] && !idEditandoReserva) {
+      alert('⚠️ AÇÃO BLOQUEADA: Este tecido/cor não está cadastrado no estoque livre.');
+      return;
+    }
 
     const estoqueLivreAtual = calcularEstoqueLivre(codigoLimpo, corLimpa, idEditandoReserva, null);
     
@@ -371,6 +385,16 @@ const SunnyWearTecidos = () => {
     if (!form.codigo || !form.nome || !form.cor || !form.localizacao || !qtdValida) return;
 
     const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
+
+    // VERIFICAÇÃO RÍGIDA DE SAÍDA: Impede dar saída num tecido que não existe
+    if (tipoFinal === 'saida' && !idEditando) {
+      const chaveValidacao = `${normalizarTexto(form.codigo)}_${normalizarTexto(form.cor)}`;
+      if (!tecidosConsolidados[chaveValidacao]) {
+        alert('⚠️ AÇÃO BLOQUEADA: Este tecido ou cor não estão cadastrados no estoque! Você não pode dar saída em um item inexistente.');
+        return;
+      }
+    }
+
     let minFinal = form.estoqueMinimo !== '' && form.estoqueMinimo !== null ? Number(form.estoqueMinimo) : 0;
 
     const dadosParaEnviar = {
@@ -822,7 +846,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v2.7 CLOUD</span>
+            <span style={styles.versionBadge}>v2.8 SECURE</span>
           </div>
         </div>
 
@@ -1232,55 +1256,83 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída (Manual)'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os dados abaixo. Se o código tiver várias cores, use os botões de seleção rápida que aparecerão ao digitar o código.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Para sua segurança, só é possível dar saída em tecidos já cadastrados no estoque.</p>
             </div>
 
             <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
-                <input type="text" placeholder="Ex: 01.01.0255" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
+                <input 
+                  type="text" 
+                  placeholder="Digite o código (Ex: 01.01.0255)" 
+                  value={form.codigo} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    let novoNome = form.nome;
+                    const tecidoEncontrado = Object.values(tecidosConsolidados).find(t => normalizarTexto(t.codigo) === normalizarTexto(val));
+                    if (tecidoEncontrado) {
+                      novoNome = tecidoEncontrado.nome;
+                    }
+                    setForm({...form, codigo: val, nome: novoNome, cor: ''}); // Reseta cor para obrigar a seleção
+                  }} 
+                  style={styles.input} 
+                  required 
+                />
               </div>
 
-              {form.codigo && (
+              {form.codigo && !idEditando && (
                 (() => {
                   const coresDoCodigo = Object.values(tecidosConsolidados).filter(
                     t => normalizarTexto(t.codigo) === normalizarTexto(form.codigo)
                   );
-                  if (coresDoCodigo.length === 0) return null;
+                  
+                  if (coresDoCodigo.length === 0) {
+                    return (
+                      <div style={{gridColumn: '1 / -1', background: '#FEF2F2', padding: '14px', borderRadius: '10px', border: '1px solid #FCA5A5'}}>
+                        <span style={{fontSize: '13px', color: '#991B1B', fontWeight: '700'}}>
+                          ⚠️ CÓDIGO NÃO ENCONTRADO NO ESTOQUE! Verifique se você digitou corretamente. Não é possível dar saída sem uma entrada registrada.
+                        </span>
+                      </div>
+                    );
+                  }
+                  
                   return (
                     <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '14px', borderRadius: '10px', border: '1px solid #BFDBFE'}}>
                       <span style={{fontSize: '11px', color: '#1D4ED8', fontWeight: '700', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
-                        🎨 Cores cadastradas para o código "{form.codigo}" (Clique para selecionar a correta):
+                        🎨 Tecido "{coresDoCodigo[0].nome}" encontrado! Selecione a cor correta:
                       </span>
                       <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                        {coresDoCodigo.map((tItem, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => {
-                              setForm(prev => ({
-                                ...prev,
-                                nome: tItem.nome || '',
-                                cor: tItem.cor || '',
-                                unidadeMedida: tItem.unidade || 'm',
-                                estoqueMinimo: tItem.minimo || ''
-                              }));
-                            }}
-                            style={{
-                              padding: '8px 14px',
-                              backgroundColor: normalizarTexto(form.cor) === normalizarTexto(tItem.cor) ? '#2563EB' : '#FFFFFF',
-                              color: normalizarTexto(form.cor) === normalizarTexto(tItem.cor) ? '#FFFFFF' : '#1D4ED8',
-                              border: '1px solid #93C5FD',
-                              borderRadius: '8px',
-                              fontSize: '12px',
-                              fontWeight: '700',
-                              cursor: 'pointer',
-                              boxShadow: '0 2px 5px rgba(37,99,235,0.1)'
-                            }}
-                          >
-                            ✓ {tItem.cor} ({tItem.total} {tItem.unidade} disp.)
-                          </button>
-                        ))}
+                        {coresDoCodigo.map((tItem, idx) => {
+                          const isSelected = normalizarTexto(form.cor) === normalizarTexto(tItem.cor);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setForm(prev => ({
+                                  ...prev,
+                                  nome: tItem.nome || prev.nome,
+                                  cor: tItem.cor || '',
+                                  unidadeMedida: tItem.unidade || 'm',
+                                  estoqueMinimo: tItem.minimo || ''
+                                }));
+                              }}
+                              style={{
+                                padding: '8px 14px',
+                                backgroundColor: isSelected ? '#2563EB' : '#FFFFFF',
+                                color: isSelected ? '#FFFFFF' : '#1D4ED8',
+                                border: '1px solid #93C5FD',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 5px rgba(37,99,235,0.1)'
+                              }}
+                            >
+                              ✓ {tItem.cor} ({tItem.total} {tItem.unidade} disp.)
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -1288,12 +1340,28 @@ const SunnyWearTecidos = () => {
               )}
 
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Nome do Tecido *</label>
-                <input type="text" placeholder="Ex: NEWPRENE LIGHT" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} style={styles.input} required />
+                <label style={styles.formLabel}>Nome do Tecido (Automático) *</label>
+                <input 
+                  type="text" 
+                  placeholder="Preenchido automaticamente" 
+                  value={form.nome} 
+                  onChange={(e) => setForm({...form, nome: e.target.value})} 
+                  style={!idEditando ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} 
+                  readOnly={!idEditando} 
+                  required 
+                />
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Cor do Tecido *</label>
-                <input type="text" placeholder="Ex: ARMY GREEN" value={form.cor} onChange={(e) => setForm({...form, cor: e.target.value})} style={styles.input} required />
+                <label style={styles.formLabel}>Cor do Tecido (Selecione nos botões) *</label>
+                <input 
+                  type="text" 
+                  placeholder={!idEditando ? "Selecione a cor no quadro azul acima" : "Cor"} 
+                  value={form.cor} 
+                  onChange={(e) => setForm({...form, cor: e.target.value})} 
+                  style={!idEditando ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} 
+                  readOnly={!idEditando} 
+                  required 
+                />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Largura (m)</label>
@@ -1352,15 +1420,81 @@ const SunnyWearTecidos = () => {
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
-                <input type="text" placeholder="Ex: TEC-001" value={formReserva.codigo} onChange={(e) => setFormReserva({...formReserva, codigo: e.target.value})} style={styles.input} required disabled={!!idEditandoReserva} />
+                <input 
+                  type="text" 
+                  placeholder="Ex: TEC-001" 
+                  value={formReserva.codigo} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    let novoNome = formReserva.nome;
+                    const tecido = Object.values(tecidosConsolidados).find(t => normalizarTexto(t.codigo) === normalizarTexto(val));
+                    if (tecido) novoNome = tecido.nome;
+                    setFormReserva({...formReserva, codigo: val, nome: novoNome, cor: ''});
+                  }} 
+                  style={styles.input} 
+                  required 
+                  disabled={!!idEditandoReserva} 
+                />
+              </div>
+
+              {formReserva.codigo && !idEditandoReserva && (
+                (() => {
+                  const coresDoCodigo = Object.values(tecidosConsolidados).filter(
+                    t => normalizarTexto(t.codigo) === normalizarTexto(formReserva.codigo)
+                  );
+                  if (coresDoCodigo.length === 0) {
+                    return (
+                      <div style={{gridColumn: '1 / -1', background: '#FEF2F2', padding: '14px', borderRadius: '10px', border: '1px solid #FCA5A5'}}>
+                        <span style={{fontSize: '13px', color: '#991B1B', fontWeight: '700'}}>
+                          ⚠️ CÓDIGO NÃO ENCONTRADO! Você não pode reservar um tecido não cadastrado.
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '14px', borderRadius: '10px', border: '1px solid #BFDBFE'}}>
+                      <span style={{fontSize: '11px', color: '#1D4ED8', fontWeight: '700', display: 'block', marginBottom: '8px', textTransform: 'uppercase'}}>
+                        🎨 Tecido "{coresDoCodigo[0].nome}" localizado. Selecione a cor:
+                      </span>
+                      <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                        {coresDoCodigo.map((tItem, idx) => {
+                          const isSelected = normalizarTexto(formReserva.cor) === normalizarTexto(tItem.cor);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setFormReserva(prev => ({ ...prev, nome: tItem.nome || prev.nome, cor: tItem.cor || '', unidadeMedida: tItem.unidade || 'm' }));
+                              }}
+                              style={{
+                                padding: '8px 14px',
+                                backgroundColor: isSelected ? '#2563EB' : '#FFFFFF',
+                                color: isSelected ? '#FFFFFF' : '#1D4ED8',
+                                border: '1px solid #93C5FD',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 5px rgba(37,99,235,0.1)'
+                              }}
+                            >
+                              ✓ {tItem.cor} ({tItem.total} {tItem.unidade} disp.)
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome do Tecido (Automático) *</label>
+                <input type="text" placeholder="Preenchido automaticamente" value={formReserva.nome} onChange={(e) => setFormReserva({...formReserva, nome: e.target.value})} readOnly={!idEditandoReserva} style={!idEditandoReserva ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} required />
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Nome do Tecido *</label>
-                <input type="text" placeholder="Ex: Malha Canelada" value={formReserva.nome} onChange={(e) => setFormReserva({...formReserva, nome: e.target.value})} style={styles.input} required />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Cor *</label>
-                <input type="text" placeholder="Ex: Azul Marinho" value={formReserva.cor} onChange={(e) => setFormReserva({...formReserva, cor: e.target.value})} style={styles.input} required disabled={!!idEditandoReserva} />
+                <label style={styles.formLabel}>Cor (Automático) *</label>
+                <input type="text" placeholder="Selecione a cor nos botões" value={formReserva.cor} onChange={(e) => setFormReserva({...formReserva, cor: e.target.value})} readOnly={!idEditandoReserva} style={!idEditandoReserva ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} required disabled={!!idEditandoReserva} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Local Onde a Reserva Vai Ficar Guardada *</label>
@@ -1463,15 +1597,81 @@ const SunnyWearTecidos = () => {
             <form onSubmit={cadastrarSobra} style={styles.formGrid} className="form-grid-responsive">
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
-                <input type="text" placeholder="Ex: TEC-001" value={formSobra.codigo} onChange={(e) => setFormSobra({...formSobra, codigo: e.target.value})} style={styles.input} required disabled={!!idEditandoSobra} />
+                <input 
+                  type="text" 
+                  placeholder="Ex: TEC-001" 
+                  value={formSobra.codigo} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    let novoNome = formSobra.nome;
+                    const tecido = Object.values(tecidosConsolidados).find(t => normalizarTexto(t.codigo) === normalizarTexto(val));
+                    if (tecido) novoNome = tecido.nome;
+                    setFormSobra({...formSobra, codigo: val, nome: novoNome, cor: ''});
+                  }} 
+                  style={styles.input} 
+                  required 
+                  disabled={!!idEditandoSobra} 
+                />
+              </div>
+
+              {formSobra.codigo && !idEditandoSobra && (
+                (() => {
+                  const coresDoCodigo = Object.values(tecidosConsolidados).filter(
+                    t => normalizarTexto(t.codigo) === normalizarTexto(formSobra.codigo)
+                  );
+                  if (coresDoCodigo.length === 0) {
+                    return (
+                      <div style={{gridColumn: '1 / -1', background: '#FEF2F2', padding: '14px', borderRadius: '10px', border: '1px solid #FCA5A5'}}>
+                        <span style={{fontSize: '13px', color: '#991B1B', fontWeight: '700'}}>
+                          ⚠️ CÓDIGO NÃO ENCONTRADO! Não é possível cadastrar retalho de um tecido não existente.
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '14px', borderRadius: '10px', border: '1px solid #BFDBFE'}}>
+                      <span style={{fontSize: '11px', color: '#1D4ED8', fontWeight: '700', display: 'block', marginBottom: '8px', textTransform: 'uppercase'}}>
+                        🎨 Tecido "{coresDoCodigo[0].nome}" localizado. Selecione a cor:
+                      </span>
+                      <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                        {coresDoCodigo.map((tItem, idx) => {
+                          const isSelected = normalizarTexto(formSobra.cor) === normalizarTexto(tItem.cor);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setFormSobra(prev => ({ ...prev, nome: tItem.nome || prev.nome, cor: tItem.cor || '', unidadeMedida: tItem.unidade || 'm' }));
+                              }}
+                              style={{
+                                padding: '8px 14px',
+                                backgroundColor: isSelected ? '#2563EB' : '#FFFFFF',
+                                color: isSelected ? '#FFFFFF' : '#1D4ED8',
+                                border: '1px solid #93C5FD',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 5px rgba(37,99,235,0.1)'
+                              }}
+                            >
+                              ✓ {tItem.cor} ({tItem.total} {tItem.unidade} disp.)
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Nome do Tecido (Automático) *</label>
+                <input type="text" placeholder="Preenchido automaticamente" value={formSobra.nome} onChange={(e) => setFormSobra({...formSobra, nome: e.target.value})} readOnly={!idEditandoSobra} style={!idEditandoSobra ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} required />
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Nome do Tecido *</label>
-                <input type="text" placeholder="Ex: Malha Canelada" value={formSobra.nome} onChange={(e) => setFormSobra({...formSobra, nome: e.target.value})} style={styles.input} required />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Cor *</label>
-                <input type="text" placeholder="Ex: Azul Marinho" value={formSobra.cor} onChange={(e) => setFormSobra({...formSobra, cor: e.target.value})} style={styles.input} required disabled={!!idEditandoSobra} />
+                <label style={styles.formLabel}>Cor (Automático) *</label>
+                <input type="text" placeholder="Selecione a cor acima" value={formSobra.cor} onChange={(e) => setFormSobra({...formSobra, cor: e.target.value})} readOnly={!idEditandoSobra} style={!idEditandoSobra ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} required disabled={!!idEditandoSobra} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Localização / Caixa de Retalhos *</label>
