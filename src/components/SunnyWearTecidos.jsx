@@ -867,7 +867,7 @@ const SunnyWearTecidos = () => {
             onClick={() => { setAbaAtiva('historico'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'historico' ? styles.sidebarLinkActive : {}) }}
           >
-            🔍 Consulta & Galpões
+            🔍 Movimentações
           </button>
         </div>
       </aside>
@@ -1608,7 +1608,7 @@ const SunnyWearTecidos = () => {
         {abaAtiva === 'historico' && (
           <div style={styles.cardSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico e Galpões</h3>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Movimentações</h3>
               <span style={{ fontSize: '12px', color: '#64748B' }}>Total de registros visíveis: <strong>{movFiltradas.length}</strong></span>
             </div>
 
