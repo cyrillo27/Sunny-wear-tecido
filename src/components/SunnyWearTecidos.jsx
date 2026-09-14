@@ -935,7 +935,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.18 • Nuvem
+              Versão 3.20 • Nuvem
             </p>
           </div>
 
@@ -1066,7 +1066,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.18 CLOUD</span>
+            <span style={styles.versionBadge}>v3.20 CLOUD</span>
           </div>
         </div>
 
@@ -1113,7 +1113,7 @@ const SunnyWearTecidos = () => {
             onClick={() => { setAbaAtiva('historico'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'historico' ? styles.sidebarLinkActive : {}) }}
           >
-            🔍 Consulta & Galpões
+            🔍 Movimentações
           </button>
         </div>
       </aside>
@@ -1129,7 +1129,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.18)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.20)</span>
           </div>
         </header>
 
@@ -1370,31 +1370,36 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento Manual de Saída'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Pesquise o tecido abaixo e **clique diretamente na cor desejada** para preencher o formulário.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Pesquise o tecido na área azul abaixo e <strong>clique na cor desejada</strong> para preencher.</p>
             </div>
 
             <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
               
               {!idEditando && (
-                <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
-                  <label style={styles.formLabel}>🔍 Pesquisar Tecido (Mostra as cores disponíveis para clique)</label>
+                <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '16px', borderRadius: '10px', border: '2px solid #2563EB', marginBottom: '10px'}}>
+                  <label style={{...styles.formLabel, color: '#1D4ED8', fontSize: '12px'}}>⚡ PESQUISA RÁPIDA (Comece a digitar e clique na cor)</label>
                   <input 
                     type="text" 
-                    placeholder="Digite o nome ou código do tecido para ver as cores..." 
+                    placeholder="Digite aqui o código ou nome do tecido..." 
                     value={termoBuscaSaida} 
                     onChange={(e) => setTermoBuscaSaida(e.target.value)} 
-                    style={styles.inputFull} 
+                    style={{...styles.inputFull, border: '1px solid #93C5FD', marginBottom: '0'}} 
                   />
 
                   {termoBuscaSaida.trim() !== '' && (
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', marginTop: '8px'}}>
-                      {tecidosDisponiveisParaSaida
-                        .filter(t => 
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', marginTop: '12px'}}>
+                      {(() => {
+                        const resultados = tecidosDisponiveisParaSaida.filter(t => 
                           normalizarTexto(t.codigo).includes(normalizarTexto(termoBuscaSaida)) ||
                           normalizarTexto(t.nome).includes(normalizarTexto(termoBuscaSaida)) ||
                           normalizarTexto(t.cor).includes(normalizarTexto(termoBuscaSaida))
-                        )
-                        .map((t, idx) => (
+                        );
+
+                        if (resultados.length === 0) {
+                          return <div style={{textAlign: 'center', color: '#64748B', fontSize: '13px', padding: '10px'}}>Nenhum tecido com saldo livre encontrado para esta pesquisa.</div>;
+                        }
+
+                        return resultados.map((t, idx) => (
                           <div 
                             key={idx} 
                             onClick={() => {
@@ -1413,25 +1418,26 @@ const SunnyWearTecidos = () => {
                               display: 'flex', 
                               justifyContent: 'space-between', 
                               alignItems: 'center', 
-                              padding: '10px 14px', 
+                              padding: '12px 16px', 
                               background: '#FFFFFF', 
-                              border: '1px solid #CBD5E1', 
+                              border: '1px solid #BFDBFE', 
                               borderRadius: '8px', 
                               cursor: 'pointer',
-                              boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                               transition: 'all 0.2s'
                             }}
                           >
                             <div>
-                              <strong style={{color: '#0F172A'}}>{t.nome}</strong> (Cód: {t.codigo})<br />
-                              <span style={{color: '#2563EB', fontWeight: '700'}}>🎨 Cor: {t.cor}</span>
+                              <strong style={{color: '#0F172A', fontSize: '14px'}}>{t.nome}</strong> <span style={{fontSize: '12px', color: '#64748B'}}>(Cód: {t.codigo})</span><br />
+                              <span style={{color: '#2563EB', fontWeight: '800', fontSize: '14px'}}>🎨 Cor: {t.cor}</span>
                             </div>
                             <div style={{textAlign: 'right'}}>
-                              <span style={{color: '#059669', fontWeight: '800', fontSize: '14px'}}>{t.total} {t.unidade} livres</span><br />
-                              <span style={{fontSize: '11px', color: '#7C3AED', fontWeight: '700'}}>👉 Clique para escolher</span>
+                              <span style={{color: '#059669', fontWeight: '800', fontSize: '16px'}}>{t.total} {t.unidade} livres</span><br />
+                              <span style={{fontSize: '12px', color: '#4F46E5', fontWeight: '700'}}>👉 Clique para escolher</span>
                             </div>
                           </div>
-                        ))}
+                        ));
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1490,25 +1496,30 @@ const SunnyWearTecidos = () => {
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
               
               {!idEditandoReserva && (
-                <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
-                  <label style={styles.formLabel}>🔍 Buscar Tecido para Reservar (Digite e clique na cor desejada)</label>
+                <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '16px', borderRadius: '10px', border: '2px solid #2563EB', marginBottom: '10px'}}>
+                  <label style={{...styles.formLabel, color: '#1D4ED8', fontSize: '12px'}}>⚡ PESQUISA RÁPIDA (Comece a digitar e clique na cor)</label>
                   <input 
                     type="text" 
-                    placeholder="Digite o nome ou código do tecido..." 
+                    placeholder="Digite aqui o código ou nome do tecido..." 
                     value={termoBuscaReserva} 
                     onChange={(e) => setTermoBuscaReserva(e.target.value)} 
-                    style={styles.inputFull} 
+                    style={{...styles.inputFull, border: '1px solid #93C5FD', marginBottom: '0'}} 
                   />
 
                   {termoBuscaReserva.trim() !== '' && (
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', marginTop: '8px'}}>
-                      {tecidosConsolidadosArray
-                        .filter(t => 
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', marginTop: '12px'}}>
+                      {(() => {
+                        const resultados = tecidosConsolidadosArray.filter(t => 
                           normalizarTexto(t.codigo).includes(normalizarTexto(termoBuscaReserva)) ||
                           normalizarTexto(t.nome).includes(normalizarTexto(termoBuscaReserva)) ||
                           normalizarTexto(t.cor).includes(normalizarTexto(termoBuscaReserva))
-                        )
-                        .map((t, idx) => (
+                        );
+
+                        if (resultados.length === 0) {
+                          return <div style={{textAlign: 'center', color: '#64748B', fontSize: '13px', padding: '10px'}}>Nenhum tecido encontrado.</div>;
+                        }
+
+                        return resultados.map((t, idx) => (
                           <div 
                             key={idx} 
                             onClick={() => {
@@ -1527,25 +1538,26 @@ const SunnyWearTecidos = () => {
                               display: 'flex', 
                               justifyContent: 'space-between', 
                               alignItems: 'center', 
-                              padding: '10px 14px', 
+                              padding: '12px 16px', 
                               background: '#FFFFFF', 
-                              border: '1px solid #CBD5E1', 
+                              border: '1px solid #BFDBFE', 
                               borderRadius: '8px', 
                               cursor: 'pointer',
-                              boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                               transition: 'all 0.2s'
                             }}
                           >
                             <div>
-                              <strong style={{color: '#0F172A'}}>{t.nome}</strong> (Cód: {t.codigo})<br />
-                              <span style={{color: '#2563EB', fontWeight: '700'}}>🎨 Cor: {t.cor}</span>
+                              <strong style={{color: '#0F172A', fontSize: '14px'}}>{t.nome}</strong> <span style={{fontSize: '12px', color: '#64748B'}}>(Cód: {t.codigo})</span><br />
+                              <span style={{color: '#2563EB', fontWeight: '800', fontSize: '14px'}}>🎨 Cor: {t.cor}</span>
                             </div>
                             <div style={{textAlign: 'right'}}>
-                              <span style={{color: '#059669', fontWeight: '800', fontSize: '14px'}}>{t.total} {t.unidade} livres</span><br />
-                              <span style={{fontSize: '11px', color: '#7C3AED', fontWeight: '700'}}>👉 Clique para escolher</span>
+                              <span style={{color: '#059669', fontWeight: '800', fontSize: '16px'}}>{t.total} {t.unidade} livres</span><br />
+                              <span style={{fontSize: '12px', color: '#4F46E5', fontWeight: '700'}}>👉 Clique para escolher</span>
                             </div>
                           </div>
-                        ))}
+                        ));
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1664,25 +1676,30 @@ const SunnyWearTecidos = () => {
             <form onSubmit={cadastrarSobra} style={styles.formGrid} className="form-grid-responsive">
 
               {!idEditandoSobra && (
-                <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
-                  <label style={styles.formLabel}>🔍 Buscar Tecido para Retalho (Digite e clique na cor desejada)</label>
+                <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '16px', borderRadius: '10px', border: '2px solid #2563EB', marginBottom: '10px'}}>
+                  <label style={{...styles.formLabel, color: '#1D4ED8', fontSize: '12px'}}>⚡ PESQUISA RÁPIDA (Comece a digitar e clique na cor)</label>
                   <input 
                     type="text" 
-                    placeholder="Digite o nome ou código do tecido..." 
+                    placeholder="Digite aqui o código ou nome do tecido..." 
                     value={termoBuscaSobra} 
                     onChange={(e) => setTermoBuscaSobra(e.target.value)} 
-                    style={styles.inputFull} 
+                    style={{...styles.inputFull, border: '1px solid #93C5FD', marginBottom: '0'}} 
                   />
 
                   {termoBuscaSobra.trim() !== '' && (
-                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', marginTop: '8px'}}>
-                      {tecidosConsolidadosArray
-                        .filter(t => 
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', marginTop: '12px'}}>
+                      {(() => {
+                        const resultados = tecidosConsolidadosArray.filter(t => 
                           normalizarTexto(t.codigo).includes(normalizarTexto(termoBuscaSobra)) ||
                           normalizarTexto(t.nome).includes(normalizarTexto(termoBuscaSobra)) ||
                           normalizarTexto(t.cor).includes(normalizarTexto(termoBuscaSobra))
-                        )
-                        .map((t, idx) => (
+                        );
+
+                        if (resultados.length === 0) {
+                          return <div style={{textAlign: 'center', color: '#64748B', fontSize: '13px', padding: '10px'}}>Nenhum tecido encontrado.</div>;
+                        }
+
+                        return resultados.map((t, idx) => (
                           <div 
                             key={idx} 
                             onClick={() => {
@@ -1701,25 +1718,26 @@ const SunnyWearTecidos = () => {
                               display: 'flex', 
                               justifyContent: 'space-between', 
                               alignItems: 'center', 
-                              padding: '10px 14px', 
+                              padding: '12px 16px', 
                               background: '#FFFFFF', 
-                              border: '1px solid #CBD5E1', 
+                              border: '1px solid #BFDBFE', 
                               borderRadius: '8px', 
                               cursor: 'pointer',
-                              boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                               transition: 'all 0.2s'
                             }}
                           >
                             <div>
-                              <strong style={{color: '#0F172A'}}>{t.nome}</strong> (Cód: {t.codigo})<br />
-                              <span style={{color: '#2563EB', fontWeight: '700'}}>🎨 Cor: {t.cor}</span>
+                              <strong style={{color: '#0F172A', fontSize: '14px'}}>{t.nome}</strong> <span style={{fontSize: '12px', color: '#64748B'}}>(Cód: {t.codigo})</span><br />
+                              <span style={{color: '#2563EB', fontWeight: '800', fontSize: '14px'}}>🎨 Cor: {t.cor}</span>
                             </div>
                             <div style={{textAlign: 'right'}}>
-                              <span style={{color: '#059669', fontWeight: '800', fontSize: '14px'}}>{t.total} {t.unidade} livres</span><br />
-                              <span style={{fontSize: '11px', color: '#7C3AED', fontWeight: '700'}}>👉 Clique para escolher</span>
+                              <span style={{color: '#059669', fontWeight: '800', fontSize: '16px'}}>{t.total} {t.unidade} livres</span><br />
+                              <span style={{fontSize: '12px', color: '#4F46E5', fontWeight: '700'}}>👉 Clique para escolher</span>
                             </div>
                           </div>
-                        ))}
+                        ));
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1872,7 +1890,7 @@ const SunnyWearTecidos = () => {
         {abaAtiva === 'historico' && (
           <div style={styles.cardSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico e Galpões</h3>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Movimentações</h3>
               <span style={{ fontSize: '12px', color: '#64748B' }}>Total de registros visíveis: <strong>{movFiltradas.length}</strong></span>
             </div>
 
