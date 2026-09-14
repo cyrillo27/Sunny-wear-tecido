@@ -29,7 +29,6 @@ const SunnyWearTecidos = () => {
   const [fotoSelecionada, setFotoSelecionada] = useState(null);
   const [qrSelecionado, setQrSelecionado] = useState(null);
   const [idEditando, setIdEditando] = useState(null);
-  const [corSelecionadaDetalhe, setCorSelecionadaDetalhe] = useState(null);
   
   const [idEditandoReserva, setIdEditandoReserva] = useState(null);
   const [idEditandoSobra, setIdEditandoSobra] = useState(null);
@@ -50,37 +49,8 @@ const SunnyWearTecidos = () => {
     notaFiscal: '',
     fornecedor: '',
     foto: '',
-    largura: ''
-  });
-
-  const [sobras, setSobras] = useState(() => {
-    try {
-      if (typeof window === 'undefined') return [];
-      const salvas = localStorage.getItem('sunny_sobras');
-      return salvas ? JSON.parse(salvas) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const [sobrasSaidas, setSobrasSaidas] = useState(() => {
-    try {
-      if (typeof window === 'undefined') return [];
-      const salvas = localStorage.getItem('sunny_sobras_saidas');
-      return salvas ? JSON.parse(salvas) : [];
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const [reservas, setReservas] = useState(() => {
-    try {
-      if (typeof window === 'undefined') return [];
-      const salvas = localStorage.getItem('sunny_reservas');
-      return salvas ? JSON.parse(salvas) : [];
-    } catch (e) {
-      return [];
-    }
+    largura: '',
+    observacao: ''
   });
 
   const [formSobra, setFormSobra] = useState({
@@ -92,7 +62,8 @@ const SunnyWearTecidos = () => {
     localizacao: '',
     observacao: ''
   });
-  const [buscaSobra, setBuscaSobra] = useState('');
+  const [buscaSobraTexto, setBuscaSobraTexto] = useState('');
+  const [termoBuscaSobra, setTermoBuscaSobra] = useState('');
 
   const [formReserva, setFormReserva] = useState({
     codigo: '',
@@ -103,11 +74,42 @@ const SunnyWearTecidos = () => {
     localizacao: '',
     observacao: ''
   });
-  const [buscaReserva, setBuscaReserva] = useState('');
+  const [buscaReservaTexto, setBuscaReservaTexto] = useState('');
+  const [termoBuscaReserva, setTermoBuscaReserva] = useState('');
+  
   const [busca, setBusca] = useState('');
-  const [buscaEstoque, setBuscaEstoque] = useState('');
+
+  // 🔒 Sistema de Senha
+  const [authConfig, setAuthConfig] = useState({ visivel: false, callback: null, mensagem: '' });
+  const [senhaAuth, setSenhaAuth] = useState('');
+
+  const pedirSenha = (mensagem, callback) => {
+    setAuthConfig({ visivel: true, callback, mensagem });
+    setSenhaAuth('');
+  };
+
+  const confirmarSenha = (e) => {
+    e.preventDefault();
+    if (senhaAuth === '3559') {
+      const cb = authConfig.callback;
+      setAuthConfig({ visivel: false, callback: null, mensagem: '' });
+      setSenhaAuth('');
+      if (cb) cb();
+    } else {
+      alert('❌ Senha incorreta! Ação bloqueada.');
+      setSenhaAuth('');
+    }
+  };
 
   const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
+
+  const parseNumero = (val) => {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    const limpo = String(val).replace(',', '.');
+    const num = Number(limpo);
+    return isNaN(num) ? 0 : num;
+  };
 
   const normalizarTexto = (str) => {
     if (!str) return '';
@@ -119,7 +121,7 @@ const SunnyWearTecidos = () => {
   };
 
   const obterMinimo = (item) => {
-    return Number(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
+    return parseNumero(item?.estoqueminimo || item?.estoqueMinimo || item?.estoque_minimo || 0);
   };
   
   const obterTipo = (item) => {
@@ -127,7 +129,43 @@ const SunnyWearTecidos = () => {
     return normalizarTexto(tipo);
   };
 
+  const isItemReserva = (item) => {
+    if (!item) return false;
+    const t = obterTipo(item);
+    const obs = normalizarTexto(item.observacao);
+    const f = normalizarTexto(item.fornecedor);
+    const nf = normalizarTexto(item.notafiscal || item.notaFiscal);
+    if (obs.includes('baixa') || f.includes('consumo')) return false;
+    return t === 'reserva' || obs.includes('reserva') || f.includes('reserva') || nf.includes('uso futuro');
+  };
+
+  const isItemRetalho = (item) => {
+    if (!item) return false;
+    const t = obterTipo(item);
+    const obs = normalizarTexto(item.observacao);
+    const f = normalizarTexto(item.fornecedor);
+    if (obs.includes('uso-retalho') || f.includes('consumo')) return false;
+    return t === 'sobra' || t === 'retalho' || obs.includes('retalho') || obs.includes('sobra') || f.includes('retalho') || f.includes('sobra');
+  };
+
+  const isItemSaidaNormal = (item) => {
+    if (!item) return false;
+    const t = obterTipo(item);
+    const obs = normalizarTexto(item.observacao);
+    const f = normalizarTexto(item.fornecedor);
+    const isConsumo = obs.includes('baixa') || obs.includes('uso-retalho') || f.includes('consumo');
+    if (isConsumo) return true;
+    return t === 'saida' && !isItemReserva(item) && !isItemRetalho(item);
+  };
+
+  const isItemEntradaNormal = (item) => {
+    if (!item) return false;
+    const t = obterTipo(item);
+    return t === 'entrada' && !isItemReserva(item) && !isItemRetalho(item);
+  };
+
   const carregarDadosDoServidor = async () => {
+    setCarregando(true);
     try {
       const resposta = await fetch(`${API_URL}?_t=${Date.now()}`);
       if (resposta.ok) {
@@ -143,26 +181,10 @@ const SunnyWearTecidos = () => {
     } catch (erro) {
       console.error('Erro ao conectar com o back-end:', erro);
       setMovimentacoes([]);
+    } finally {
+      setCarregando(false);
     }
   };
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sunny_sobras', JSON.stringify(sobras));
-    } catch (e) {}
-  }, [sobras]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sunny_sobras_saidas', JSON.stringify(sobrasSaidas));
-    } catch (e) {}
-  }, [sobrasSaidas]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sunny_reservas', JSON.stringify(reservas));
-    } catch (e) {}
-  }, [reservas]);
 
   useEffect(() => {
     carregarDadosDoServidor();
@@ -181,32 +203,83 @@ const SunnyWearTecidos = () => {
     }
   };
 
+  const reservas = movimentacoes.filter(isItemReserva);
+  const sobras = movimentacoes.filter(isItemRetalho);
+  const sobrasSaidas = movimentacoes.filter(m => {
+    const obs = normalizarTexto(m.observacao);
+    const f = normalizarTexto(m.fornecedor);
+    return obs.includes('uso-retalho') || f.includes('consumo-retalho');
+  });
+  
+  const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
+
   const calcularEstoqueLivre = (codigo, cor, ignorarReservaId = null, ignorarSobraId = null) => {
     let bruto = 0;
-    movimentacoes.forEach(m => {
-      if (normalizarTexto(m.codigo) === normalizarTexto(codigo) && normalizarTexto(m.cor || 'N/D') === normalizarTexto(cor)) {
-        const q = Number(m.metros || m.quantidade || 0);
-        const t = obterTipo(m);
-        if (t === 'entrada') bruto += q;
-        else if (t === 'saida') bruto -= q;
-      }
-    });
-
     let res = 0;
-    reservas.forEach(r => {
-      if (normalizarTexto(r.codigo) === normalizarTexto(codigo) && normalizarTexto(r.cor || 'N/D') === normalizarTexto(cor)) {
-        if (r.id !== ignorarReservaId) res += Number(r.quantidade || r.metros || 0);
-      }
-    });
-
     let sob = 0;
-    sobras.forEach(s => {
-      if (normalizarTexto(s.codigo) === normalizarTexto(codigo) && normalizarTexto(s.cor || 'N/D') === normalizarTexto(cor)) {
-        if (s.id !== ignorarSobraId) sob += Number(s.quantidade || 0);
+
+    const codBusca = normalizarTexto(codigo);
+    const corBusca = normalizarTexto(cor);
+
+    movimentacoes.forEach(m => {
+      const codM = normalizarTexto(m.codigo);
+      const corM = normalizarTexto(m.cor || 'N/D');
+      
+      const codigoBate = codM === codBusca;
+      const corBate = !corBusca || corBusca === 'n/d' || corM === corBusca || corM === 'n/d';
+
+      if (codigoBate && corBate) {
+        const mId = m.id || m._id;
+        const q = parseNumero(m.metros || m.quantidade || 0);
+
+        if (isItemEntradaNormal(m)) bruto += q;
+        if (isItemSaidaNormal(m)) bruto -= q;
+        if (isItemReserva(m) && mId !== ignorarReservaId) res += q;
+        if (isItemRetalho(m) && mId !== ignorarSobraId) sob += q;
       }
     });
 
     return bruto - res - sob;
+  };
+
+  const executarBuscaReserva = () => {
+    const termo = normalizarTexto(termoBuscaReserva);
+    if (!termo) { alert('Digite o código para buscar.'); return; }
+    
+    const tecidoEncontrado = listaSeguraCalculos.find(m => normalizarTexto(m?.codigo).includes(termo) || normalizarTexto(m?.nome).includes(termo));
+    if (tecidoEncontrado) {
+      setFormReserva(prev => ({
+        ...prev,
+        codigo: tecidoEncontrado.codigo,
+        nome: tecidoEncontrado.nome,
+        cor: tecidoEncontrado.cor || '',
+        localizacao: tecidoEncontrado.localizacao || '',
+        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm'
+      }));
+      alert(`✅ Item preenchido: ${tecidoEncontrado.nome} (Cor: ${tecidoEncontrado.cor})`);
+    } else {
+      alert('⚠️ Nenhum tecido encontrado.');
+    }
+  };
+
+  const executarBuscaSobra = () => {
+    const termo = normalizarTexto(termoBuscaSobra);
+    if (!termo) { alert('Digite o código para buscar.'); return; }
+    
+    const tecidoEncontrado = listaSeguraCalculos.find(m => normalizarTexto(m?.codigo).includes(termo) || normalizarTexto(m?.nome).includes(termo));
+    if (tecidoEncontrado) {
+      setFormSobra(prev => ({
+        ...prev,
+        codigo: tecidoEncontrado.codigo,
+        nome: tecidoEncontrado.nome,
+        cor: tecidoEncontrado.cor || '',
+        localizacao: tecidoEncontrado.localizacao || '',
+        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm'
+      }));
+      alert(`✅ Item preenchido: ${tecidoEncontrado.nome} (Cor: ${tecidoEncontrado.cor})`);
+    } else {
+      alert('⚠️ Nenhum tecido encontrado.');
+    }
   };
 
   const cadastrarSobra = (e) => {
@@ -218,67 +291,127 @@ const SunnyWearTecidos = () => {
 
     const codigoLimpo = formSobra.codigo.trim();
     const corLimpa = (formSobra.cor || 'N/D').trim();
-    const qtdSobra = Number(formSobra.quantidade);
-
-    // Trava para não cadastrar sobra de tecido inexistente
-    const chaveValidacao = `${normalizarTexto(codigoLimpo)}_${normalizarTexto(corLimpa)}`;
-    if (!tecidosConsolidados[chaveValidacao] && !idEditandoSobra) {
-      alert('⚠️ AÇÃO BLOQUEADA: Este tecido/cor não está cadastrado no estoque livre.');
-      return;
-    }
-
+    const qtdSobra = parseNumero(formSobra.quantidade);
     const estoqueLivreAtual = calcularEstoqueLivre(codigoLimpo, corLimpa, null, idEditandoSobra);
     
     if (qtdSobra > estoqueLivreAtual) {
-      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido/cor é de apenas ${estoqueLivreAtual}.`);
+      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido é de apenas ${estoqueLivreAtual}.`);
       return;
     }
 
-    const novaSobra = {
-      id: idEditandoSobra || 'SOBRA-' + Date.now(),
-      codigo: codigoLimpo,
-      nome: formSobra.nome,
-      cor: corLimpa,
-      quantidade: qtdSobra,
-      unidadeMedida: formSobra.unidadeMedida,
-      localizacao: formSobra.localizacao,
-      observacao: formSobra.observacao || 'Retalho / Sobra',
-      data: new Date().toLocaleDateString('pt-BR')
-    };
+    pedirSenha('Para salvar este retalho e abater do estoque, digite a senha:', async () => {
+      const obsVal = formSobra.observacao || 'Retalho guardado';
+      const finalObs = normalizarTexto(obsVal).includes('retalho') ? obsVal : `RETALHO - ${obsVal}`;
 
-    if (idEditandoSobra) {
-      setSobras(prev => prev.map(s => s.id === idEditandoSobra ? novaSobra : s));
-      setIdEditandoSobra(null);
-      alert('✂️ Retalho ajustado e estoque atualizado com sucesso!');
-    } else {
-      setSobras(prev => [novaSobra, ...prev]);
-      alert('✂️ Sobra cadastrada e abatida do estoque com sucesso!');
-    }
+      const novaSobra = {
+        tipoMovimento: 'saida',
+        codigo: codigoLimpo,
+        nome: formSobra.nome,
+        cor: corLimpa,
+        quantidade: qtdSobra,
+        metros: qtdSobra,
+        unidadeMedida: formSobra.unidadeMedida,
+        localizacao: formSobra.localizacao,
+        observacao: finalObs,
+        fornecedor: '✂️ RETALHO',
+        notaFiscal: 'SOBRA'
+      };
 
-    setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+      setCarregando(true);
+      try {
+        let resposta;
+        if (idEditandoSobra) {
+          resposta = await fetch(`${API_URL}/${encodeURIComponent(idEditandoSobra)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(novaSobra)
+          });
+        } else {
+          resposta = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(novaSobra)
+          });
+        }
+
+        if (!resposta.ok) {
+          const erroMsg = await resposta.text();
+          alert('❌ O Servidor recusou o salvamento: ' + erroMsg);
+          return;
+        }
+
+        alert('✂️ Retalho salvo com sucesso!');
+        setIdEditandoSobra(null);
+        setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+        await carregarDadosDoServidor();
+      } catch (err) {
+        console.error(err);
+        alert('Erro de rede ao salvar no servidor.');
+      } finally {
+        setCarregando(false);
+      }
+    });
   };
 
   const iniciarEdicaoSobra = (item) => {
-    setIdEditandoSobra(item.id);
-    setFormSobra({ ...item });
+    setIdEditandoSobra(item.id || item._id);
+    setFormSobra({ 
+      ...item, 
+      observacao: (item.observacao || '').replace(/RETALHO(\s-\s)?/gi, '')
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const usarSobra = (item) => {
     if (!window.confirm(`Confirma a baixa e reuso deste retalho de ${item.nome} (${item.quantidade} ${item.unidadeMedida})?`)) return;
-    setSobras(prev => prev.filter(s => s.id !== item.id));
-    const registroSaida = {
-      ...item,
-      id: 'SAIDA-SOBRA-' + Date.now(),
-      dataBaixa: new Date().toLocaleDateString('pt-BR')
-    };
-    setSobrasSaidas(prev => [registroSaida, ...prev]);
-    alert('✅ Retalho utilizado na produção!');
+    
+    pedirSenha('Autorização necessária para dar baixa neste retalho:', async () => {
+      setCarregando(true);
+      try {
+        const itemId = item.id || item._id;
+        await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
+
+        const registroSaida = {
+          ...item,
+          tipoMovimento: 'saida',
+          observacao: 'USO-RETALHO - Baixa efetuada',
+          fornecedor: 'CONSUMO-RETALHO',
+          notaFiscal: '-'
+        };
+        delete registroSaida.id;
+        delete registroSaida._id;
+
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(registroSaida)
+        });
+
+        alert('✅ Retalho utilizado na produção!');
+        await carregarDadosDoServidor();
+      } catch (err) {
+        console.error(err);
+        alert('Erro ao processar baixa de retalho.');
+      } finally {
+        setCarregando(false);
+      }
+    });
   };
 
   const deletarSobra = (id) => {
     if (!window.confirm('Confirma a exclusão deste retalho? Ele retornará ao estoque principal.')) return;
-    setSobras(prev => prev.filter(s => s.id !== id));
+    pedirSenha('Autorização necessária para excluir o retalho:', async () => {
+      setCarregando(true);
+      try {
+        await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        alert('Retalho excluído.');
+        await carregarDadosDoServidor();
+      } catch (err) {
+        alert('Erro ao excluir.');
+      } finally {
+        setCarregando(false);
+      }
+    });
   };
 
   const cadastrarReserva = (e) => {
@@ -290,167 +423,259 @@ const SunnyWearTecidos = () => {
 
     const codigoLimpo = formReserva.codigo.trim();
     const corLimpa = (formReserva.cor || 'N/D').trim();
-    const qtdReserva = Number(formReserva.quantidade);
-
-    // Trava para não reservar tecido inexistente
-    const chaveValidacao = `${normalizarTexto(codigoLimpo)}_${normalizarTexto(corLimpa)}`;
-    if (!tecidosConsolidados[chaveValidacao] && !idEditandoReserva) {
-      alert('⚠️ AÇÃO BLOQUEADA: Este tecido/cor não está cadastrado no estoque livre.');
-      return;
-    }
+    const qtdReserva = parseNumero(formReserva.quantidade);
 
     const estoqueLivreAtual = calcularEstoqueLivre(codigoLimpo, corLimpa, idEditandoReserva, null);
     
     if (qtdReserva > estoqueLivreAtual) {
-      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido/cor é de apenas ${estoqueLivreAtual}.`);
+      alert(`⚠️ Estoque insuficiente! O estoque livre disponível para este tecido é de apenas ${estoqueLivreAtual}.`);
       return;
     }
 
-    const novaReserva = {
-      id: idEditandoReserva || 'RESERVA-' + Date.now(),
-      codigo: codigoLimpo,
-      nome: formReserva.nome,
-      cor: corLimpa,
-      quantidade: qtdReserva,
-      metros: qtdReserva,
-      unidadeMedida: formReserva.unidadeMedida,
-      localizacao: formReserva.localizacao,
-      observacao: formReserva.observacao || 'Separado para uso futuro',
-      data: new Date().toLocaleDateString('pt-BR')
-    };
+    pedirSenha('Autorização necessária para reservar tecido:', async () => {
+      const obsVal = formReserva.observacao || 'Separado para uso futuro';
+      const finalObs = normalizarTexto(obsVal).includes('reserva') ? obsVal : `RESERVA - ${obsVal}`;
 
-    if (idEditandoReserva) {
-      setReservas(prev => prev.map(r => r.id === idEditandoReserva ? novaReserva : r));
-      setIdEditandoReserva(null);
-      alert('📌 Reserva ajustada e estoque atualizado com sucesso!');
-    } else {
-      setReservas(prev => [novaReserva, ...prev]);
-      alert('📌 Reserva salva com sucesso e abatida do estoque!');
-    }
-    
-    setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+      const novaReserva = {
+        tipoMovimento: 'saida', 
+        codigo: codigoLimpo,
+        nome: formReserva.nome,
+        cor: corLimpa,
+        quantidade: qtdReserva,
+        metros: qtdReserva,
+        unidadeMedida: formReserva.unidadeMedida,
+        localizacao: formReserva.localizacao,
+        observacao: finalObs,
+        fornecedor: '📌 RESERVA',
+        notaFiscal: 'USO FUTURO'
+      };
+
+      setCarregando(true);
+      try {
+        let resposta;
+        if (idEditandoReserva) {
+          resposta = await fetch(`${API_URL}/${encodeURIComponent(idEditandoReserva)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(novaReserva)
+          });
+        } else {
+          resposta = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(novaReserva)
+          });
+        }
+
+        if (!resposta.ok) {
+          const erroMsg = await resposta.text();
+          alert('❌ Servidor recusou a reserva: ' + erroMsg);
+          return; 
+        }
+
+        alert('📌 Reserva salva com sucesso e abatida do estoque!');
+        setIdEditandoReserva(null);
+        setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' });
+        await carregarDadosDoServidor();
+      } catch (err) {
+        console.error(err);
+        alert('Erro de conexão ao salvar reserva.');
+      } finally {
+        setCarregando(false);
+      }
+    });
   };
 
   const iniciarEdicaoReserva = (item) => {
-    setIdEditandoReserva(item.id);
-    setFormReserva({ ...item });
+    setIdEditandoReserva(item.id || item._id);
+    setFormReserva({ 
+      ...item, 
+      observacao: (item.observacao || '').replace(/RESERVA(\s-\s)?/gi, '')
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const concluirReserva = async (item) => {
+  const concluirReserva = (item) => {
     if (!window.confirm(`Confirma o consumo/baixa definitiva desta reserva de ${item.nome}?`)) return;
     
-    setCarregando(true);
-    try {
-      setReservas(prev => prev.filter(r => r.id !== item.id));
+    pedirSenha('Autorização para consumir reserva:', async () => {
+      setCarregando(true);
+      try {
+        const itemId = item.id || item._id;
+        await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
-      const dadosSaida = {
-        tipoMovimento: 'saida',
-        codigo: item.codigo,
-        nome: item.nome,
-        cor: item.cor,
-        quantidade: item.quantidade || item.metros,
-        metros: item.quantidade || item.metros,
-        unidadeMedida: item.unidadeMedida || 'm',
-        localizacao: item.localizacao,
-        observacao: 'Baixa de reserva: ' + (item.observacao || ''),
-        data: new Date().toISOString()
-      };
+        const dadosSaida = {
+          tipoMovimento: 'saida',
+          codigo: item.codigo,
+          nome: item.nome,
+          cor: item.cor,
+          quantidade: parseNumero(item.quantidade || item.metros),
+          metros: parseNumero(item.quantidade || item.metros),
+          unidadeMedida: item.unidadeMedida || item.unidademedida || 'm',
+          localizacao: item.localizacao,
+          observacao: 'Baixa de reserva efetuada',
+          fornecedor: 'CONSUMO-RESERVA',
+          notaFiscal: '-'
+        };
 
-      await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosSaida)
-      });
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dadosSaida)
+        });
 
-      alert('✅ Reserva consumida e registrada como saída na base!');
-      carregarDadosDoServidor();
-    } catch (erro) {
-      console.error(erro);
-      alert('Erro ao concluir reserva.');
-    } finally {
-      setCarregando(false);
-    }
+        alert('✅ Reserva consumida!');
+        await carregarDadosDoServidor();
+      } catch (erro) {
+        console.error(erro);
+        alert('Erro ao concluir reserva.');
+      } finally {
+        setCarregando(false);
+      }
+    });
   };
 
   const cancelarReserva = (id) => {
     if (!window.confirm('Confirma o cancelamento desta reserva (o tecido voltará para o estoque livre)?')) return;
-    setReservas(prev => prev.filter(r => r.id !== id));
-    alert('🔄 Reserva cancelada e tecido retornado ao estoque livre.');
+    
+    pedirSenha('Autorização para cancelar reserva:', async () => {
+      setCarregando(true);
+      try {
+        const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (resposta.ok) {
+          alert('🔄 Reserva cancelada e tecido retornado.');
+          await carregarDadosDoServidor();
+        } else {
+          alert('Erro ao excluir reserva.');
+        }
+      } catch (err) {
+        alert('Erro de conexão.');
+      } finally {
+        setCarregando(false);
+      }
+    });
   };
 
-  const registrarOuAtualizarMovimento = async (e) => {
+  const limparFormularioGeral = () => {
+    setForm({ 
+      tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', 
+      quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', 
+      notaFiscal: '', fornecedor: '', foto: '', largura: '', observacao: '' 
+    });
+    setIdEditando(null);
+  };
+
+  const registrarOuAtualizarMovimento = (e) => {
     e.preventDefault();
-    const qtdValida = form.quantidade || form.metros;
-    if (!form.codigo || !form.nome || !form.cor || !form.localizacao || !qtdValida) return;
-
-    const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
-
-    // VERIFICAÇÃO RÍGIDA DE SAÍDA: Impede dar saída num tecido que não existe
-    if (tipoFinal === 'saida' && !idEditando) {
-      const chaveValidacao = `${normalizarTexto(form.codigo)}_${normalizarTexto(form.cor)}`;
-      if (!tecidosConsolidados[chaveValidacao]) {
-        alert('⚠️ AÇÃO BLOQUEADA: Este tecido ou cor não estão cadastrados no estoque! Você não pode dar saída em um item inexistente.');
-        return;
-      }
+    const qtdValida = parseNumero(form.quantidade || form.metros);
+    
+    if (!form.codigo || !form.nome || !form.cor || !form.localizacao || qtdValida <= 0) {
+      alert('Preencha os campos obrigatórios corretamente.');
+      return;
     }
 
-    let minFinal = form.estoqueMinimo !== '' && form.estoqueMinimo !== null ? Number(form.estoqueMinimo) : 0;
+    pedirSenha('Autorização necessária para registrar Entrada/Saída:', async () => {
+      const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
+      let minFinal = parseNumero(form.estoqueMinimo);
 
-    const dadosParaEnviar = {
-      ...form,
-      tipoMovimento: tipoFinal,
-      quantidade: qtdValida,
-      metros: qtdValida,
-      estoqueMinimo: minFinal,
-      estoqueminimo: minFinal
-    };
+      setCarregando(true);
+      try {
+        let resposta;
+        const targetId = idEditando || form.id || form._id;
 
-    setCarregando(true);
-    try {
-      let resposta;
-      const targetId = idEditando || form.id || form._id;
-      if (targetId) {
-        resposta = await fetch(`${API_URL}/${encodeURIComponent(targetId)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dadosParaEnviar)
-        });
-      } else {
-        resposta = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dadosParaEnviar)
-        });
+        if (tipoFinal === 'entrada' && !targetId) {
+          const codBuscado = normalizarTexto(form.codigo);
+          const corBuscada = normalizarTexto(form.cor);
+
+          const existente = movimentacoes.find(m =>
+            isItemEntradaNormal(m) &&
+            normalizarTexto(m.codigo) === codBuscado &&
+            normalizarTexto(m.cor) === corBuscada
+          );
+
+          if (existente) {
+            const idExistente = existente.id || existente._id;
+            const qtdAntiga = parseNumero(existente.quantidade || existente.metros);
+            const novaQtd = qtdAntiga + qtdValida;
+
+            const dadosAtualizados = {
+              ...existente,
+              ...form,
+              quantidade: novaQtd,
+              metros: novaQtd,
+              estoqueMinimo: minFinal || parseNumero(existente.estoqueMinimo),
+              estoqueminimo: minFinal || parseNumero(existente.estoqueminimo),
+              tipoMovimento: 'entrada'
+            };
+
+            resposta = await fetch(`${API_URL}/${encodeURIComponent(idExistente)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(dadosAtualizados)
+            });
+
+            if (resposta.ok) {
+              alert(`✅ Material já existia no sistema! A nova quantidade foi somada.\nNovo total na entrada: ${novaQtd} ${form.unidadeMedida}`);
+              limparFormularioGeral();
+              await carregarDadosDoServidor();
+              setAbaAtiva('historico');
+              return;
+            } else {
+              throw new Error(await resposta.text());
+            }
+          }
+        }
+
+        const dadosParaEnviar = {
+          ...form,
+          tipoMovimento: tipoFinal,
+          quantidade: qtdValida,
+          metros: qtdValida,
+          estoqueMinimo: minFinal,
+          estoqueminimo: minFinal
+        };
+
+        if (targetId) {
+          resposta = await fetch(`${API_URL}/${encodeURIComponent(targetId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosParaEnviar)
+          });
+        } else {
+          resposta = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosParaEnviar)
+          });
+        }
+
+        if (resposta.ok) {
+          alert(targetId ? 'Registro atualizado com sucesso!' : 'Lançamento efetuado com sucesso!');
+          limparFormularioGeral();
+          await carregarDadosDoServidor();
+          setAbaAtiva('historico');
+        } else {
+          const erroServidor = await resposta.text();
+          alert('❌ Erro no servidor: ' + erroServidor);
+        }
+      } catch (erro) {
+        console.error('Erro de conexão:', erro);
+        alert('Erro de rede.');
+      } finally {
+        setCarregando(false);
       }
-
-      if (resposta.ok) {
-        alert(targetId ? 'Registro atualizado com sucesso!' : 'Lançamento efetuado com sucesso!');
-        setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' });
-        setIdEditando(null);
-        await carregarDadosDoServidor();
-        setAbaAtiva('historico');
-      } else {
-        const erroServidor = await resposta.json().catch(() => ({}));
-        alert('Erro ao processar requisição: ' + (erroServidor.erro || resposta.statusText));
-      }
-    } catch (erro) {
-      console.error('Erro de conexão:', erro);
-      alert('Erro de conexão com o servidor central.');
-    } finally {
-      setCarregando(false);
-    }
+    });
   };
 
   const iniciarEdicao = (item) => {
     const itemId = item.id || item._id;
     if (!item || itemId === undefined || itemId === null) {
-      alert('Erro: ID do registro inválido.');
+      alert('Erro: ID inválido.');
       return;
     }
     setIdEditando(itemId);
     const qtdItem = item.quantidade || item.metros || '';
-    const minItem = Number(item.estoqueminimo !== undefined ? item.estoqueminimo : (item.estoqueMinimo !== undefined ? item.estoqueMinimo : 0));
+    const minItem = obterMinimo(item);
     const tipoItem = obterTipo(item);
     
     setForm({
@@ -468,45 +693,46 @@ const SunnyWearTecidos = () => {
       notaFiscal: item.notafiscal || item.notaFiscal || '',
       fornecedor: item.fornecedor || '',
       foto: item.foto || '',
-      largura: item.largura || ''
+      largura: item.largura || '',
+      observacao: item.observacao || ''
     });
     setAbaAtiva(tipoItem === 'saida' ? 'saida' : 'entrada');
   };
 
-  const deletarItem = async (itemOrId) => {
+  const deletarItem = (itemOrId) => {
     const id = typeof itemOrId === 'object' ? (itemOrId.id || itemOrId._id) : itemOrId;
     if (!id) {
-      alert('Erro: ID inválido para exclusão.');
+      alert('Erro: ID inválido.');
       return;
     }
-    if (!window.confirm('Confirma a exclusão definitiva deste registro do sistema?')) return;
-    try {
-      const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
-      if (resposta.ok) {
-        alert('Registro excluído com sucesso.');
-        carregarDadosDoServidor();
-      } else {
-        alert('Erro ao excluir o registro.');
+    if (!window.confirm('Confirma a exclusão definitiva deste registro?')) return;
+    
+    pedirSenha('Autorização para apagar este item:', async () => {
+      try {
+        const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (resposta.ok) {
+          alert('Excluído com sucesso.');
+          carregarDadosDoServidor();
+        } else {
+          alert('Erro ao excluir.');
+        }
+      } catch (erro) {
+        alert('Erro de conexão.');
       }
-    } catch (erro) {
-      console.error('Erro de conexão:', erro);
-      alert('Erro de conexão com o servidor.');
-    }
+    });
   };
 
   const tecidosConsolidados = {};
   const usoTecidos = {};
-  const listaSeguraCalculos = Array.isArray(movimentacoes) ? movimentacoes : [];
 
   listaSeguraCalculos.forEach(m => {
     if (!m || !m.codigo) return;
     const cod = normalizarTexto(m.codigo);
     const cor = normalizarTexto(m.cor || 'ndef');
     const chave = `${cod}_${cor}`;
-    const qtd = Number(m.metros || m.quantidade || 0);
+    const qtd = parseNumero(m.metros || m.quantidade || 0);
     const minReg = obterMinimo(m);
-    const tipoM = obterTipo(m);
-
+    
     if (!tecidosConsolidados[chave]) {
       tecidosConsolidados[chave] = {
         codigo: m.codigo,
@@ -521,46 +747,20 @@ const SunnyWearTecidos = () => {
       };
     }
 
-    if (tipoM === 'entrada') {
-      tecidosConsolidados[chave].totalBruto += qtd;
-    } else if (tipoM === 'saida') {
-      tecidosConsolidados[chave].totalBruto -= qtd;
-    }
+    if (isItemEntradaNormal(m)) tecidosConsolidados[chave].totalBruto += qtd;
+    if (isItemSaidaNormal(m)) tecidosConsolidados[chave].totalBruto -= qtd;
+    if (isItemReserva(m)) tecidosConsolidados[chave].totalReservas += qtd;
+    if (isItemRetalho(m)) tecidosConsolidados[chave].totalSobras += qtd;
 
     if (!usoTecidos[chave]) {
       usoTecidos[chave] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
     }
-    if (tipoM === 'saida') {
+    
+    if (isItemSaidaNormal(m) || normalizarTexto(m.observacao).includes('uso-retalho')) {
       usoTecidos[chave].totalUso += qtd;
     }
 
     if (minReg > 0) tecidosConsolidados[chave].minimo = minReg;
-  });
-
-  reservas.forEach(r => {
-    if (!r || !r.codigo) return;
-    const cod = normalizarTexto(r.codigo);
-    const cor = normalizarTexto(r.cor || 'ndef');
-    const chave = `${cod}_${cor}`;
-    const qtd = Number(r.quantidade || r.metros || 0);
-
-    if (!tecidosConsolidados[chave]) {
-      tecidosConsolidados[chave] = { codigo: r.codigo, nome: r.nome, cor: r.cor, minimo: 0, unidade: r.unidadeMedida || 'm', totalBruto: 0, totalReservas: 0, totalSobras: 0, total: 0 };
-    }
-    tecidosConsolidados[chave].totalReservas += qtd;
-  });
-
-  sobras.forEach(s => {
-    if (!s || !s.codigo) return;
-    const cod = normalizarTexto(s.codigo);
-    const cor = normalizarTexto(s.cor || 'ndef');
-    const chave = `${cod}_${cor}`;
-    const qtd = Number(s.quantidade || 0);
-
-    if (!tecidosConsolidados[chave]) {
-      tecidosConsolidados[chave] = { codigo: s.codigo, nome: s.nome, cor: s.cor, minimo: 0, unidade: s.unidadeMedida || 'm', totalBruto: 0, totalReservas: 0, totalSobras: 0, total: 0 };
-    }
-    tecidosConsolidados[chave].totalSobras += qtd;
   });
 
   Object.keys(tecidosConsolidados).forEach(chave => {
@@ -578,20 +778,20 @@ const SunnyWearTecidos = () => {
   const maxUsoTop = topTecidosMaisUsados.length > 0 ? Math.max(...topTecidosMaisUsados.map(t => t.totalUso)) : 100;
 
   const entradasMetros = listaSeguraCalculos
-    .filter(m => obterTipo(m) === 'entrada' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
-    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
+    .filter(m => isItemEntradaNormal(m) && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
+    .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
 
   const saidasMetros = listaSeguraCalculos
-    .filter(m => obterTipo(m) === 'saida' && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
-    .reduce((acc, m) => acc + Number(m.metros || m.quantidade || 0), 0);
+    .filter(m => isItemSaidaNormal(m) && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
+    .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
 
   const totalReservasMetros = reservas
     .filter(r => (r?.unidadeMedida === 'm' || !r?.unidadeMedida))
-    .reduce((acc, r) => acc + Number(r.quantidade || r.metros || 0), 0);
+    .reduce((acc, r) => acc + parseNumero(r.quantidade || r.metros || 0), 0);
     
   const totalSobrasMetros = sobras
     .filter(s => s.unidadeMedida === 'm')
-    .reduce((acc, s) => acc + Number(s.quantidade || 0), 0);
+    .reduce((acc, s) => acc + parseNumero(s.quantidade || 0), 0);
 
   const estoqueBrutoMetros = entradasMetros - saidasMetros;
   const estoqueDisponivelMetros = estoqueBrutoMetros - totalReservasMetros - totalSobrasMetros;
@@ -613,14 +813,13 @@ const SunnyWearTecidos = () => {
     listaSeguraCalculos.forEach(m => {
       const mData = (m.data || '').split('T')[0];
       if (mData && mData <= dataStrYYYYMMDD) {
-        const qtd = Number(m.metros || m.quantidade || 0);
+        const qtd = parseNumero(m.metros || m.quantidade || 0);
         const un = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
-        const tipoM = obterTipo(m);
 
-        if (tipoM === 'entrada') {
+        if (isItemEntradaNormal(m)) {
           if (un === 'kg') kgTotal += qtd;
           else mTotal += qtd;
-        } else if (tipoM === 'saida') {
+        } else if (isItemSaidaNormal(m) || isItemReserva(m) || isItemRetalho(m)) {
           if (un === 'kg') kgTotal -= qtd;
           else mTotal -= qtd;
         }
@@ -651,25 +850,20 @@ const SunnyWearTecidos = () => {
       acc[chaveLoc] = { nomeExibicao: rawLoc.trim().toUpperCase(), m: 0, kg: 0 };
     }
 
-    const qtd = Number(m.metros || m.quantidade || 0);
+    const qtd = parseNumero(m.metros || m.quantidade || 0);
     const unidade = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
-    const tipoM = obterTipo(m);
     
-    if (tipoM === 'entrada') {
+    if (isItemEntradaNormal(m)) {
       if (acc[chaveLoc][unidade] !== undefined) acc[chaveLoc][unidade] += qtd;
       else acc[chaveLoc][unidade] = qtd;
-    } else if (tipoM === 'saida') {
+    } else if (isItemSaidaNormal(m) || isItemReserva(m) || isItemRetalho(m)) {
       if (acc[chaveLoc][unidade] !== undefined) acc[chaveLoc][unidade] -= qtd;
       else acc[chaveLoc][unidade] = -qtd;
     }
     return acc;
   }, {});
 
-  const todosRegistrosHistorico = [
-    ...listaSeguraCalculos.map(m => ({ ...m, _tipoExibicao: obterTipo(m) })),
-    ...reservas.map(r => ({ ...r, _tipoExibicao: 'Reserva', isExtra: true })),
-    ...sobras.map(s => ({ ...s, _tipoExibicao: 'Retalhos', isExtra: true }))
-  ];
+  const todosRegistrosHistorico = listaSeguraCalculos;
 
   const movFiltradas = todosRegistrosHistorico.filter(m => {
     if (!m) return false; 
@@ -684,7 +878,7 @@ const SunnyWearTecidos = () => {
   });
 
   const sobrasFiltradas = sobras.filter(s => {
-    const termo = normalizarTexto(buscaSobra);
+    const termo = normalizarTexto(buscaSobraTexto);
     return (
       normalizarTexto(s.codigo).includes(termo) ||
       normalizarTexto(s.nome).includes(termo) ||
@@ -695,7 +889,7 @@ const SunnyWearTecidos = () => {
   });
 
   const reservasFiltradas = reservas.filter(r => {
-    const termo = normalizarTexto(buscaReserva);
+    const termo = normalizarTexto(buscaReservaTexto);
     return (
       normalizarTexto(r.codigo).includes(termo) ||
       normalizarTexto(r.nome).includes(termo) ||
@@ -723,42 +917,54 @@ const SunnyWearTecidos = () => {
     };
     
     let totalQtdBruta = 0;
-    movimentosDoTecido.forEach(m => {
-      const q = Number(m.metros || m.quantidade || 0);
-      const t = obterTipo(m);
-      if (t === 'entrada') totalQtdBruta += q;
-      else if (t === 'saida') totalQtdBruta -= q;
-    });
-    
     let totalReservaTecido = 0;
-    reservas.forEach(r => {
-      const rCod = normalizarTexto(r?.codigo);
-      const rCor = normalizarTexto(r?.cor || 'N/D');
-      if (rCod === paramCodigoLpo && (paramCorLpo ? (rCor === paramCorLpo) : true)) {
-        totalReservaTecido += Number(r.quantidade || r.metros || 0);
-      }
-    });
-
     let totalSobraTecido = 0;
-    sobras.forEach(s => {
-      const sCod = normalizarTexto(s?.codigo);
-      const sCor = normalizarTexto(s?.cor || 'N/D');
-      if (sCod === paramCodigoLpo && (paramCorLpo ? (sCor === paramCorLpo) : true)) {
-        totalSobraTecido += Number(s.quantidade || 0);
+    let totalSaidaNormal = 0;
+    
+    let somaPrecos = 0;
+    let qtdPrecos = 0;
+
+    movimentosDoTecido.forEach(m => {
+      const q = parseNumero(m.metros || m.quantidade || 0);
+
+      if (isItemEntradaNormal(m)) { totalQtdBruta += q; }
+      if (isItemSaidaNormal(m)) { totalSaidaNormal += q; }
+      if (isItemReserva(m)) { totalReservaTecido += q; }
+      if (isItemRetalho(m)) { totalSobraTecido += q; }
+      
+      const p = parseNumero(m.preco);
+      if (p > 0 && isItemEntradaNormal(m)) {
+        somaPrecos += p;
+        qtdPrecos++;
       }
     });
 
-    const totalDisponivelTecido = totalQtdBruta - totalReservaTecido - totalSobraTecido;
+    const estoqueBrutoReal = totalQtdBruta - totalSaidaNormal;
+    const totalReservado = totalReservaTecido + totalSobraTecido;
+    const totalDisponivelTecido = estoqueBrutoReal - totalReservado;
     const unidadeMed = infoTecido.unidademedida || infoTecido.unidadeMedida || 'm';
+
+    const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : parseNumero(infoTecido.preco || 0);
+    const valorTotalEstoque = totalDisponivelTecido * precoMedio;
 
     return (
       <div style={styles.qrViewContainer}>
         <div style={styles.qrViewCard}>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <div style={styles.logoBadge}>SW</div>
-            <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Sunny Wear • Consulta QR Code</h2>
-            <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>Informações do Rolo</p>
+            <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
+            <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Versão 3.15 • Nuvem
+            </p>
           </div>
+
+          <button 
+            onClick={carregarDadosDoServidor}
+            disabled={carregando}
+            style={{...styles.qrBackBtn, backgroundColor: '#2563EB', color: '#FFF', marginBottom: '16px', border: 'none', boxShadow: '0 4px 10px rgba(37,99,235,0.3)'}}
+          >
+            {carregando ? '⏳ Sincronizando...' : '🔄 Atualizar Dados'}
+          </button>
 
           {infoTecido.foto ? (
             <img src={infoTecido.foto} alt="Tecido" style={styles.qrViewImg} onClick={() => setFotoSelecionada(infoTecido.foto)} />
@@ -770,22 +976,29 @@ const SunnyWearTecidos = () => {
             <div style={styles.qrInfoRow}><span>Código:</span> <strong>{infoTecido.codigo}</strong></div>
             <div style={styles.qrInfoRow}><span>Nome:</span> <strong>{infoTecido.nome || 'N/D'}</strong></div>
             <div style={styles.qrInfoRow}><span>Cor:</span> <strong style={{color: '#2563EB'}}>{infoTecido.cor || 'N/D'}</strong></div>
-            <div style={styles.qrInfoRow}><span>Largura:</span> <strong>{infoTecido.largura ? `${infoTecido.largura}m` : 'Não informada'}</strong></div>
             <div style={styles.qrInfoRow}><span>Galpão / Local:</span> <strong style={{color: '#2563EB'}}>📍 {infoTecido.localizacao || 'N/D'}</strong></div>
             
             <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
 
-            <div style={{...styles.qrInfoRow, alignItems: 'center'}}>
-              <span>Estoque Total Disponível:</span> 
-              <strong style={{color: '#059669', fontSize: '18px'}}>{totalDisponivelTecido} {unidadeMed}</strong>
+            <div style={styles.qrInfoRow}><span>Total de Tecido (Bruto):</span> <strong style={{color: '#0F172A'}}>{estoqueBrutoReal} {unidadeMed}</strong></div>
+            
+            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#ECFDF5', padding: '16px', borderRadius: '12px', border: '1px solid #A7F3D0', margin: '10px 0'}}>
+              <span style={{fontSize: '12px', color: '#065F46', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px'}}>Estoque Atual Disponível</span>
+              <strong style={{color: '#059669', fontSize: '26px'}}>{totalDisponivelTecido} {unidadeMed}</strong>
+              <span style={{fontSize: '11px', color: '#047857', marginTop: '4px'}}>(Já subtraindo reservas e retalhos)</span>
             </div>
+
+            <div style={{borderTop: '1px dashed #CBD5E1', margin: '6px 0'}} />
+
+            <div style={styles.qrInfoRow}><span>Valor Unitário Médio:</span> <strong style={{color: '#D97706'}}>R$ {precoMedio.toFixed(2)}</strong></div>
+            <div style={styles.qrInfoRow}><span>Valor Total (Estoque Livre):</span> <strong style={{color: '#D97706'}}>R$ {valorTotalEstoque.toFixed(2)}</strong></div>
           </div>
 
           <button 
             onClick={() => { window.location.href = window.location.pathname; }} 
             style={styles.qrBackBtn}
           >
-            🏠 Acessar Sistema Completo
+            🏠 Acessar Sistema
           </button>
         </div>
 
@@ -841,12 +1054,38 @@ const SunnyWearTecidos = () => {
         />
       )}
 
+      {authConfig.visivel && (
+        <div style={styles.modalOverlay} onClick={() => setAuthConfig({ visivel: false, callback: null, mensagem: '' })}>
+          <div style={{...styles.modalContent, alignItems: 'center', width: '100%', maxWidth: '340px', margin: 'auto'}} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#0F172A', fontWeight: '800' }}>🔒 Autorização Necessária</h3>
+            <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '20px', textAlign: 'center' }}>
+              {authConfig.mensagem}
+            </p>
+            <form onSubmit={confirmarSenha} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <input 
+                type="password" 
+                placeholder="Digite a senha..." 
+                value={senhaAuth} 
+                onChange={(e) => setSenhaAuth(e.target.value)} 
+                style={{...styles.input, textAlign: 'center', fontSize: '18px', letterSpacing: '4px', fontWeight: 'bold'}} 
+                autoFocus
+                required 
+              />
+              <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '4px' }}>
+                <button type="button" onClick={() => setAuthConfig({ visivel: false, callback: null, mensagem: '' })} style={{...styles.button, background: '#F1F5F9', color: '#475569', flex: 1, boxShadow: 'none', border: '1px solid #CBD5E1'}}>Cancelar</button>
+                <button type="submit" style={{...styles.button, background: '#2563EB', color: '#fff', flex: 1}}>Confirmar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <aside style={styles.sidebar}>
         <div style={styles.sidebarHeader}>
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v2.8 SECURE</span>
+            <span style={styles.versionBadge}>v3.15 CLOUD</span>
           </div>
         </div>
 
@@ -858,19 +1097,21 @@ const SunnyWearTecidos = () => {
             📊 Visão Geral
           </button>
           <button 
-            onClick={() => { setAbaAtiva('estoque'); setMenuMobileAberto(false); }} 
-            style={{ ...styles.sidebarLink, ...(abaAtiva === 'estoque' ? styles.sidebarLinkActive : {}) }}
-          >
-            📦 Estoque Total
-          </button>
-          <button 
-            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'entrada', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setAbaAtiva('entrada'); setMenuMobileAberto(false); }} 
+            onClick={() => { 
+              limparFormularioGeral(); 
+              setAbaAtiva('entrada'); 
+              setMenuMobileAberto(false); 
+            }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'entrada' ? styles.sidebarLinkActive : {}) }}
           >
             📥 Registrar Entrada
           </button>
           <button 
-            onClick={() => { setIdEditando(null); setForm({ tipoMovimento: 'saida', codigo: '', nome: '', cor: '', localizacao: '', quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', notaFiscal: '', fornecedor: '', foto: '', largura: '' }); setAbaAtiva('saida'); setMenuMobileAberto(false); }} 
+            onClick={() => { 
+              limparFormularioGeral(); 
+              setAbaAtiva('saida'); 
+              setMenuMobileAberto(false); 
+            }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'saida' ? styles.sidebarLinkActive : {}) }}
           >
             📤 Registrar Saída
@@ -891,7 +1132,7 @@ const SunnyWearTecidos = () => {
             onClick={() => { setAbaAtiva('historico'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'historico' ? styles.sidebarLinkActive : {}) }}
           >
-            🔍 Movimentações
+            🔍 Consulta & Galpões
           </button>
         </div>
       </aside>
@@ -907,7 +1148,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.15)</span>
           </div>
         </header>
 
@@ -961,7 +1202,7 @@ const SunnyWearTecidos = () => {
               <div style={styles.chartBoxWide}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Top 5 Tecidos Mais Utilizados</h3>
-                  <button style={styles.verTodosBtn} onClick={() => setAbaAtiva('historico')}>Ver todos</button>
+                  <button style={styles.verTodosBtn}>Ver todos</button>
                 </div>
 
                 {topTecidosMaisUsados.length === 0 ? (
@@ -1062,114 +1303,6 @@ const SunnyWearTecidos = () => {
           </div>
         )}
 
-        {abaAtiva === 'estoque' && (
-          <div style={styles.cardSection}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📦 Estoque Total Consolidado</h3>
-              <span style={{ fontSize: '12px', color: '#64748B' }}>Visão agrupada por tecidos e cores</span>
-            </div>
-
-            <input 
-              type="text" 
-              placeholder="Pesquisar tecido por código ou nome..." 
-              value={buscaEstoque} 
-              onChange={(e) => setBuscaEstoque(e.target.value)} 
-              style={styles.inputFull}
-            />
-
-            {(() => {
-              const agrupadoPorCodigo = {};
-              Object.values(tecidosConsolidados).forEach(t => {
-                const codOriginal = t.codigo;
-                const codNorm = normalizarTexto(t.codigo);
-                if (!agrupadoPorCodigo[codNorm]) {
-                  agrupadoPorCodigo[codNorm] = {
-                    codigoOriginal: codOriginal,
-                    nomeOriginal: t.nome,
-                    unidade: t.unidade,
-                    totalGeral: 0,
-                    cores: []
-                  };
-                }
-                agrupadoPorCodigo[codNorm].totalGeral += t.total;
-                agrupadoPorCodigo[codNorm].cores.push({
-                  cor: t.cor,
-                  total: t.total,
-                  bruto: t.totalBruto,
-                  reservas: t.totalReservas,
-                  sobras: t.totalSobras,
-                  minimo: t.minimo
-                });
-              });
-
-              const tecidosAgrupadosFiltrados = Object.values(agrupadoPorCodigo).filter(t => {
-                const termo = normalizarTexto(buscaEstoque);
-                if (!termo) return true;
-                return normalizarTexto(t.codigoOriginal).includes(termo) || normalizarTexto(t.nomeOriginal).includes(termo);
-              });
-
-              if (tecidosAgrupadosFiltrados.length === 0) {
-                return <div style={styles.empty}>Nenhum tecido encontrado no estoque.</div>;
-              }
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {tecidosAgrupadosFiltrados.map((item, idx) => (
-                    <div key={idx} style={{ background: '#FFFFFF', padding: '20px', borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E2E8F0', paddingBottom: '12px', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                        <h4 style={{ margin: 0, fontSize: '16px', color: '#0F172A' }}>{item.codigoOriginal} - {item.nomeOriginal}</h4>
-                        <span style={{ fontSize: '14px', fontWeight: '800', color: '#2563EB', backgroundColor: '#EFF6FF', padding: '6px 12px', borderRadius: '8px' }}>
-                          Total do Modelo: {item.totalGeral} {item.unidade}
-                        </span>
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>
-                          🎨 Cores Disponíveis (Clique na cor para ver detalhes):
-                        </span>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          {item.cores.map((c, cIdx) => (
-                            <button 
-                              key={cIdx}
-                              onClick={() => setCorSelecionadaDetalhe({ codigo: item.codigoOriginal, nome: item.nomeOriginal, unidade: item.unidade, ...c })}
-                              style={{
-                                padding: '8px 16px',
-                                backgroundColor: '#F8FAFC',
-                                border: '1px solid #CBD5E1',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                color: '#0F172A',
-                                fontWeight: '600',
-                                transition: 'all 0.2s',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px'
-                              }}
-                              onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#EFF6FF'; e.currentTarget.style.borderColor = '#93C5FD'; }}
-                              onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#F8FAFC'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
-                            >
-                              <span style={{ 
-                                width: '14px', 
-                                height: '14px', 
-                                borderRadius: '50%', 
-                                backgroundColor: c.cor.toLowerCase().includes('black') || c.cor.toLowerCase().includes('preto') ? '#000' : c.cor.toLowerCase().includes('white') || c.cor.toLowerCase().includes('branco') ? '#FFF' : '#CBD5E1', 
-                                display: 'inline-block', 
-                                border: '1px solid #94A3B8' 
-                              }}></span>
-                              {c.cor} 
-                              <span style={{ color: c.total < 0 ? '#DC2626' : '#059669', marginLeft: '4px' }}>({c.total} {item.unidade})</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
         {abaAtiva === 'entrada' && (
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
@@ -1192,7 +1325,7 @@ const SunnyWearTecidos = () => {
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Largura (m)</label>
-                <input type="number" step="0.01" placeholder="Ex: 1.50" value={form.largura} onChange={(e) => setForm({...form, largura: e.target.value})} style={styles.input} />
+                <input type="text" placeholder="Ex: 1.50" value={form.largura} onChange={(e) => setForm({...form, largura: e.target.value})} style={styles.input} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Localização / Galpão *</label>
@@ -1201,7 +1334,7 @@ const SunnyWearTecidos = () => {
               <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade *</label>
-                  <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
+                  <input type="text" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Unidade</label>
@@ -1213,11 +1346,11 @@ const SunnyWearTecidos = () => {
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
-                <input type="number" step="0.01" placeholder="Ex: 180" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
+                <input type="text" placeholder="Ex: 180" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Valor Unitário (R$)</label>
-                <input type="number" step="0.01" placeholder="Ex: 15.90" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
+                <input type="text" placeholder="Ex: 15.90" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Número da Nota Fiscal</label>
@@ -1255,126 +1388,31 @@ const SunnyWearTecidos = () => {
         {abaAtiva === 'saida' && (
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento de Baixa / Saída (Manual)'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Para sua segurança, só é possível dar saída em tecidos já cadastrados no estoque.</p>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento Manual de Saída'}</h3>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os dados manualmente para registrar a saída/consumo do tecido.</p>
             </div>
 
             <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
-                <input 
-                  type="text" 
-                  placeholder="Digite o código (Ex: 01.01.0255)" 
-                  value={form.codigo} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    let novoNome = form.nome;
-                    const tecidoEncontrado = Object.values(tecidosConsolidados).find(t => normalizarTexto(t.codigo) === normalizarTexto(val));
-                    if (tecidoEncontrado) {
-                      novoNome = tecidoEncontrado.nome;
-                    }
-                    setForm({...form, codigo: val, nome: novoNome, cor: ''}); // Reseta cor para obrigar a seleção
-                  }} 
-                  style={styles.input} 
-                  required 
-                />
-              </div>
-
-              {form.codigo && !idEditando && (
-                (() => {
-                  const coresDoCodigo = Object.values(tecidosConsolidados).filter(
-                    t => normalizarTexto(t.codigo) === normalizarTexto(form.codigo)
-                  );
-                  
-                  if (coresDoCodigo.length === 0) {
-                    return (
-                      <div style={{gridColumn: '1 / -1', background: '#FEF2F2', padding: '14px', borderRadius: '10px', border: '1px solid #FCA5A5'}}>
-                        <span style={{fontSize: '13px', color: '#991B1B', fontWeight: '700'}}>
-                          ⚠️ CÓDIGO NÃO ENCONTRADO NO ESTOQUE! Verifique se você digitou corretamente. Não é possível dar saída sem uma entrada registrada.
-                        </span>
-                      </div>
-                    );
-                  }
-                  
-                  return (
-                    <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '14px', borderRadius: '10px', border: '1px solid #BFDBFE'}}>
-                      <span style={{fontSize: '11px', color: '#1D4ED8', fontWeight: '700', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px'}}>
-                        🎨 Tecido "{coresDoCodigo[0].nome}" encontrado! Selecione a cor correta:
-                      </span>
-                      <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                        {coresDoCodigo.map((tItem, idx) => {
-                          const isSelected = normalizarTexto(form.cor) === normalizarTexto(tItem.cor);
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => {
-                                setForm(prev => ({
-                                  ...prev,
-                                  nome: tItem.nome || prev.nome,
-                                  cor: tItem.cor || '',
-                                  unidadeMedida: tItem.unidade || 'm',
-                                  estoqueMinimo: tItem.minimo || ''
-                                }));
-                              }}
-                              style={{
-                                padding: '8px 14px',
-                                backgroundColor: isSelected ? '#2563EB' : '#FFFFFF',
-                                color: isSelected ? '#FFFFFF' : '#1D4ED8',
-                                border: '1px solid #93C5FD',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                boxShadow: '0 2px 5px rgba(37,99,235,0.1)'
-                              }}
-                            >
-                              ✓ {tItem.cor} ({tItem.total} {tItem.unidade} disp.)
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()
-              )}
-
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Nome do Tecido (Automático) *</label>
-                <input 
-                  type="text" 
-                  placeholder="Preenchido automaticamente" 
-                  value={form.nome} 
-                  onChange={(e) => setForm({...form, nome: e.target.value})} 
-                  style={!idEditando ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} 
-                  readOnly={!idEditando} 
-                  required 
-                />
+                <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Cor do Tecido (Selecione nos botões) *</label>
-                <input 
-                  type="text" 
-                  placeholder={!idEditando ? "Selecione a cor no quadro azul acima" : "Cor"} 
-                  value={form.cor} 
-                  onChange={(e) => setForm({...form, cor: e.target.value})} 
-                  style={!idEditando ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} 
-                  readOnly={!idEditando} 
-                  required 
-                />
+                <label style={styles.formLabel}>Nome do Tecido *</label>
+                <input type="text" placeholder="Ex: Malha Canelada" value={form.nome} onChange={(e) => setForm({...form, nome: e.target.value})} style={styles.input} required />
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Largura (m)</label>
-                <input type="number" step="0.01" placeholder="Ex: 1.50" value={form.largura} onChange={(e) => setForm({...form, largura: e.target.value})} style={styles.input} />
+                <label style={styles.formLabel}>Cor do Tecido *</label>
+                <input type="text" placeholder="Ex: Azul Marinho" value={form.cor} onChange={(e) => setForm({...form, cor: e.target.value})} style={styles.input} required />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Localização / Galpão *</label>
-                <input type="text" placeholder="Ex: GALPAO FRENTE" value={form.localizacao} onChange={(e) => setForm({...form, localizacao: e.target.value})} style={styles.input} required />
+                <input type="text" placeholder="Ex: Produção - Mesa 1" value={form.localizacao} onChange={(e) => setForm({...form, localizacao: e.target.value})} style={styles.input} required />
               </div>
               <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade Utilizada *</label>
-                  <input type="number" step="0.01" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
+                  <input type="text" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Unidade</label>
@@ -1384,21 +1422,9 @@ const SunnyWearTecidos = () => {
                   </select>
                 </div>
               </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
-                <input type="number" step="0.01" placeholder="Ex: 20" value={form.estoqueMinimo} onChange={(e) => setForm({...form, estoqueMinimo: e.target.value})} style={styles.input} />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Valor Unitário (R$)</label>
-                <input type="number" step="0.01" placeholder="Ex: 0.00" value={form.preco} onChange={(e) => setForm({...form, preco: e.target.value})} style={styles.input} />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Número da Nota Fiscal / Ref</label>
-                <input type="text" placeholder="Ex: N/D" value={form.notaFiscal} onChange={(e) => setForm({...form, notaFiscal: e.target.value})} style={styles.input} />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Destino / Fornecedor</label>
-                <input type="text" placeholder="Ex: Produção Interna" value={form.fornecedor} onChange={(e) => setForm({...form, fornecedor: e.target.value})} style={styles.input} />
+              <div style={{gridColumn: '1 / -1'}}>
+                <label style={styles.formLabel}>Observação / Motivo (Opcional)</label>
+                <input type="text" placeholder="Ex: Lote de vestidos da coleção Verão" value={form.observacao || ''} onChange={(e) => setForm({...form, observacao: e.target.value})} style={styles.input} />
               </div>
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
@@ -1414,87 +1440,32 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditandoReserva ? '✏️ Ajustar Reserva' : '📌 Cadastro e Consulta de Reservas'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre automaticamente.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe tecidos do estoque geral para uso futuro. O sistema abate o valor do estoque livre instantaneamente.</p>
             </div>
 
             <form onSubmit={cadastrarReserva} style={styles.formGrid} className="form-grid-responsive">
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Código do Tecido *</label>
-                <input 
-                  type="text" 
-                  placeholder="Ex: TEC-001" 
-                  value={formReserva.codigo} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    let novoNome = formReserva.nome;
-                    const tecido = Object.values(tecidosConsolidados).find(t => normalizarTexto(t.codigo) === normalizarTexto(val));
-                    if (tecido) novoNome = tecido.nome;
-                    setFormReserva({...formReserva, codigo: val, nome: novoNome, cor: ''});
-                  }} 
-                  style={styles.input} 
-                  required 
-                  disabled={!!idEditandoReserva} 
-                />
-              </div>
-
-              {formReserva.codigo && !idEditandoReserva && (
-                (() => {
-                  const coresDoCodigo = Object.values(tecidosConsolidados).filter(
-                    t => normalizarTexto(t.codigo) === normalizarTexto(formReserva.codigo)
-                  );
-                  if (coresDoCodigo.length === 0) {
-                    return (
-                      <div style={{gridColumn: '1 / -1', background: '#FEF2F2', padding: '14px', borderRadius: '10px', border: '1px solid #FCA5A5'}}>
-                        <span style={{fontSize: '13px', color: '#991B1B', fontWeight: '700'}}>
-                          ⚠️ CÓDIGO NÃO ENCONTRADO! Você não pode reservar um tecido não cadastrado.
-                        </span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '14px', borderRadius: '10px', border: '1px solid #BFDBFE'}}>
-                      <span style={{fontSize: '11px', color: '#1D4ED8', fontWeight: '700', display: 'block', marginBottom: '8px', textTransform: 'uppercase'}}>
-                        🎨 Tecido "{coresDoCodigo[0].nome}" localizado. Selecione a cor:
-                      </span>
-                      <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                        {coresDoCodigo.map((tItem, idx) => {
-                          const isSelected = normalizarTexto(formReserva.cor) === normalizarTexto(tItem.cor);
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => {
-                                setFormReserva(prev => ({ ...prev, nome: tItem.nome || prev.nome, cor: tItem.cor || '', unidadeMedida: tItem.unidade || 'm' }));
-                              }}
-                              style={{
-                                padding: '8px 14px',
-                                backgroundColor: isSelected ? '#2563EB' : '#FFFFFF',
-                                color: isSelected ? '#FFFFFF' : '#1D4ED8',
-                                border: '1px solid #93C5FD',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                boxShadow: '0 2px 5px rgba(37,99,235,0.1)'
-                              }}
-                            >
-                              ✓ {tItem.cor} ({tItem.total} {tItem.unidade} disp.)
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()
+              
+              {!idEditandoReserva && (
+                <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
+                  <label style={styles.formLabel}>Autopreencher (Evite erros de digitação!)</label>
+                  <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
+                    <input type="text" placeholder="Digite Código ou Nome do Tecido" value={termoBuscaReserva} onChange={(e) => setTermoBuscaReserva(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
+                    <button type="button" onClick={executarBuscaReserva} style={{padding: '12px 20px', background: '#475569', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px'}}>Buscar Tecido</button>
+                  </div>
+                </div>
               )}
 
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Nome do Tecido (Automático) *</label>
-                <input type="text" placeholder="Preenchido automaticamente" value={formReserva.nome} onChange={(e) => setFormReserva({...formReserva, nome: e.target.value})} readOnly={!idEditandoReserva} style={!idEditandoReserva ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} required />
+                <label style={styles.formLabel}>Código do Tecido *</label>
+                <input type="text" placeholder="Ex: TEC-001" value={formReserva.codigo} onChange={(e) => setFormReserva({...formReserva, codigo: e.target.value})} style={styles.input} required disabled={!!idEditandoReserva} />
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Cor (Automático) *</label>
-                <input type="text" placeholder="Selecione a cor nos botões" value={formReserva.cor} onChange={(e) => setFormReserva({...formReserva, cor: e.target.value})} readOnly={!idEditandoReserva} style={!idEditandoReserva ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} required disabled={!!idEditandoReserva} />
+                <label style={styles.formLabel}>Nome do Tecido *</label>
+                <input type="text" placeholder="Ex: Malha Canelada" value={formReserva.nome} onChange={(e) => setFormReserva({...formReserva, nome: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Cor *</label>
+                <input type="text" placeholder="Ex: Azul Marinho" value={formReserva.cor} onChange={(e) => setFormReserva({...formReserva, cor: e.target.value})} style={styles.input} required disabled={!!idEditandoReserva} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Local Onde a Reserva Vai Ficar Guardada *</label>
@@ -1503,7 +1474,7 @@ const SunnyWearTecidos = () => {
               <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px', gridColumn: '1 / -1'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade Reservada *</label>
-                  <input type="number" step="0.01" placeholder="Ex: 50" value={formReserva.quantidade} onChange={(e) => setFormReserva({...formReserva, quantidade: e.target.value})} style={styles.input} required />
+                  <input type="text" placeholder="Ex: 50" value={formReserva.quantidade} onChange={(e) => setFormReserva({...formReserva, quantidade: e.target.value})} style={styles.input} required />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Unidade</label>
@@ -1520,7 +1491,7 @@ const SunnyWearTecidos = () => {
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
                 <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoReserva ? '#D97706' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#fff'}}>
-                  {idEditandoReserva ? '💾 Salvar Ajuste da Reserva' : '📌 Salvar Reserva (Abater do Estoque)'}
+                  {idEditandoReserva ? '💾 Salvar Ajuste da Reserva na Base' : '📌 Salvar Reserva (Abater do Estoque Central)'}
                 </button>
                 {idEditandoReserva && (
                   <button type="button" onClick={() => { setIdEditandoReserva(null); setFormReserva({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' }); }} style={{...styles.button, background: '#64748B', color: '#fff', marginTop: '8px'}}>
@@ -1539,8 +1510,8 @@ const SunnyWearTecidos = () => {
               <input 
                 type="text" 
                 placeholder="Pesquisar reserva por nome, cor, código, local ou observação..." 
-                value={buscaReserva} 
-                onChange={(e) => setBuscaReserva(e.target.value)} 
+                value={buscaReservaTexto} 
+                onChange={(e) => setBuscaReservaTexto(e.target.value)} 
                 style={styles.inputFull}
               />
 
@@ -1559,7 +1530,7 @@ const SunnyWearTecidos = () => {
                   <tbody>
                     {reservasFiltradas.length === 0 ? (
                       <tr>
-                        <td colSpan="6" style={styles.empty}>Nenhuma reserva registrada no momento.</td>
+                        <td colSpan="6" style={styles.empty}>Nenhuma reserva registrada no banco.</td>
                       </tr>
                     ) : (
                       reservasFiltradas.map((item) => (
@@ -1570,7 +1541,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.observacao || 'N/D'}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/RESERVA(\s-\s)?/gi, '')}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => concluirReserva(item)} style={styles.btnUsarSobra} title="Consumir / Dar baixa definitiva">✅ Usar</button>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Reserva">🔲</button>
@@ -1591,87 +1562,32 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditandoSobra ? '✏️ Ajustar Retalho' : '✂️ Cadastro e Consulta de Sobras e Retalhos'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre os pedaços que sobraram, consulte o estoque e dê baixa ao reutilizá-los. (Também deduzido do estoque livre)</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre os pedaços que sobraram, consulte e dê baixa ao reutilizá-los. Abate automaticamente do estoque central.</p>
             </div>
 
             <form onSubmit={cadastrarSobra} style={styles.formGrid} className="form-grid-responsive">
-              <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Código do Tecido *</label>
-                <input 
-                  type="text" 
-                  placeholder="Ex: TEC-001" 
-                  value={formSobra.codigo} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    let novoNome = formSobra.nome;
-                    const tecido = Object.values(tecidosConsolidados).find(t => normalizarTexto(t.codigo) === normalizarTexto(val));
-                    if (tecido) novoNome = tecido.nome;
-                    setFormSobra({...formSobra, codigo: val, nome: novoNome, cor: ''});
-                  }} 
-                  style={styles.input} 
-                  required 
-                  disabled={!!idEditandoSobra} 
-                />
-              </div>
 
-              {formSobra.codigo && !idEditandoSobra && (
-                (() => {
-                  const coresDoCodigo = Object.values(tecidosConsolidados).filter(
-                    t => normalizarTexto(t.codigo) === normalizarTexto(formSobra.codigo)
-                  );
-                  if (coresDoCodigo.length === 0) {
-                    return (
-                      <div style={{gridColumn: '1 / -1', background: '#FEF2F2', padding: '14px', borderRadius: '10px', border: '1px solid #FCA5A5'}}>
-                        <span style={{fontSize: '13px', color: '#991B1B', fontWeight: '700'}}>
-                          ⚠️ CÓDIGO NÃO ENCONTRADO! Não é possível cadastrar retalho de um tecido não existente.
-                        </span>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '14px', borderRadius: '10px', border: '1px solid #BFDBFE'}}>
-                      <span style={{fontSize: '11px', color: '#1D4ED8', fontWeight: '700', display: 'block', marginBottom: '8px', textTransform: 'uppercase'}}>
-                        🎨 Tecido "{coresDoCodigo[0].nome}" localizado. Selecione a cor:
-                      </span>
-                      <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                        {coresDoCodigo.map((tItem, idx) => {
-                          const isSelected = normalizarTexto(formSobra.cor) === normalizarTexto(tItem.cor);
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => {
-                                setFormSobra(prev => ({ ...prev, nome: tItem.nome || prev.nome, cor: tItem.cor || '', unidadeMedida: tItem.unidade || 'm' }));
-                              }}
-                              style={{
-                                padding: '8px 14px',
-                                backgroundColor: isSelected ? '#2563EB' : '#FFFFFF',
-                                color: isSelected ? '#FFFFFF' : '#1D4ED8',
-                                border: '1px solid #93C5FD',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                boxShadow: '0 2px 5px rgba(37,99,235,0.1)'
-                              }}
-                            >
-                              ✓ {tItem.cor} ({tItem.total} {tItem.unidade} disp.)
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()
+              {!idEditandoSobra && (
+                <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
+                  <label style={styles.formLabel}>Autopreencher (Evite erros de digitação!)</label>
+                  <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
+                    <input type="text" placeholder="Digite Código ou Nome do Tecido" value={termoBuscaSobra} onChange={(e) => setTermoBuscaSobra(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
+                    <button type="button" onClick={executarBuscaSobra} style={{padding: '12px 20px', background: '#475569', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px'}}>Buscar Tecido</button>
+                  </div>
+                </div>
               )}
 
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Nome do Tecido (Automático) *</label>
-                <input type="text" placeholder="Preenchido automaticamente" value={formSobra.nome} onChange={(e) => setFormSobra({...formSobra, nome: e.target.value})} readOnly={!idEditandoSobra} style={!idEditandoSobra ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} required />
+                <label style={styles.formLabel}>Código do Tecido *</label>
+                <input type="text" placeholder="Ex: TEC-001" value={formSobra.codigo} onChange={(e) => setFormSobra({...formSobra, codigo: e.target.value})} style={styles.input} required disabled={!!idEditandoSobra} />
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Cor (Automático) *</label>
-                <input type="text" placeholder="Selecione a cor acima" value={formSobra.cor} onChange={(e) => setFormSobra({...formSobra, cor: e.target.value})} readOnly={!idEditandoSobra} style={!idEditandoSobra ? {...styles.input, backgroundColor: '#F1F5F9', color: '#64748B', cursor: 'not-allowed'} : styles.input} required disabled={!!idEditandoSobra} />
+                <label style={styles.formLabel}>Nome do Tecido *</label>
+                <input type="text" placeholder="Ex: Malha Canelada" value={formSobra.nome} onChange={(e) => setFormSobra({...formSobra, nome: e.target.value})} style={styles.input} required />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Cor *</label>
+                <input type="text" placeholder="Ex: Azul Marinho" value={formSobra.cor} onChange={(e) => setFormSobra({...formSobra, cor: e.target.value})} style={styles.input} required disabled={!!idEditandoSobra} />
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Localização / Caixa de Retalhos *</label>
@@ -1680,7 +1596,7 @@ const SunnyWearTecidos = () => {
               <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px', gridColumn: '1 / -1'}}>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Quantidade da Sobra *</label>
-                  <input type="number" step="0.01" placeholder="Ex: 2.5" value={formSobra.quantidade} onChange={(e) => setFormSobra({...formSobra, quantidade: e.target.value})} style={styles.input} required />
+                  <input type="text" placeholder="Ex: 2.5" value={formSobra.quantidade} onChange={(e) => setFormSobra({...formSobra, quantidade: e.target.value})} style={styles.input} required />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Unidade</label>
@@ -1696,8 +1612,8 @@ const SunnyWearTecidos = () => {
               </div>
 
               <div style={{gridColumn: '1 / -1', marginTop: '8px'}}>
-                <button type="submit" style={{...styles.button, background: idEditandoSobra ? '#D97706' : 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)', color: '#fff'}}>
-                  {idEditandoSobra ? '💾 Salvar Ajuste de Retalho' : '💾 Salvar Retalho e Abater Estoque'}
+                <button type="submit" disabled={carregando} style={{...styles.button, background: idEditandoSobra ? '#D97706' : 'linear-gradient(135deg, #9333EA 0%, #7E22CE 100%)', color: '#fff'}}>
+                  {idEditandoSobra ? '💾 Salvar Ajuste de Retalho na Base' : '💾 Salvar Retalho e Abater Estoque'}
                 </button>
                 {idEditandoSobra && (
                   <button type="button" onClick={() => { setIdEditandoSobra(null); setFormSobra({ codigo: '', nome: '', cor: '', quantidade: '', unidadeMedida: 'm', localizacao: '', observacao: '' }); }} style={{...styles.button, background: '#64748B', color: '#fff', marginTop: '8px'}}>
@@ -1716,8 +1632,8 @@ const SunnyWearTecidos = () => {
               <input 
                 type="text" 
                 placeholder="Pesquisar sobra por nome, cor, código ou observação..." 
-                value={buscaSobra} 
-                onChange={(e) => setBuscaSobra(e.target.value)} 
+                value={buscaSobraTexto} 
+                onChange={(e) => setBuscaSobraTexto(e.target.value)} 
                 style={styles.inputFull}
               />
 
@@ -1737,7 +1653,7 @@ const SunnyWearTecidos = () => {
                   <tbody>
                     {sobrasFiltradas.length === 0 ? (
                       <tr>
-                        <td colSpan="7" style={styles.empty}>Nenhuma sobra cadastrada ainda.</td>
+                        <td colSpan="7" style={styles.empty}>Nenhuma sobra cadastrada no banco.</td>
                       </tr>
                     ) : (
                       sobrasFiltradas.map((item) => (
@@ -1748,7 +1664,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#9333EA', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.observacao || 'N/D'}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/RETALHO(\s-\s)?/gi, '')}</span></td>
                           <td style={styles.td}><span style={{ color: '#64748B' }}>{item.data}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => usarSobra(item)} style={styles.btnUsarSobra} title="Dar baixa e usar retalho">✅ Usar</button>
@@ -1792,8 +1708,8 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{item.observacao || 'N/D'}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B' }}>{item.dataBaixa}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/USO-RETALHO(\s-\s)?/gi, '')}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B' }}>{item.dataBaixa || item.data}</span></td>
                         </tr>
                       ))
                     )}
@@ -1808,24 +1724,79 @@ const SunnyWearTecidos = () => {
         {abaAtiva === 'historico' && (
           <div style={styles.cardSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Movimentações</h3>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta de Histórico e Galpões</h3>
               <span style={{ fontSize: '12px', color: '#64748B' }}>Total de registros visíveis: <strong>{movFiltradas.length}</strong></span>
             </div>
 
             <input 
               type="text" 
-              placeholder="Pesquisar por nome, código, cor, fornecedor, nota fiscal ou galpão..." 
+              placeholder="Pesquisar por nome, código (exato p/ resumo), fornecedor, nota fiscal ou galpão..." 
               value={busca} 
               onChange={(e) => setBusca(e.target.value)} 
               style={styles.inputFull}
             />
+
+            {(() => {
+              const termo = normalizarTexto(busca);
+              if (!termo) return null;
+              
+              const tecidoResumo = Object.values(tecidosConsolidados).find(t => normalizarTexto(t.codigo) === termo);
+              if (!tecidoResumo) return null;
+
+              const resExatas = reservas.filter(r => normalizarTexto(r.codigo) === termo);
+              const sobExatas = sobras.filter(s => normalizarTexto(s.codigo) === termo);
+
+              return (
+                <div style={{ background: '#FFFFFF', border: '2px solid #2563EB', padding: '20px', borderRadius: '12px', marginBottom: '24px', boxShadow: '0 8px 20px rgba(37,99,235,0.1)' }}>
+                  <h4 style={{ margin: '0 0 16px 0', color: '#1E3A8A', fontSize: '16px' }}>📊 Resumo Analítico: {tecidoResumo.codigo} - {tecidoResumo.nome}</h4>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                    <div style={{ background: '#F1F5F9', padding: '12px', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700' }}>ESTOQUE TOTAL (BRUTO)</div>
+                      <div style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A' }}>{tecidoResumo.totalBruto} {tecidoResumo.unidade}</div>
+                    </div>
+                    <div style={{ background: '#FEF3C7', padding: '12px', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '11px', color: '#92400E', fontWeight: '700' }}>TOTAL RESERVADO</div>
+                      <div style={{ fontSize: '18px', fontWeight: '800', color: '#B45309' }}>- {tecidoResumo.totalReservas} {tecidoResumo.unidade}</div>
+                    </div>
+                    <div style={{ background: '#F3E8FF', padding: '12px', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '11px', color: '#6B21A8', fontWeight: '700' }}>TOTAL DE RETALHOS</div>
+                      <div style={{ fontSize: '18px', fontWeight: '800', color: '#7E22CE' }}>- {tecidoResumo.totalSobras || 0} {tecidoResumo.unidade}</div>
+                    </div>
+                    <div style={{ background: '#DEF7EC', padding: '12px', borderRadius: '8px', border: '1px solid #31C48D' }}>
+                      <div style={{ fontSize: '11px', color: '#03543F', fontWeight: '700' }}>QUANTIDADE FINAL DISPONÍVEL</div>
+                      <div style={{ fontSize: '20px', fontWeight: '900', color: '#059669' }}>{tecidoResumo.total} {tecidoResumo.unidade}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                    <div>
+                      <strong style={{ fontSize: '13px', color: '#0F172A' }}>📌 Todas as Reservas (Detalhamento):</strong>
+                      {resExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhuma reserva pendente.</div> : (
+                        <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
+                          {resExatas.map(r => <li key={r.id || r._id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {(r.observacao || 'Sem obs.').replace(/RESERVA(\s-\s)?/gi, '')} (Cor: {r.cor} | 📍 {r.localizacao})</li>)}
+                        </ul>
+                      )}
+                    </div>
+                    <div>
+                      <strong style={{ fontSize: '13px', color: '#0F172A' }}>✂️ Todos os Retalhos (Detalhamento):</strong>
+                      {sobExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhum retalho guardado.</div> : (
+                        <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
+                          {sobExatas.map(s => <li key={s.id || s._id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {(s.observacao || 'Sem obs.').replace(/RETALHO(\s-\s)?/gi, '')} (Cor: {s.cor} | 📍 {s.localizacao})</li>)}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             <div style={styles.tableResponsive}>
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.thTr}>
                     <th style={styles.th}>Foto</th>
-                    <th style={styles.th}>Tipo</th>
+                    <th style={styles.th}>Tipo / Finalidade</th>
                     <th style={styles.th}>Código</th>
                     <th style={styles.th}>Tecido / Cor</th>
                     <th style={styles.th}>Fornecedor & NF</th>
@@ -1843,10 +1814,9 @@ const SunnyWearTecidos = () => {
                   ) : (
                     movFiltradas.map((item) => {
                       const itemId = item.id || item._id;
-                      const precoUnit = Number(item.preco) || 0;
-                      const qtd = Number(item.metros || item.quantidade || 0);
+                      const precoUnit = parseNumero(item.preco) || 0;
+                      const qtd = parseNumero(item.metros || item.quantidade || 0);
                       const unidade = item.unidademedida || item.unidadeMedida || 'm';
-                      const tipoMovimentoReal = item._tipoExibicao;
                       
                       const minimo = obterMinimo(item);
                       const custoTotal = qtd * precoUnit;
@@ -1857,18 +1827,22 @@ const SunnyWearTecidos = () => {
                       let badgeColor = '#03543F';
                       let badgeText = '📥 Entrada';
                       
-                      if (tipoMovimentoReal === 'saida') {
-                        badgeBg = '#FDE8E8';
-                        badgeColor = '#9B1C1C';
-                        badgeText = '📤 Saída';
-                      } else if (tipoMovimentoReal === 'Reserva') {
+                      if (isItemEntradaNormal(item)) {
+                        badgeBg = '#DEF7EC';
+                        badgeColor = '#03543F';
+                        badgeText = '📥 Entrada';
+                      } else if (isItemReserva(item)) {
                         badgeBg = '#FEF3C7';
                         badgeColor = '#92400E';
                         badgeText = '📌 Reserva';
-                      } else if (tipoMovimentoReal === 'Retalhos') {
+                      } else if (isItemRetalho(item)) {
                         badgeBg = '#F3E8FF';
                         badgeColor = '#6B21A8';
-                        badgeText = '✂️ Retalhos';
+                        badgeText = '✂️ Retalho';
+                      } else {
+                        badgeBg = '#FDE8E8';
+                        badgeColor = '#9B1C1C';
+                        badgeText = '📤 Saída';
                       }
 
                       return (
@@ -1895,26 +1869,16 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
                           <td style={styles.td}>
                             <strong style={{ color: '#0F172A' }}>{qtd} {unidade}</strong>
-                            {!item.isExtra && (
-                              <>
-                                <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
-                                <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
-                                  R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
-                                </div>
-                              </>
-                            )}
+                            <div style={{fontSize: '11px', color: '#64748B'}}>Mín: {minimo} {unidade}</div>
+                            <div style={{fontSize: '11px', color: '#059669', fontWeight: '600'}}>
+                              R$ {precoUnit.toFixed(2)} | Tot: R$ {custoTotal.toFixed(2)}
+                            </div>
                           </td>
                           <td style={styles.td}><span style={{color: '#64748B'}}>{item.data}</span></td>
                           <td style={styles.td}>
-                            {item.isExtra ? (
-                              <span style={{ fontSize: '11px', color: '#64748B' }}>Gerencie na aba<br/>correspondente</span>
-                            ) : (
-                              <>
-                                <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
-                                <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
-                                <button onClick={() => deletarItem(itemId)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
-                              </>
-                            )}
+                            <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code">🔲</button>
+                            <button onClick={() => iniciarEdicao(item)} style={styles.btnEditar} title="Editar registro">✏️</button>
+                            <button onClick={() => deletarItem(itemId)} style={styles.btnDeletar} title="Remover registro">🗑️</button>
                           </td>
                         </tr>
                       );
@@ -1936,48 +1900,6 @@ const SunnyWearTecidos = () => {
         </div>
       )}
 
-      {corSelecionadaDetalhe && (
-        <div style={styles.modalOverlay} onClick={() => setCorSelecionadaDetalhe(null)}>
-          <div style={{...styles.modalContent, alignItems: 'flex-start', maxWidth: '600px', width: '100%'}} onClick={(e) => e.stopPropagation()}>
-            <button style={styles.modalCloseBtn} onClick={() => setCorSelecionadaDetalhe(null)}>✕ Fechar</button>
-            
-            <h3 style={{ margin: '0 0 8px 0', color: '#1E3A8A', fontSize: '18px' }}>
-              {corSelecionadaDetalhe.codigo} - {corSelecionadaDetalhe.nome}
-            </h3>
-            <h4 style={{ margin: '0 0 20px 0', color: '#2563EB', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              🎨 Cor selecionada: {corSelecionadaDetalhe.cor}
-            </h4>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', width: '100%' }}>
-              <div style={{ background: '#F1F5F9', padding: '16px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700' }}>ESTOQUE TOTAL (BRUTO)</div>
-                <div style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A' }}>{corSelecionadaDetalhe.bruto} {corSelecionadaDetalhe.unidade}</div>
-              </div>
-              <div style={{ background: '#FEF3C7', padding: '16px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: '#92400E', fontWeight: '700' }}>TOTAL RESERVADO</div>
-                <div style={{ fontSize: '18px', fontWeight: '800', color: '#B45309' }}>- {corSelecionadaDetalhe.reservas} {corSelecionadaDetalhe.unidade}</div>
-              </div>
-              <div style={{ background: '#F3E8FF', padding: '16px', borderRadius: '8px' }}>
-                <div style={{ fontSize: '11px', color: '#6B21A8', fontWeight: '700' }}>TOTAL DE RETALHOS</div>
-                <div style={{ fontSize: '18px', fontWeight: '800', color: '#7E22CE' }}>- {corSelecionadaDetalhe.sobras} {corSelecionadaDetalhe.unidade}</div>
-              </div>
-              <div style={{ background: '#DEF7EC', padding: '16px', borderRadius: '8px', border: '1px solid #31C48D' }}>
-                <div style={{ fontSize: '11px', color: '#03543F', fontWeight: '700' }}>QUANTIDADE FINAL DISPONÍVEL</div>
-                <div style={{ fontSize: '22px', fontWeight: '900', color: corSelecionadaDetalhe.total < 0 ? '#DC2626' : '#059669' }}>
-                  {corSelecionadaDetalhe.total} {corSelecionadaDetalhe.unidade}
-                </div>
-              </div>
-            </div>
-            
-            {corSelecionadaDetalhe.total < 0 && (
-              <div style={{ marginTop: '16px', padding: '12px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: '8px', color: '#991B1B', fontSize: '13px' }}>
-                ⚠️ <strong>Atenção:</strong> O estoque desta cor está negativo. Verifique se as entradas foram lançadas sem usar o ponto de milhar (ex: digite 5681 em vez de 5.681).
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {qrSelecionado && (
         <div style={styles.modalOverlay} onClick={() => setQrSelecionado(null)}>
           <div style={{...styles.modalContent, alignItems: 'center'}} onClick={(e) => e.stopPropagation()}>
@@ -1986,7 +1908,7 @@ const SunnyWearTecidos = () => {
             <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px', textAlign: 'center' }}>
               <strong>{qrSelecionado.codigo}</strong> - {qrSelecionado.nome} (<span style={{color: '#2563EB', fontWeight: '700'}}>{qrSelecionado.cor}</span>)
             </p>
-            <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #CBD5E1', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '14px' }}>
+            <div style={styles.qrCodeBox}>
               <img 
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(`${window.location.origin}/?codigo=${qrSelecionado.codigo}&cor=${encodeURIComponent(qrSelecionado.cor)}`)}`} 
                 alt="QR Code" 
@@ -1994,7 +1916,7 @@ const SunnyWearTecidos = () => {
               />
             </div>
             <span style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', maxWidth: '280px', lineHeight: '1.4' }}>
-              📱 Ao apontar a câmera do celular, ele carregará diretamente o status deste rolo na cor exata, revelando exclusivamente a <strong>quantidade final disponível</strong> (já livre de reservas e retalhos).
+              📱 Ao apontar a câmera do celular, ele carregará diretamente o status deste rolo, revelando a quantidade livre.
             </span>
           </div>
         </div>
