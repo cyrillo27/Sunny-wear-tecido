@@ -53,6 +53,8 @@ const SunnyWearTecidos = () => {
     observacao: ''
   });
 
+  const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
+
   const [formSobra, setFormSobra] = useState({
     codigo: '',
     nome: '',
@@ -240,6 +242,27 @@ const SunnyWearTecidos = () => {
     });
 
     return bruto - res - sob;
+  };
+
+  const executarBuscaSaida = () => {
+    const termo = normalizarTexto(termoBuscaSaida);
+    if (!termo) { alert('Digite o código ou nome para buscar.'); return; }
+    
+    const tecidoEncontrado = listaSeguraCalculos.find(m => normalizarTexto(m?.codigo).includes(termo) || normalizarTexto(m?.nome).includes(termo));
+    if (tecidoEncontrado) {
+      const estoqueLivre = calcularEstoqueLivre(tecidoEncontrado.codigo, tecidoEncontrado.cor);
+      setForm(prev => ({
+        ...prev,
+        codigo: tecidoEncontrado.codigo,
+        nome: tecidoEncontrado.nome,
+        cor: tecidoEncontrado.cor || '',
+        localizacao: tecidoEncontrado.localizacao || '',
+        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm'
+      }));
+      alert(`✅ Tecido localizado!\nNome: ${tecidoEncontrado.nome}\nCor Disponível: ${tecidoEncontrado.cor}\nEstoque Livre Disponível: ${estoqueLivre} ${tecidoEncontrado.unidademedida || 'm'}`);
+    } else {
+      alert('⚠️ Nenhum tecido cadastrado com este código ou nome no sistema.');
+    }
   };
 
   const executarBuscaReserva = () => {
@@ -562,6 +585,7 @@ const SunnyWearTecidos = () => {
       quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', 
       notaFiscal: '', fornecedor: '', foto: '', largura: '', observacao: '' 
     });
+    setTermoBuscaSaida('');
     setIdEditando(null);
   };
 
@@ -574,8 +598,25 @@ const SunnyWearTecidos = () => {
       return;
     }
 
+    const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
+
+    // 🔒 VALIDAÇÃO DE SAÍDA: O item deve existir e ter estoque livre suficiente
+    if (tipoFinal === 'saida' && !idEditando) {
+      const codLimpo = normalizarTexto(form.codigo);
+      const corLimpa = normalizarTexto(form.cor);
+      const estoqueLivre = calcularEstoqueLivre(codLimpo, corLimpa);
+
+      if (estoqueLivre <= 0) {
+        alert(`❌ ERRO: Este tecido (Código: ${form.codigo}, Cor: ${form.cor}) NÃO ESTÁ CADASTRADO no sistema ou não possui saldo disponível.`);
+        return;
+      }
+      if (qtdValida > estoqueLivre) {
+        alert(`⚠️ ERRO: Estoque insuficiente! O estoque livre disponível para este tecido é de apenas ${estoqueLivre}.`);
+        return;
+      }
+    }
+
     pedirSenha('Autorização necessária para registrar Entrada/Saída:', async () => {
-      const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
       let minFinal = parseNumero(form.estoqueMinimo);
 
       setCarregando(true);
@@ -954,7 +995,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.15 • Nuvem
+              Versão 3.16 • Nuvem
             </p>
           </div>
 
@@ -1085,7 +1126,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.15 CLOUD</span>
+            <span style={styles.versionBadge}>v3.16 CLOUD</span>
           </div>
         </div>
 
@@ -1148,7 +1189,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.15)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.16)</span>
           </div>
         </header>
 
@@ -1389,10 +1430,21 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento Manual de Saída'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Preencha os dados manualmente para registrar a saída/consumo do tecido.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Pesquise ou preencha os dados do tecido já cadastrado para registrar a saída.</p>
             </div>
 
             <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
+              
+              {!idEditando && (
+                <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
+                  <label style={styles.formLabel}>🔍 Buscar Tecido Cadastrado no Sistema (Puxa cor e dados automaticamente)</label>
+                  <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
+                    <input type="text" placeholder="Digite Código ou Nome do Tecido..." value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
+                    <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: '#475569', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px'}}>Localizar Tecido</button>
+                  </div>
+                </div>
+              )}
+
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
                 <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
