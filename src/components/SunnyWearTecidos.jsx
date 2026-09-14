@@ -80,6 +80,10 @@ const SunnyWearTecidos = () => {
   const [buscaReservaTexto, setBuscaReservaTexto] = useState('');
   
   const [busca, setBusca] = useState('');
+  
+  // Estado para a pesquisa rápida na aba dedicada de Consulta de Tecidos
+  const [termoBuscaConsultaMov, setTermoBuscaConsultaMov] = useState('');
+  const [tecidoConsultaSelecionado, setTecidoConsultaSelecionado] = useState(null);
 
   // 🔒 Sistema de Senha
   const [authConfig, setAuthConfig] = useState({ visivel: false, callback: null, mensagem: '' });
@@ -935,7 +939,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.20 • Nuvem
+              Versão 3.22 • Nuvem
             </p>
           </div>
 
@@ -1066,7 +1070,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.20 CLOUD</span>
+            <span style={styles.versionBadge}>v3.22 CLOUD</span>
           </div>
         </div>
 
@@ -1110,6 +1114,12 @@ const SunnyWearTecidos = () => {
             ✂️ Sobras & Retalhos
           </button>
           <button 
+            onClick={() => { setAbaAtiva('consulta'); setMenuMobileAberto(false); }} 
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'consulta' ? styles.sidebarLinkActive : {}) }}
+          >
+            🔎 Consulta de Tecidos
+          </button>
+          <button 
             onClick={() => { setAbaAtiva('historico'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'historico' ? styles.sidebarLinkActive : {}) }}
           >
@@ -1129,7 +1139,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.20)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.22)</span>
           </div>
         </header>
 
@@ -1887,6 +1897,133 @@ const SunnyWearTecidos = () => {
           </div>
         )}
 
+        {abaAtiva === 'consulta' && (
+          <div style={styles.cardSection}>
+            <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🔍 Consulta Detalhada de Tecidos por Cor</h3>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Digite o código ou nome do tecido e selecione a cor desejada para visualizar o resumo analítico completo do estoque.</p>
+            </div>
+
+            <div style={{background: '#EFF6FF', padding: '16px', borderRadius: '10px', border: '2px solid #2563EB', marginBottom: '24px'}}>
+              <label style={{...styles.formLabel, color: '#1D4ED8', fontSize: '12px'}}>⚡ PESQUISA RÁPIDA (Digite o código ou nome e clique na cor)</label>
+              <input 
+                type="text" 
+                placeholder="Digite aqui o código ou nome do tecido..." 
+                value={termoBuscaConsultaMov} 
+                onChange={(e) => {
+                  setTermoBuscaConsultaMov(e.target.value);
+                  setTecidoConsultaSelecionado(null);
+                }} 
+                style={{...styles.inputFull, border: '1px solid #93C5FD', marginBottom: '0'}} 
+              />
+
+              {termoBuscaConsultaMov.trim() !== '' && !tecidoConsultaSelecionado && (
+                <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', marginTop: '12px'}}>
+                  {(() => {
+                    const resultados = tecidosConsolidadosArray.filter(t => 
+                      normalizarTexto(t.codigo).includes(normalizarTexto(termoBuscaConsultaMov)) ||
+                      normalizarTexto(t.nome).includes(normalizarTexto(termoBuscaConsultaMov)) ||
+                      normalizarTexto(t.cor).includes(normalizarTexto(termoBuscaConsultaMov))
+                    );
+
+                    if (resultados.length === 0) {
+                      return <div style={{textAlign: 'center', color: '#64748B', fontSize: '13px', padding: '10px'}}>Nenhum tecido encontrado para esta pesquisa.</div>;
+                    }
+
+                    return resultados.map((t, idx) => (
+                      <div 
+                        key={idx} 
+                        onClick={() => setTecidoConsultaSelecionado(t)}
+                        style={{
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          padding: '12px 16px', 
+                          background: '#FFFFFF', 
+                          border: '1px solid #BFDBFE', 
+                          borderRadius: '8px', 
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div>
+                          <strong style={{color: '#0F172A', fontSize: '14px'}}>{t.nome}</strong> <span style={{fontSize: '12px', color: '#64748B'}}>(Cód: {t.codigo})</span><br />
+                          <span style={{color: '#2563EB', fontWeight: '800', fontSize: '14px'}}>🎨 Cor: {t.cor}</span>
+                        </div>
+                        <div style={{textAlign: 'right'}}>
+                          <span style={{color: '#059669', fontWeight: '800', fontSize: '16px'}}>{t.total} {t.unidade} livres</span><br />
+                          <span style={{fontSize: '12px', color: '#4F46E5', fontWeight: '700'}}>👉 Clique para ver tudo</span>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {tecidoConsultaSelecionado && (
+              <div style={{ background: '#FFFFFF', border: '2px solid #2563EB', padding: '24px', borderRadius: '12px', marginBottom: '24px', boxShadow: '0 8px 20px rgba(37,99,235,0.1)' }}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                  <h4 style={{ margin: 0, color: '#1E3A8A', fontSize: '16px' }}>📊 Detalhes Completos: {tecidoConsultaSelecionado.codigo} - {tecidoConsultaSelecionado.nome} ({tecidoConsultaSelecionado.cor})</h4>
+                  <button 
+                    onClick={() => setTecidoConsultaSelecionado(null)}
+                    style={{background: '#EF4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '700'}}
+                  >
+                    ✕ Fechar Consulta
+                  </button>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                  <div style={{ background: '#F1F5F9', padding: '14px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700' }}>ESTOQUE TOTAL (BRUTO)</div>
+                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A' }}>{tecidoConsultaSelecionado.totalBruto} {tecidoConsultaSelecionado.unidade}</div>
+                  </div>
+                  <div style={{ background: '#FEF3C7', padding: '14px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#92400E', fontWeight: '700' }}>TOTAL RESERVADO</div>
+                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#B45309' }}>- {tecidoConsultaSelecionado.totalReservas} {tecidoConsultaSelecionado.unidade}</div>
+                  </div>
+                  <div style={{ background: '#F3E8FF', padding: '14px', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '11px', color: '#6B21A8', fontWeight: '700' }}>TOTAL DE RETALHOS</div>
+                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#7E22CE' }}>- {tecidoConsultaSelecionado.totalSobras || 0} {tecidoConsultaSelecionado.unidade}</div>
+                  </div>
+                  <div style={{ background: '#DEF7EC', padding: '14px', borderRadius: '8px', border: '1px solid #31C48D' }}>
+                    <div style={{ fontSize: '11px', color: '#03543F', fontWeight: '700' }}>QUANTIDADE FINAL DISPONÍVEL</div>
+                    <div style={{ fontSize: '20px', fontWeight: '900', color: '#059669' }}>{tecidoConsultaSelecionado.total} {tecidoConsultaSelecionado.unidade}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+                  <div>
+                    <strong style={{ fontSize: '13px', color: '#0F172A' }}>📌 Reservas para esta cor:</strong>
+                    {(() => {
+                      const resCor = reservas.filter(r => normalizarTexto(r.codigo) === normalizarTexto(tecidoConsultaSelecionado.codigo) && normalizarTexto(r.cor) === normalizarTexto(tecidoConsultaSelecionado.cor));
+                      if (resCor.length === 0) return <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhuma reserva para esta cor.</div>;
+                      return (
+                        <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
+                          {resCor.map(r => <li key={r.id || r._id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {(r.observacao || 'Sem obs.').replace(/RESERVA(\s-\s)?/gi, '')} (📍 {r.localizacao})</li>)}
+                        </ul>
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: '13px', color: '#0F172A' }}>✂️ Retalhos para esta cor:</strong>
+                    {(() => {
+                      const sobCor = sobras.filter(s => normalizarTexto(s.codigo) === normalizarTexto(tecidoConsultaSelecionado.codigo) && normalizarTexto(s.cor) === normalizarTexto(tecidoConsultaSelecionado.cor));
+                      if (sobCor.length === 0) return <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhum retalho para esta cor.</div>;
+                      return (
+                        <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
+                          {sobCor.map(s => <li key={s.id || s._id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {(s.observacao || 'Sem obs.').replace(/RETALHO(\s-\s)?/gi, '')} (📍 {s.localizacao})</li>)}
+                        </ul>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {abaAtiva === 'historico' && (
           <div style={styles.cardSection}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -1896,66 +2033,11 @@ const SunnyWearTecidos = () => {
 
             <input 
               type="text" 
-              placeholder="Pesquisar por nome, código (exato p/ resumo), fornecedor, nota fiscal ou galpão..." 
+              placeholder="Pesquisar por nome, código, fornecedor, nota fiscal ou galpão..." 
               value={busca} 
               onChange={(e) => setBusca(e.target.value)} 
               style={styles.inputFull}
             />
-
-            {(() => {
-              const termo = normalizarTexto(busca);
-              if (!termo) return null;
-              
-              const tecidoResumo = Object.values(tecidosConsolidados).find(t => normalizarTexto(t.codigo) === termo);
-              if (!tecidoResumo) return null;
-
-              const resExatas = reservas.filter(r => normalizarTexto(r.codigo) === termo);
-              const sobExatas = sobras.filter(s => normalizarTexto(s.codigo) === termo);
-
-              return (
-                <div style={{ background: '#FFFFFF', border: '2px solid #2563EB', padding: '20px', borderRadius: '12px', marginBottom: '24px', boxShadow: '0 8px 20px rgba(37,99,235,0.1)' }}>
-                  <h4 style={{ margin: '0 0 16px 0', color: '#1E3A8A', fontSize: '16px' }}>📊 Resumo Analítico: {tecidoResumo.codigo} - {tecidoResumo.nome}</h4>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-                    <div style={{ background: '#F1F5F9', padding: '12px', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700' }}>ESTOQUE TOTAL (BRUTO)</div>
-                      <div style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A' }}>{tecidoResumo.totalBruto} {tecidoResumo.unidade}</div>
-                    </div>
-                    <div style={{ background: '#FEF3C7', padding: '12px', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#92400E', fontWeight: '700' }}>TOTAL RESERVADO</div>
-                      <div style={{ fontSize: '18px', fontWeight: '800', color: '#B45309' }}>- {tecidoResumo.totalReservas} {tecidoResumo.unidade}</div>
-                    </div>
-                    <div style={{ background: '#F3E8FF', padding: '12px', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '11px', color: '#6B21A8', fontWeight: '700' }}>TOTAL DE RETALHOS</div>
-                      <div style={{ fontSize: '18px', fontWeight: '800', color: '#7E22CE' }}>- {tecidoResumo.totalSobras || 0} {tecidoResumo.unidade}</div>
-                    </div>
-                    <div style={{ background: '#DEF7EC', padding: '12px', borderRadius: '8px', border: '1px solid #31C48D' }}>
-                      <div style={{ fontSize: '11px', color: '#03543F', fontWeight: '700' }}>QUANTIDADE FINAL DISPONÍVEL</div>
-                      <div style={{ fontSize: '20px', fontWeight: '900', color: '#059669' }}>{tecidoResumo.total} {tecidoResumo.unidade}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
-                    <div>
-                      <strong style={{ fontSize: '13px', color: '#0F172A' }}>📌 Todas as Reservas (Detalhamento):</strong>
-                      {resExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhuma reserva pendente.</div> : (
-                        <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                          {resExatas.map(r => <li key={r.id || r._id} style={{marginBottom: '4px'}}><strong>{r.quantidade} {r.unidadeMedida}</strong> - {(r.observacao || 'Sem obs.').replace(/RESERVA(\s-\s)?/gi, '')} (Cor: {r.cor} | 📍 {r.localizacao})</li>)}
-                        </ul>
-                      )}
-                    </div>
-                    <div>
-                      <strong style={{ fontSize: '13px', color: '#0F172A' }}>✂️ Todos os Retalhos (Detalhamento):</strong>
-                      {sobExatas.length === 0 ? <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Nenhum retalho guardado.</div> : (
-                        <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '12px', color: '#334155' }}>
-                          {sobExatas.map(s => <li key={s.id || s._id} style={{marginBottom: '4px'}}><strong>{s.quantidade} {s.unidadeMedida}</strong> - {(s.observacao || 'Sem obs.').replace(/RETALHO(\s-\s)?/gi, '')} (Cor: {s.cor} | 📍 {s.localizacao})</li>)}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
 
             <div style={styles.tableResponsive}>
               <table style={styles.table}>
