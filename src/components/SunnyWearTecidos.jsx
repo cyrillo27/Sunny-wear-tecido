@@ -64,8 +64,8 @@ const SunnyWearTecidos = () => {
     localizacao: '',
     observacao: ''
   });
-  const [buscaSobraTexto, setBuscaSobraTexto] = useState('');
   const [termoBuscaSobra, setTermoBuscaSobra] = useState('');
+  const [buscaSobraTexto, setBuscaSobraTexto] = useState('');
 
   const [formReserva, setFormReserva] = useState({
     codigo: '',
@@ -76,8 +76,8 @@ const SunnyWearTecidos = () => {
     localizacao: '',
     observacao: ''
   });
-  const [buscaReservaTexto, setBuscaReservaTexto] = useState('');
   const [termoBuscaReserva, setTermoBuscaReserva] = useState('');
+  const [buscaReservaTexto, setBuscaReservaTexto] = useState('');
   
   const [busca, setBusca] = useState('');
 
@@ -280,61 +280,8 @@ const SunnyWearTecidos = () => {
     item.total = item.totalBruto - item.totalReservas - item.totalSobras;
   });
 
-  const tecidosDisponiveisParaSaida = Object.values(tecidosConsolidados).filter(t => t.total > 0);
-
-  const selecionarTecidoSaida = (t) => {
-    const movItem = listaSeguraCalculos.find(m => normalizarTexto(m.codigo) === normalizarTexto(t.codigo) && normalizarTexto(m.cor) === normalizarTexto(t.cor));
-    setForm(prev => ({
-      ...prev,
-      codigo: t.codigo,
-      nome: t.nome,
-      cor: t.cor,
-      localizacao: movItem?.localizacao || 'Galpão Principal',
-      unidadeMedida: t.unidade || 'm'
-    }));
-    setTermoBuscaSaida('');
-    alert(`✅ Tecido selecionado:\nNome: ${t.nome}\nCor: ${t.cor}\nDisponível: ${t.total} ${t.unidade}`);
-  };
-
-  const executarBuscaReserva = () => {
-    const termo = normalizarTexto(termoBuscaReserva);
-    if (!termo) { alert('Digite o código para buscar.'); return; }
-    
-    const tecidoEncontrado = listaSeguraCalculos.find(m => normalizarTexto(m?.codigo).includes(termo) || normalizarTexto(m?.nome).includes(termo));
-    if (tecidoEncontrado) {
-      setFormReserva(prev => ({
-        ...prev,
-        codigo: tecidoEncontrado.codigo,
-        nome: tecidoEncontrado.nome,
-        cor: tecidoEncontrado.cor || '',
-        localizacao: tecidoEncontrado.localizacao || '',
-        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm'
-      }));
-      alert(`✅ Item preenchido: ${tecidoEncontrado.nome} (Cor: ${tecidoEncontrado.cor})`);
-    } else {
-      alert('⚠️ Nenhum tecido encontrado.');
-    }
-  };
-
-  const executarBuscaSobra = () => {
-    const termo = normalizarTexto(termoBuscaSobra);
-    if (!termo) { alert('Digite o código para buscar.'); return; }
-    
-    const tecidoEncontrado = listaSeguraCalculos.find(m => normalizarTexto(m?.codigo).includes(termo) || normalizarTexto(m?.nome).includes(termo));
-    if (tecidoEncontrado) {
-      setFormSobra(prev => ({
-        ...prev,
-        codigo: tecidoEncontrado.codigo,
-        nome: tecidoEncontrado.nome,
-        cor: tecidoEncontrado.cor || '',
-        localizacao: tecidoEncontrado.localizacao || '',
-        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm'
-      }));
-      alert(`✅ Item preenchido: ${tecidoEncontrado.nome} (Cor: ${tecidoEncontrado.cor})`);
-    } else {
-      alert('⚠️ Nenhum tecido encontrado.');
-    }
-  };
+  const tecidosConsolidadosArray = Object.values(tecidosConsolidados);
+  const tecidosDisponiveisParaSaida = tecidosConsolidadosArray.filter(t => t.total > 0);
 
   const cadastrarSobra = (e) => {
     e.preventDefault();
@@ -988,7 +935,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.17 • Nuvem
+              Versão 3.18 • Nuvem
             </p>
           </div>
 
@@ -1119,7 +1066,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.17 CLOUD</span>
+            <span style={styles.versionBadge}>v3.18 CLOUD</span>
           </div>
         </div>
 
@@ -1182,7 +1129,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.17)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.18)</span>
           </div>
         </header>
 
@@ -1450,7 +1397,18 @@ const SunnyWearTecidos = () => {
                         .map((t, idx) => (
                           <div 
                             key={idx} 
-                            onClick={() => selecionarTecidoSaida(t)}
+                            onClick={() => {
+                              const movItem = listaSeguraCalculos.find(m => normalizarTexto(m.codigo) === normalizarTexto(t.codigo) && normalizarTexto(m.cor) === normalizarTexto(t.cor));
+                              setForm(prev => ({
+                                ...prev,
+                                codigo: t.codigo,
+                                nome: t.nome,
+                                cor: t.cor,
+                                localizacao: movItem?.localizacao || 'Galpão Principal',
+                                unidadeMedida: t.unidade || 'm'
+                              }));
+                              setTermoBuscaSaida('');
+                            }}
                             style={{
                               display: 'flex', 
                               justifyContent: 'space-between', 
@@ -1533,11 +1491,63 @@ const SunnyWearTecidos = () => {
               
               {!idEditandoReserva && (
                 <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
-                  <label style={styles.formLabel}>Autopreencher (Evite erros de digitação!)</label>
-                  <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
-                    <input type="text" placeholder="Digite Código ou Nome do Tecido" value={termoBuscaReserva} onChange={(e) => setTermoBuscaReserva(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
-                    <button type="button" onClick={executarBuscaReserva} style={{padding: '12px 20px', background: '#475569', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px'}}>Buscar Tecido</button>
-                  </div>
+                  <label style={styles.formLabel}>🔍 Buscar Tecido para Reservar (Digite e clique na cor desejada)</label>
+                  <input 
+                    type="text" 
+                    placeholder="Digite o nome ou código do tecido..." 
+                    value={termoBuscaReserva} 
+                    onChange={(e) => setTermoBuscaReserva(e.target.value)} 
+                    style={styles.inputFull} 
+                  />
+
+                  {termoBuscaReserva.trim() !== '' && (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', marginTop: '8px'}}>
+                      {tecidosConsolidadosArray
+                        .filter(t => 
+                          normalizarTexto(t.codigo).includes(normalizarTexto(termoBuscaReserva)) ||
+                          normalizarTexto(t.nome).includes(normalizarTexto(termoBuscaReserva)) ||
+                          normalizarTexto(t.cor).includes(normalizarTexto(termoBuscaReserva))
+                        )
+                        .map((t, idx) => (
+                          <div 
+                            key={idx} 
+                            onClick={() => {
+                              const movItem = listaSeguraCalculos.find(m => normalizarTexto(m.codigo) === normalizarTexto(t.codigo) && normalizarTexto(m.cor) === normalizarTexto(t.cor));
+                              setFormReserva(prev => ({
+                                ...prev,
+                                codigo: t.codigo,
+                                nome: t.nome,
+                                cor: t.cor,
+                                localizacao: movItem?.localizacao || 'Prateleira de Separação',
+                                unidadeMedida: t.unidade || 'm'
+                              }));
+                              setTermoBuscaReserva('');
+                            }}
+                            style={{
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center', 
+                              padding: '10px 14px', 
+                              background: '#FFFFFF', 
+                              border: '1px solid #CBD5E1', 
+                              borderRadius: '8px', 
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div>
+                              <strong style={{color: '#0F172A'}}>{t.nome}</strong> (Cód: {t.codigo})<br />
+                              <span style={{color: '#2563EB', fontWeight: '700'}}>🎨 Cor: {t.cor}</span>
+                            </div>
+                            <div style={{textAlign: 'right'}}>
+                              <span style={{color: '#059669', fontWeight: '800', fontSize: '14px'}}>{t.total} {t.unidade} livres</span><br />
+                              <span style={{fontSize: '11px', color: '#7C3AED', fontWeight: '700'}}>👉 Clique para escolher</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1655,11 +1665,63 @@ const SunnyWearTecidos = () => {
 
               {!idEditandoSobra && (
                 <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
-                  <label style={styles.formLabel}>Autopreencher (Evite erros de digitação!)</label>
-                  <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
-                    <input type="text" placeholder="Digite Código ou Nome do Tecido" value={termoBuscaSobra} onChange={(e) => setTermoBuscaSobra(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
-                    <button type="button" onClick={executarBuscaSobra} style={{padding: '12px 20px', background: '#475569', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px'}}>Buscar Tecido</button>
-                  </div>
+                  <label style={styles.formLabel}>🔍 Buscar Tecido para Retalho (Digite e clique na cor desejada)</label>
+                  <input 
+                    type="text" 
+                    placeholder="Digite o nome ou código do tecido..." 
+                    value={termoBuscaSobra} 
+                    onChange={(e) => setTermoBuscaSobra(e.target.value)} 
+                    style={styles.inputFull} 
+                  />
+
+                  {termoBuscaSobra.trim() !== '' && (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', marginTop: '8px'}}>
+                      {tecidosConsolidadosArray
+                        .filter(t => 
+                          normalizarTexto(t.codigo).includes(normalizarTexto(termoBuscaSobra)) ||
+                          normalizarTexto(t.nome).includes(normalizarTexto(termoBuscaSobra)) ||
+                          normalizarTexto(t.cor).includes(normalizarTexto(termoBuscaSobra))
+                        )
+                        .map((t, idx) => (
+                          <div 
+                            key={idx} 
+                            onClick={() => {
+                              const movItem = listaSeguraCalculos.find(m => normalizarTexto(m.codigo) === normalizarTexto(t.codigo) && normalizarTexto(m.cor) === normalizarTexto(t.cor));
+                              setFormSobra(prev => ({
+                                ...prev,
+                                codigo: t.codigo,
+                                nome: t.nome,
+                                cor: t.cor,
+                                localizacao: movItem?.localizacao || 'Caixa de Retalhos',
+                                unidadeMedida: t.unidade || 'm'
+                              }));
+                              setTermoBuscaSobra('');
+                            }}
+                            style={{
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center', 
+                              padding: '10px 14px', 
+                              background: '#FFFFFF', 
+                              border: '1px solid #CBD5E1', 
+                              borderRadius: '8px', 
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div>
+                              <strong style={{color: '#0F172A'}}>{t.nome}</strong> (Cód: {t.codigo})<br />
+                              <span style={{color: '#2563EB', fontWeight: '700'}}>🎨 Cor: {t.cor}</span>
+                            </div>
+                            <div style={{textAlign: 'right'}}>
+                              <span style={{color: '#059669', fontWeight: '800', fontSize: '14px'}}>{t.total} {t.unidade} livres</span><br />
+                              <span style={{fontSize: '11px', color: '#7C3AED', fontWeight: '700'}}>👉 Clique para escolher</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
               )}
 
