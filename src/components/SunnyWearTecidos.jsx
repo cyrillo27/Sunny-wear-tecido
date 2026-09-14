@@ -244,25 +244,56 @@ const SunnyWearTecidos = () => {
     return bruto - res - sob;
   };
 
-  const executarBuscaSaida = () => {
-    const termo = normalizarTexto(termoBuscaSaida);
-    if (!termo) { alert('Digite o código ou nome para buscar.'); return; }
+  // Consolidar tecidos com estoque calculado
+  const tecidosConsolidados = {};
+  listaSeguraCalculos.forEach(m => {
+    if (!m || !m.codigo) return;
+    const cod = normalizarTexto(m.codigo);
+    const cor = normalizarTexto(m.cor || 'ndef');
+    const chave = `${cod}_${cor}`;
+    const qtd = parseNumero(m.metros || m.quantidade || 0);
+    const minReg = obterMinimo(m);
     
-    const tecidoEncontrado = listaSeguraCalculos.find(m => normalizarTexto(m?.codigo).includes(termo) || normalizarTexto(m?.nome).includes(termo));
-    if (tecidoEncontrado) {
-      const estoqueLivre = calcularEstoqueLivre(tecidoEncontrado.codigo, tecidoEncontrado.cor);
-      setForm(prev => ({
-        ...prev,
-        codigo: tecidoEncontrado.codigo,
-        nome: tecidoEncontrado.nome,
-        cor: tecidoEncontrado.cor || '',
-        localizacao: tecidoEncontrado.localizacao || '',
-        unidadeMedida: tecidoEncontrado.unidademedida || tecidoEncontrado.unidadeMedida || 'm'
-      }));
-      alert(`✅ Tecido localizado!\nNome: ${tecidoEncontrado.nome}\nCor Disponível: ${tecidoEncontrado.cor}\nEstoque Livre Disponível: ${estoqueLivre} ${tecidoEncontrado.unidademedida || 'm'}`);
-    } else {
-      alert('⚠️ Nenhum tecido cadastrado com este código ou nome no sistema.');
+    if (!tecidosConsolidados[chave]) {
+      tecidosConsolidados[chave] = {
+        codigo: m.codigo,
+        nome: m.nome,
+        cor: m.cor || 'N/D',
+        minimo: minReg,
+        unidade: m.unidademedida || m.unidadeMedida || 'm',
+        totalBruto: 0,
+        totalReservas: 0,
+        totalSobras: 0,
+        total: 0
+      };
     }
+
+    if (isItemEntradaNormal(m)) tecidosConsolidados[chave].totalBruto += qtd;
+    if (isItemSaidaNormal(m)) tecidosConsolidados[chave].totalBruto -= qtd;
+    if (isItemReserva(m)) tecidosConsolidados[chave].totalReservas += qtd;
+    if (isItemRetalho(m)) tecidosConsolidados[chave].totalSobras += qtd;
+    if (minReg > 0) tecidosConsolidados[chave].minimo = minReg;
+  });
+
+  Object.keys(tecidosConsolidados).forEach(chave => {
+    const item = tecidosConsolidados[chave];
+    item.total = item.totalBruto - item.totalReservas - item.totalSobras;
+  });
+
+  const tecidosDisponiveisParaSaida = Object.values(tecidosConsolidados).filter(t => t.total > 0);
+
+  const selecionarTecidoSaida = (t) => {
+    const movItem = listaSeguraCalculos.find(m => normalizarTexto(m.codigo) === normalizarTexto(t.codigo) && normalizarTexto(m.cor) === normalizarTexto(t.cor));
+    setForm(prev => ({
+      ...prev,
+      codigo: t.codigo,
+      nome: t.nome,
+      cor: t.cor,
+      localizacao: movItem?.localizacao || 'Galpão Principal',
+      unidadeMedida: t.unidade || 'm'
+    }));
+    setTermoBuscaSaida('');
+    alert(`✅ Tecido selecionado:\nNome: ${t.nome}\nCor: ${t.cor}\nDisponível: ${t.total} ${t.unidade}`);
   };
 
   const executarBuscaReserva = () => {
@@ -600,7 +631,6 @@ const SunnyWearTecidos = () => {
 
     const tipoFinal = abaAtiva === 'entrada' ? 'entrada' : 'saida';
 
-    // 🔒 VALIDAÇÃO DE SAÍDA: O item deve existir e ter estoque livre suficiente
     if (tipoFinal === 'saida' && !idEditando) {
       const codLimpo = normalizarTexto(form.codigo);
       const corLimpa = normalizarTexto(form.cor);
@@ -763,59 +793,24 @@ const SunnyWearTecidos = () => {
     });
   };
 
-  const tecidosConsolidados = {};
   const usoTecidos = {};
-
   listaSeguraCalculos.forEach(m => {
     if (!m || !m.codigo) return;
     const cod = normalizarTexto(m.codigo);
     const cor = normalizarTexto(m.cor || 'ndef');
     const chave = `${cod}_${cor}`;
     const qtd = parseNumero(m.metros || m.quantidade || 0);
-    const minReg = obterMinimo(m);
     
-    if (!tecidosConsolidados[chave]) {
-      tecidosConsolidados[chave] = {
-        codigo: m.codigo,
-        nome: m.nome,
-        cor: m.cor,
-        minimo: minReg,
-        unidade: m.unidademedida || m.unidadeMedida || 'm',
-        totalBruto: 0,
-        totalReservas: 0,
-        totalSobras: 0,
-        total: 0
-      };
-    }
-
-    if (isItemEntradaNormal(m)) tecidosConsolidados[chave].totalBruto += qtd;
-    if (isItemSaidaNormal(m)) tecidosConsolidados[chave].totalBruto -= qtd;
-    if (isItemReserva(m)) tecidosConsolidados[chave].totalReservas += qtd;
-    if (isItemRetalho(m)) tecidosConsolidados[chave].totalSobras += qtd;
-
     if (!usoTecidos[chave]) {
       usoTecidos[chave] = { nome: m.nome || 'Tecido', codigo: m.codigo, cor: m.cor || 'N/D', totalUso: 0, unidade: m.unidademedida || m.unidadeMedida || 'm' };
     }
-    
     if (isItemSaidaNormal(m) || normalizarTexto(m.observacao).includes('uso-retalho')) {
       usoTecidos[chave].totalUso += qtd;
     }
-
-    if (minReg > 0) tecidosConsolidados[chave].minimo = minReg;
-  });
-
-  Object.keys(tecidosConsolidados).forEach(chave => {
-    const item = tecidosConsolidados[chave];
-    item.total = item.totalBruto - item.totalReservas - item.totalSobras;
   });
 
   const alertasEstoqueBaixo = Object.values(tecidosConsolidados).filter(t => t.minimo > 0 && t.total < t.minimo);
-
-  const topTecidosMaisUsados = Object.values(usoTecidos)
-    .filter(t => t.totalUso > 0)
-    .sort((a, b) => b.totalUso - a.totalUso)
-    .slice(0, 5);
-
+  const topTecidosMaisUsados = Object.values(usoTecidos).filter(t => t.totalUso > 0).sort((a, b) => b.totalUso - a.totalUso).slice(0, 5);
   const maxUsoTop = topTecidosMaisUsados.length > 0 ? Math.max(...topTecidosMaisUsados.map(t => t.totalUso)) : 100;
 
   const entradasMetros = listaSeguraCalculos
@@ -904,9 +899,7 @@ const SunnyWearTecidos = () => {
     return acc;
   }, {});
 
-  const todosRegistrosHistorico = listaSeguraCalculos;
-
-  const movFiltradas = todosRegistrosHistorico.filter(m => {
+  const movFiltradas = listaSeguraCalculos.filter(m => {
     if (!m) return false; 
     const termo = normalizarTexto(busca);
     const codigo = normalizarTexto(m.codigo);
@@ -995,7 +988,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.16 • Nuvem
+              Versão 3.17 • Nuvem
             </p>
           </div>
 
@@ -1126,7 +1119,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.16 CLOUD</span>
+            <span style={styles.versionBadge}>v3.17 CLOUD</span>
           </div>
         </div>
 
@@ -1189,7 +1182,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.16)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.17)</span>
           </div>
         </header>
 
@@ -1430,18 +1423,59 @@ const SunnyWearTecidos = () => {
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
               <h3 style={{ ...styles.sectionTitle, margin: 0 }}>{idEditando ? '✏️ Editar Saída de Tecido' : '📤 Lançamento Manual de Saída'}</h3>
-              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Pesquise ou preencha os dados do tecido já cadastrado para registrar a saída.</p>
+              <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Pesquise o tecido abaixo e **clique diretamente na cor desejada** para preencher o formulário.</p>
             </div>
 
             <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
               
               {!idEditando && (
                 <div style={{gridColumn: '1 / -1', background: '#F8FAFC', padding: '16px', borderRadius: '10px', border: '1px dashed #CBD5E1', marginBottom: '10px'}}>
-                  <label style={styles.formLabel}>🔍 Buscar Tecido Cadastrado no Sistema (Puxa cor e dados automaticamente)</label>
-                  <div style={{display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap'}}>
-                    <input type="text" placeholder="Digite Código ou Nome do Tecido..." value={termoBuscaSaida} onChange={(e) => setTermoBuscaSaida(e.target.value)} style={{...styles.input, flex: 1, minWidth: '200px'}} />
-                    <button type="button" onClick={executarBuscaSaida} style={{padding: '12px 20px', background: '#475569', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px'}}>Localizar Tecido</button>
-                  </div>
+                  <label style={styles.formLabel}>🔍 Pesquisar Tecido (Mostra as cores disponíveis para clique)</label>
+                  <input 
+                    type="text" 
+                    placeholder="Digite o nome ou código do tecido para ver as cores..." 
+                    value={termoBuscaSaida} 
+                    onChange={(e) => setTermoBuscaSaida(e.target.value)} 
+                    style={styles.inputFull} 
+                  />
+
+                  {termoBuscaSaida.trim() !== '' && (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', marginTop: '8px'}}>
+                      {tecidosDisponiveisParaSaida
+                        .filter(t => 
+                          normalizarTexto(t.codigo).includes(normalizarTexto(termoBuscaSaida)) ||
+                          normalizarTexto(t.nome).includes(normalizarTexto(termoBuscaSaida)) ||
+                          normalizarTexto(t.cor).includes(normalizarTexto(termoBuscaSaida))
+                        )
+                        .map((t, idx) => (
+                          <div 
+                            key={idx} 
+                            onClick={() => selecionarTecidoSaida(t)}
+                            style={{
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center', 
+                              padding: '10px 14px', 
+                              background: '#FFFFFF', 
+                              border: '1px solid #CBD5E1', 
+                              borderRadius: '8px', 
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div>
+                              <strong style={{color: '#0F172A'}}>{t.nome}</strong> (Cód: {t.codigo})<br />
+                              <span style={{color: '#2563EB', fontWeight: '700'}}>🎨 Cor: {t.cor}</span>
+                            </div>
+                            <div style={{textAlign: 'right'}}>
+                              <span style={{color: '#059669', fontWeight: '800', fontSize: '14px'}}>{t.total} {t.unidade} livres</span><br />
+                              <span style={{fontSize: '11px', color: '#7C3AED', fontWeight: '700'}}>👉 Clique para escolher</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
               )}
 
