@@ -81,7 +81,6 @@ const SunnyWearTecidos = () => {
   
   const [busca, setBusca] = useState('');
   
-  // Estado para a pesquisa rápida na aba dedicada de Consulta de Tecidos
   const [termoBuscaConsultaMov, setTermoBuscaConsultaMov] = useState('');
   const [tecidoConsultaSelecionado, setTecidoConsultaSelecionado] = useState(null);
 
@@ -115,6 +114,12 @@ const SunnyWearTecidos = () => {
     const limpo = String(val).replace(',', '.');
     const num = Number(limpo);
     return isNaN(num) ? 0 : num;
+  };
+
+  // Função para corrigir dizimas gigantes no JavaScript (ex: 1829.16899999999)
+  const arredondar = (num) => {
+    const val = Number(num);
+    return isNaN(val) ? 0 : parseFloat(val.toFixed(3));
   };
 
   const normalizarTexto = (str) => {
@@ -245,7 +250,7 @@ const SunnyWearTecidos = () => {
       }
     });
 
-    return bruto - res - sob;
+    return arredondar(bruto - res - sob);
   };
 
   // Consolidar tecidos com estoque calculado
@@ -281,7 +286,10 @@ const SunnyWearTecidos = () => {
 
   Object.keys(tecidosConsolidados).forEach(chave => {
     const item = tecidosConsolidados[chave];
-    item.total = item.totalBruto - item.totalReservas - item.totalSobras;
+    item.totalBruto = arredondar(item.totalBruto);
+    item.totalReservas = arredondar(item.totalReservas);
+    item.totalSobras = arredondar(item.totalSobras);
+    item.total = arredondar(item.totalBruto - item.totalReservas - item.totalSobras);
   });
 
   const tecidosConsolidadosArray = Object.values(tecidosConsolidados);
@@ -760,28 +768,30 @@ const SunnyWearTecidos = () => {
     }
   });
 
+  Object.values(usoTecidos).forEach(t => t.totalUso = arredondar(t.totalUso));
+
   const alertasEstoqueBaixo = Object.values(tecidosConsolidados).filter(t => t.minimo > 0 && t.total < t.minimo);
   const topTecidosMaisUsados = Object.values(usoTecidos).filter(t => t.totalUso > 0).sort((a, b) => b.totalUso - a.totalUso).slice(0, 5);
   const maxUsoTop = topTecidosMaisUsados.length > 0 ? Math.max(...topTecidosMaisUsados.map(t => t.totalUso)) : 100;
 
-  const entradasMetros = listaSeguraCalculos
+  const entradasMetros = arredondar(listaSeguraCalculos
     .filter(m => isItemEntradaNormal(m) && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
-    .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
+    .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0));
 
-  const saidasMetros = listaSeguraCalculos
+  const saidasMetros = arredondar(listaSeguraCalculos
     .filter(m => isItemSaidaNormal(m) && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
-    .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0);
+    .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0));
 
-  const totalReservasMetros = reservas
+  const totalReservasMetros = arredondar(reservas
     .filter(r => (r?.unidadeMedida === 'm' || !r?.unidadeMedida))
-    .reduce((acc, r) => acc + parseNumero(r.quantidade || r.metros || 0), 0);
+    .reduce((acc, r) => acc + parseNumero(r.quantidade || r.metros || 0), 0));
     
-  const totalSobrasMetros = sobras
+  const totalSobrasMetros = arredondar(sobras
     .filter(s => s.unidadeMedida === 'm')
-    .reduce((acc, s) => acc + parseNumero(s.quantidade || 0), 0);
+    .reduce((acc, s) => acc + parseNumero(s.quantidade || 0), 0));
 
-  const estoqueBrutoMetros = entradasMetros - saidasMetros;
-  const estoqueDisponivelMetros = estoqueBrutoMetros - totalReservasMetros - totalSobrasMetros;
+  const estoqueBrutoMetros = arredondar(entradasMetros - saidasMetros);
+  const estoqueDisponivelMetros = arredondar(estoqueBrutoMetros - totalReservasMetros - totalSobrasMetros);
 
   const diasEvolucao = [];
   const dadosEvolucaoMetros = [];
@@ -812,8 +822,8 @@ const SunnyWearTecidos = () => {
         }
       }
     });
-    dadosEvolucaoMetros.push(mTotal);
-    dadosEvolucaoKg.push(kgTotal);
+    dadosEvolucaoMetros.push(arredondar(mTotal));
+    dadosEvolucaoKg.push(arredondar(kgTotal));
   }
 
   const valoresGraficoAtual = unidadeGrafico.includes('Quilos') ? dadosEvolucaoKg : dadosEvolucaoMetros;
@@ -849,6 +859,11 @@ const SunnyWearTecidos = () => {
     }
     return acc;
   }, {});
+
+  Object.values(porLocalizacao).forEach(loc => {
+    loc.m = arredondar(loc.m);
+    loc.kg = arredondar(loc.kg);
+  });
 
   const movFiltradas = listaSeguraCalculos.filter(m => {
     if (!m) return false; 
@@ -924,13 +939,13 @@ const SunnyWearTecidos = () => {
       }
     });
 
-    const estoqueBrutoReal = totalQtdBruta - totalSaidaNormal;
-    const totalReservado = totalReservaTecido + totalSobraTecido;
-    const totalDisponivelTecido = estoqueBrutoReal - totalReservado;
+    const estoqueBrutoReal = arredondar(totalQtdBruta - totalSaidaNormal);
+    const totalReservado = arredondar(totalReservaTecido + totalSobraTecido);
+    const totalDisponivelTecido = arredondar(estoqueBrutoReal - totalReservado);
     const unidadeMed = infoTecido.unidademedida || infoTecido.unidadeMedida || 'm';
 
     const precoMedio = qtdPrecos > 0 ? somaPrecos / qtdPrecos : parseNumero(infoTecido.preco || 0);
-    const valorTotalEstoque = totalDisponivelTecido * precoMedio;
+    const valorTotalEstoque = arredondar(totalDisponivelTecido * precoMedio);
 
     return (
       <div style={styles.qrViewContainer}>
@@ -939,7 +954,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.22 • Nuvem
+              Versão 3.23 • Nuvem
             </p>
           </div>
 
@@ -1070,7 +1085,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.22 CLOUD</span>
+            <span style={styles.versionBadge}>v3.23 CLOUD</span>
           </div>
         </div>
 
@@ -1139,7 +1154,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.22)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.23)</span>
           </div>
         </header>
 
