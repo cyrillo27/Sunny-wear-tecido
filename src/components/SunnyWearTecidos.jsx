@@ -53,6 +53,7 @@ const SunnyWearTecidos = () => {
     observacao: ''
   });
 
+  const [termoBuscaEntrada, setTermoBuscaEntrada] = useState(''); // Novo estado para preenchimento inteligente
   const [termoBuscaSaida, setTermoBuscaSaida] = useState('');
 
   const [formSobra, setFormSobra] = useState({
@@ -575,6 +576,7 @@ const SunnyWearTecidos = () => {
       quantidade: '', metros: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', 
       notaFiscal: '', fornecedor: '', foto: '', largura: '', observacao: '' 
     });
+    setTermoBuscaEntrada('');
     setTermoBuscaSaida('');
     setIdEditando(null);
   };
@@ -954,7 +956,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.logoBadge}>SW</div>
             <h2 style={{ color: '#0F172A', margin: '10px 0 4px 0', fontSize: '20px', fontWeight: '800' }}>Consulta Rápida</h2>
             <p style={{ color: '#2563EB', fontSize: '11px', margin: 0, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>
-              Versão 3.23 • Nuvem
+              Versão 3.24 • Nuvem
             </p>
           </div>
 
@@ -1085,7 +1087,7 @@ const SunnyWearTecidos = () => {
           <div style={styles.logoBadge}>SW</div>
           <div>
             <h2 style={styles.sidebarTitle}>Sunny Wear</h2>
-            <span style={styles.versionBadge}>v3.23 CLOUD</span>
+            <span style={styles.versionBadge}>v3.24 CLOUD</span>
           </div>
         </div>
 
@@ -1154,7 +1156,7 @@ const SunnyWearTecidos = () => {
           </button>
           <div style={styles.statusBadgeContainer}>
             <span style={styles.pulseDot}></span>
-            <span style={styles.statusText}>Cloud Sync Ativo (v3.23)</span>
+            <span style={styles.statusText}>Cloud Sync Ativo (v3.24)</span>
           </div>
         </header>
 
@@ -1317,6 +1319,82 @@ const SunnyWearTecidos = () => {
             </div>
             
             <form onSubmit={registrarOuAtualizarMovimento} style={styles.formGrid} className="form-grid-responsive">
+              
+              {/* NOVO BLOCO: Preenchimento Inteligente (Só exibe se não estiver a editar) */}
+              {!idEditando && (
+                <div style={{gridColumn: '1 / -1', background: '#EFF6FF', padding: '16px', borderRadius: '10px', border: '2px solid #2563EB', marginBottom: '10px'}}>
+                  <label style={{...styles.formLabel, color: '#1D4ED8', fontSize: '12px'}}>⚡ PREENCHIMENTO INTELIGENTE (Pesquise um tecido já existente ou preencha tudo manualmente abaixo)</label>
+                  <input 
+                    type="text" 
+                    placeholder="Digite o código ou nome de um tecido já registado e clique nele para preencher os dados automaticamente..." 
+                    value={termoBuscaEntrada} 
+                    onChange={(e) => setTermoBuscaEntrada(e.target.value)} 
+                    style={{...styles.inputFull, border: '1px solid #93C5FD', marginBottom: '0'}} 
+                  />
+
+                  {termoBuscaEntrada.trim() !== '' && (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto', marginTop: '12px'}}>
+                      {(() => {
+                        const resultados = tecidosConsolidadosArray.filter(t => 
+                          normalizarTexto(t.codigo).includes(normalizarTexto(termoBuscaEntrada)) ||
+                          normalizarTexto(t.nome).includes(normalizarTexto(termoBuscaEntrada)) ||
+                          normalizarTexto(t.cor).includes(normalizarTexto(termoBuscaEntrada))
+                        );
+
+                        if (resultados.length === 0) {
+                          return <div style={{textAlign: 'center', color: '#64748B', fontSize: '13px', padding: '10px'}}>Nenhum tecido encontrado. Pode ignorar esta barra e preencher o formulário manualmente abaixo.</div>;
+                        }
+
+                        return resultados.map((t, idx) => (
+                          <div 
+                            key={idx} 
+                            onClick={() => {
+                              // Procura a entrada original para puxar dados detalhados como preço e largura
+                              const movItem = listaSeguraCalculos.find(m => normalizarTexto(m.codigo) === normalizarTexto(t.codigo) && normalizarTexto(m.cor) === normalizarTexto(t.cor) && isItemEntradaNormal(m));
+                              
+                              setForm(prev => ({
+                                ...prev,
+                                codigo: t.codigo,
+                                nome: t.nome,
+                                cor: t.cor,
+                                localizacao: movItem?.localizacao || '',
+                                unidadeMedida: t.unidade || 'm',
+                                largura: movItem?.largura || '',
+                                estoqueMinimo: t.minimo > 0 ? t.minimo : '',
+                                preco: movItem?.preco || '',
+                                fornecedor: movItem?.fornecedor || ''
+                              }));
+                              setTermoBuscaEntrada('');
+                            }}
+                            style={{
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center', 
+                              padding: '12px 16px', 
+                              background: '#FFFFFF', 
+                              border: '1px solid #BFDBFE', 
+                              borderRadius: '8px', 
+                              cursor: 'pointer',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <div>
+                              <strong style={{color: '#0F172A', fontSize: '14px'}}>{t.nome}</strong> <span style={{fontSize: '12px', color: '#64748B'}}>(Cód: {t.codigo})</span><br />
+                              <span style={{color: '#2563EB', fontWeight: '800', fontSize: '14px'}}>🎨 Cor: {t.cor}</span>
+                            </div>
+                            <div style={{textAlign: 'right'}}>
+                              <span style={{fontSize: '12px', color: '#4F46E5', fontWeight: '700'}}>👉 Clicar para preencher</span>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* FIM DO BLOCO INTELIGENTE */}
+
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Código do Tecido *</label>
                 <input type="text" placeholder="Ex: TEC-001" value={form.codigo} onChange={(e) => setForm({...form, codigo: e.target.value})} style={styles.input} required />
@@ -1339,7 +1417,7 @@ const SunnyWearTecidos = () => {
               </div>
               <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px'}}>
                 <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>Quantidade *</label>
+                  <label style={styles.formLabel}>Quantidade (Nova entrada) *</label>
                   <input type="text" placeholder="0.00" value={form.quantidade} onChange={(e) => setForm({...form, quantidade: e.target.value, metros: e.target.value})} style={styles.input} required />
                 </div>
                 <div style={styles.formGroup}>
