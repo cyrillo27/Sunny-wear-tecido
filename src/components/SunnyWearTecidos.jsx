@@ -33,7 +33,7 @@ const SunnyWearTecidos = () => {
   });
 
   const [abaAtiva, setAbaAtiva] = useState('dashboard');
-  const [movimentacoes, setMovimentacoes] = useState([]);
+  const [todosRegistros, setMovimentacoes] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
 
@@ -105,7 +105,7 @@ const SunnyWearTecidos = () => {
     const rnd = Math.random().toString(36).substring(2, 6).toUpperCase();
     return `LT-${yy}${mm}${dd}-${rnd}`;
   };
-  const itemLoteVazio = { codigo: '', nome: '', cor: '', largura: '', quantidade: '', unidadeMedida: 'm', preco: '', estoqueMinimo: '', localizacao: '', foto: '' };
+  const itemLoteVazio = { codigo: '', nome: '', cor: '', largura: '', quantidade: '', unidadeMedida: 'm', preco: '', localizacao: '', foto: '' };
   const [loteCabecalho, setLoteCabecalho] = useState(() => ({ codigoLote: gerarCodigoLote(), fornecedor: '', notaFiscal: '', localizacao: '', observacao: '' }));
   const [itemLote, setItemLote] = useState(itemLoteVazio);
   const [itensLote, setItensLote] = useState([]);
@@ -204,14 +204,42 @@ const SunnyWearTecidos = () => {
     return t === 'entrada' && !isItemReserva(item) && !isItemRetalho(item);
   };
 
-  // Os tecidos de um lote são entradas normais marcadas na observação com [LOTE:código]
+  // Os tecidos de um lote são gravados com tipoMovimento 'lote' e com a marcação
+  // [LOTE:código] no campo fornecedor (o servidor guarda esse campo).
+  const MARCA_LOTE_RE = /\[LOTE:([^\]]+)\]/i;
   const obterLoteId = (item) => {
-    if (!item || !item.observacao) return null;
-    const achado = String(item.observacao).match(/\[LOTE:([^\]]+)\]/i);
-    return achado ? achado[1].trim() : null;
+    if (!item) return null;
+    const campos = [item.fornecedor, item.observacao, item.notafiscal, item.notaFiscal];
+    for (const c of campos) {
+      const achado = c ? String(c).match(MARCA_LOTE_RE) : null;
+      if (achado) return achado[1].trim();
+    }
+    return normalizarTexto(item.tipomovimento || item.tipoMovimento) === 'lote' ? 'SEM-CODIGO' : null;
+  };
+
+  // Lê fornecedor e observação do lote gravados como "[LOTE:ID] Fornecedor || Observação"
+  const lerInfoLote = (item) => {
+    const txt = String(item?.fornecedor || '');
+    if (MARCA_LOTE_RE.test(txt)) {
+      const resto = txt.replace(MARCA_LOTE_RE, '').trim();
+      const [forn, ...obs] = resto.split(' || ');
+      return { fornecedor: (forn || '').trim(), observacao: obs.join(' || ').trim() };
+    }
+    return { fornecedor: txt, observacao: String(item?.observacao || '').replace(MARCA_LOTE_RE, '').trim() };
+  };
+
+  const montarFornecedorLote = (codigoLote, fornecedor, observacao) => {
+    let txt = `[LOTE:${codigoLote}]`;
+    if (fornecedor) txt += ` ${fornecedor.trim()}`;
+    if (observacao) txt += ` || ${observacao.trim()}`;
+    return txt.slice(0, 255); // limite da coluna fornecedor no banco
   };
 
   const isItemLote = (item) => !!obterLoteId(item);
+
+  // Lotes são só cadastro de consulta: ficam FORA de todos os cálculos de estoque
+  const registrosLote = Array.isArray(todosRegistros) ? todosRegistros.filter(isItemLote) : [];
+  const movimentacoes = Array.isArray(todosRegistros) ? todosRegistros.filter(m => !isItemLote(m)) : [];
 
   const carregarDadosDoServidor = async () => {
     setCarregando(true);
@@ -844,7 +872,7 @@ const SunnyWearTecidos = () => {
       alert('Adicione pelo menos um tecido ao lote antes de finalizar.');
       return;
     }
-    const jaExiste = listaSeguraCalculos.some((m) => normalizarTexto(obterLoteId(m)) === normalizarTexto(codigoLote));
+    const jaExiste = registrosLote.some((m) => normalizarTexto(obterLoteId(m)) === normalizarTexto(codigoLote));
     if (jaExiste) {
       alert(`⚠️ Já existe um lote com o código ${codigoLote}. Altere o código do lote.`);
       return;
@@ -857,7 +885,7 @@ const SunnyWearTecidos = () => {
         for (const it of itensLote) {
           const obsExtra = loteCabecalho.observacao ? ` ${loteCabecalho.observacao}` : '';
           const registro = {
-            tipoMovimento: 'entrada',
+            tipoMovimento: 'lote',
             codigo: it.codigo,
             nome: it.nome,
             cor: it.cor,
@@ -866,20 +894,29 @@ const SunnyWearTecidos = () => {
             metros: it.quantidade,
             unidadeMedida: it.unidadeMedida || 'm',
             preco: it.preco,
-            estoqueMinimo: parseNumero(it.estoqueMinimo),
-            estoqueminimo: parseNumero(it.estoqueMinimo),
+            estoqueMinimo: 0,
+            estoqueminimo: 0,
             notaFiscal: loteCabecalho.notaFiscal,
-            fornecedor: loteCabecalho.fornecedor,
+            fornecedor: montarFornecedorLote(codigoLote, loteCabecalho.fornecedor, loteCabecalho.observacao),
             foto: it.foto || '',
             largura: it.largura,
             observacao: `[LOTE:${codigoLote}]${obsExtra}`
           };
           try {
-            const resp = await fetch(API_URL, {
+            let resp = await fetch(API_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(registro)
             });
+            if (!resp.ok) {
+              // Se o servidor não aceitar o tipo 'lote', grava com a marcação [LOTE:...],
+              // que continua sendo ignorada pelos cálculos de estoque.
+              resp = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...registro, tipoMovimento: 'entrada' })
+              });
+            }
             if (!resp.ok) falhas.push(`${it.codigo} (${it.cor})`);
           } catch (err) {
             falhas.push(`${it.codigo} (${it.cor})`);
@@ -895,7 +932,7 @@ const SunnyWearTecidos = () => {
         if (falhas.length > 0) {
           alert(`⚠️ Lote ${codigoLote} salvo parcialmente. Não foram salvos: ${falhas.join(', ')}`);
         } else {
-          alert(`📦 Lote ${codigoLote} salvo com ${itensLote.length} tecido(s)! O QR Code foi gerado.`);
+          alert(`📦 Lote ${codigoLote} salvo com ${itensLote.length} tecido(s)! O QR Code foi gerado.\n(O estoque não foi alterado.)`);
         }
         limparLote();
         setLoteSelecionado(codigoLote);
@@ -906,9 +943,9 @@ const SunnyWearTecidos = () => {
   };
 
   const excluirLote = (loteId) => {
-    const registros = listaSeguraCalculos.filter((m) => obterLoteId(m) === loteId);
+    const registros = registrosLote.filter((m) => obterLoteId(m) === loteId);
     if (registros.length === 0) return;
-    if (!window.confirm(`Confirma a exclusão do lote ${loteId}? Os ${registros.length} tecido(s) desse lote serão removidos do estoque.`)) return;
+    if (!window.confirm(`Confirma a exclusão do lote ${loteId}? O cadastro dos ${registros.length} tecido(s) desse lote será apagado (o estoque não é alterado).`)) return;
     pedirSenha(`Autorização para excluir o lote ${loteId}:`, async () => {
       setCarregando(true);
       try {
@@ -931,11 +968,12 @@ const SunnyWearTecidos = () => {
 
   // Agrupa as movimentações por lote
   const lotesAgrupados = {};
-  listaSeguraCalculos.forEach((m) => {
+  registrosLote.forEach((m) => {
     const loteId = obterLoteId(m);
     if (!loteId) return;
     if (!lotesAgrupados[loteId]) {
-      lotesAgrupados[loteId] = { id: loteId, itens: [], data: m.data || '', fornecedor: m.fornecedor || '', notaFiscal: m.notafiscal || m.notaFiscal || '', totalM: 0, totalKg: 0, valorTotal: 0 };
+      const info = lerInfoLote(m);
+      lotesAgrupados[loteId] = { id: loteId, itens: [], data: m.data || '', fornecedor: info.fornecedor, notaFiscal: m.notafiscal || m.notaFiscal || '', observacao: info.observacao, totalM: 0, totalKg: 0, valorTotal: 0 };
     }
     const g = lotesAgrupados[loteId];
     const q = parseNumero(m.metros || m.quantidade || 0);
@@ -949,6 +987,11 @@ const SunnyWearTecidos = () => {
     g.totalM = arredondar(g.totalM);
     g.totalKg = arredondar(g.totalKg);
     g.valorTotal = arredondar(g.valorTotal);
+  });
+  Object.values(lotesAgrupados).forEach((g) => {
+    const d = String(g.data || '').split('T')[0];
+    const [a, mes, dia] = d.split('-');
+    g.dataExibicao = dia ? `${dia}/${mes}/${a}` : d;
   });
   const listaLotes = Object.values(lotesAgrupados).sort((a, b) => String(b.data).localeCompare(String(a.data)));
   const lotesFiltrados = listaLotes.filter((g) => {
@@ -973,7 +1016,7 @@ const SunnyWearTecidos = () => {
       th,td{border:1px solid #CBD5E1;padding:6px 8px;text-align:left}th{background:#F1F5F9}</style></head><body>
       <div class="topo"><img src="${urlQrDoLote(loteId, 220)}" width="180" height="180" onload="setTimeout(function(){window.print()},300)"/>
       <div><h1>📦 Lote ${esc(loteId)}</h1><p>Fornecedor: ${esc(g.fornecedor || '-')}</p><p>NF: ${esc(g.notaFiscal || '-')}</p>
-      <p>Data: ${esc(g.data || '-')}</p><p>${g.itens.length} tecido(s) • ${g.totalM} m${g.totalKg ? ' • ' + g.totalKg + ' kg' : ''}</p></div></div>
+      <p>Data: ${esc(g.dataExibicao || '-')}</p>${g.observacao ? '<p>Obs: ' + esc(g.observacao) + '</p>' : ''}<p>${g.itens.length} tecido(s) • ${g.totalM} m${g.totalKg ? ' • ' + g.totalKg + ' kg' : ''}</p></div></div>
       <table><thead><tr><th>Código</th><th>Tecido</th><th>Cor</th><th>Qtd</th><th>Local</th></tr></thead><tbody>${linhas}</tbody></table>
       </body></html>`);
     janela.document.close();
@@ -1152,14 +1195,15 @@ const SunnyWearTecidos = () => {
 
           {!grupo ? (
             <div style={{ ...styles.qrViewNoFoto, textAlign: 'center' }}>
-              {carregando || movimentacoes.length === 0 ? 'Carregando dados do lote...' : 'Lote não localizado.'}
+              {carregando || todosRegistros.length === 0 ? 'Carregando dados do lote...' : 'Lote não localizado.'}
             </div>
           ) : (
             <>
               <div style={{ ...styles.qrInfoBox, marginBottom: '14px' }}>
                 <div style={styles.qrInfoRow}><span>Fornecedor:</span> <strong>{grupo.fornecedor || 'N/D'}</strong></div>
                 <div style={styles.qrInfoRow}><span>Nota Fiscal:</span> <strong>{grupo.notaFiscal || 'N/D'}</strong></div>
-                <div style={styles.qrInfoRow}><span>Data:</span> <strong>{grupo.data || 'N/D'}</strong></div>
+                <div style={styles.qrInfoRow}><span>Data:</span> <strong>{grupo.dataExibicao || 'N/D'}</strong></div>
+                {grupo.observacao && <div style={styles.qrInfoRow}><span>Observação:</span> <strong>{grupo.observacao}</strong></div>}
                 <div style={styles.qrInfoRow}><span>Tecidos no lote:</span> <strong style={{ color: '#2563EB' }}>{grupo.itens.length}</strong></div>
                 <div style={styles.qrInfoRow}>
                   <span>Total do lote:</span>
@@ -1173,7 +1217,6 @@ const SunnyWearTecidos = () => {
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
                 {grupo.itens.map((it, idx) => {
                   const un = it.unidademedida || it.unidadeMedida || 'm';
-                  const livre = calcularEstoqueLivre(it.codigo, it.cor);
                   return (
                     <div key={it.id || it._id || idx} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '12px', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#FFFFFF' }}>
                       {it.foto ? (
@@ -1188,8 +1231,7 @@ const SunnyWearTecidos = () => {
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A' }}>{parseNumero(it.metros || it.quantidade)} {un}</div>
-                        <div style={{ fontSize: '10px', color: '#64748B' }}>no lote</div>
-                        <div style={{ fontSize: '11px', color: '#059669', fontWeight: '700', marginTop: '2px' }}>Livre: {livre} {un}</div>
+                        {parseNumero(it.preco) > 0 && <div style={{ fontSize: '11px', color: '#D97706', fontWeight: '700', marginTop: '2px' }}>R$ {parseNumero(it.preco).toFixed(2)}/{un}</div>}
                       </div>
                     </div>
                   );
@@ -2445,7 +2487,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.cardSection}>
               <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
                 <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📦 Cadastro de Lote</h3>
-                <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Adicione vários tecidos ao lote e, no final, clique em "Finalizar Lote" para salvar tudo e gerar o QR Code.</p>
+                <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre os tecidos do lote apenas para consulta — <strong>não dá entrada no estoque</strong>. Ao salvar, é gerado um QR Code que mostra tudo o que tem no lote.</p>
               </div>
 
               {/* Dados gerais do lote */}
@@ -2513,7 +2555,6 @@ const SunnyWearTecidos = () => {
                                 unidadeMedida: t.unidade || 'm',
                                 largura: movItem?.largura || '',
                                 preco: movItem?.preco || '',
-                                estoqueMinimo: t.minimo > 0 ? t.minimo : '',
                                 localizacao: prev.localizacao || movItem?.localizacao || ''
                               }));
                               setTermoBuscaLote('');
@@ -2564,10 +2605,6 @@ const SunnyWearTecidos = () => {
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Valor Unitário (R$)</label>
                   <input type="text" placeholder="Ex: 15.90" value={itemLote.preco} onChange={(e) => setItemLote({ ...itemLote, preco: e.target.value })} style={styles.input} />
-                </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>Estoque Mínimo de Alerta</label>
-                  <input type="text" placeholder="Ex: 180" value={itemLote.estoqueMinimo} onChange={(e) => setItemLote({ ...itemLote, estoqueMinimo: e.target.value })} style={styles.input} />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Localização (se diferente da padrão)</label>
@@ -2644,7 +2681,7 @@ const SunnyWearTecidos = () => {
                     disabled={carregando || itensLote.length === 0}
                     style={{ ...styles.button, flex: 2, background: itensLote.length === 0 ? '#94A3B8' : 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: '#fff' }}
                   >
-                    {carregando ? 'Salvando lote...' : `✅ Finalizar Lote e Gerar QR Code (${itensLote.length})`}
+                    {carregando ? 'Salvando lote...' : `✅ Salvar Lote e Gerar QR Code (${itensLote.length})`}
                   </button>
                 </div>
               </div>
@@ -2695,7 +2732,7 @@ const SunnyWearTecidos = () => {
                           <div style={{ fontSize: '13px', fontWeight: '600', color: '#0F172A' }}>{g.fornecedor || '-'}</div>
                           <div style={{ fontSize: '11px', color: '#64748B' }}>NF: {g.notaFiscal || 'N/D'}</div>
                         </td>
-                        <td style={styles.td}><span style={{ color: '#64748B' }}>{g.data}</span></td>
+                        <td style={styles.td}><span style={{ color: '#64748B' }}>{g.dataExibicao}</span></td>
                         <td style={styles.td}>
                           <button onClick={() => setLoteSelecionado(g.id)} style={styles.btnQr} title="Ver QR Code e tecidos">🔲</button>
                           <button onClick={() => imprimirEtiquetaLote(g.id)} style={styles.btnEditar} title="Imprimir etiqueta">🖨️</button>
@@ -2795,7 +2832,6 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}>
                             <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} <span style={{color: '#2563EB'}}>({item.cor})</span></div>
                             {item.largura ? <div style={{fontSize: '11px', color: '#2563EB', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
-                            {obterLoteId(item) ? <div style={{fontSize: '11px', color: '#7C3AED', fontWeight: '700', cursor: 'pointer'}} onClick={() => setLoteSelecionado(obterLoteId(item))}>📦 Lote {obterLoteId(item)}</div> : null}
                           </td>
                           <td style={styles.td}>
                             <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || '-'}</div>
@@ -3344,4 +3380,4 @@ const styles = {
   noFoto: { fontSize: '11px', color: '#94A3B8', fontStyle: 'italic' }
 };
 
-export default SunnyWearTecidos;
+export default SunnyWearTecidos;

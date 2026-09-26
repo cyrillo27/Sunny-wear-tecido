@@ -78,7 +78,8 @@ app.get('/api/movimentacoes', async (req, res) => {
 app.post('/api/movimentacoes', async (req, res) => {
   let { tipoMovimento, codigo, nome, cor, localizacao, quantidade, metros, unidadeMedida, preco, estoqueMinimo, estoqueminimo, notaFiscal, notafiscal, fornecedor, foto, data, largura } = req.body;
   
-  const tipoFinal = tipoMovimento === 'saida' ? 'saida' : 'entrada';
+  // 'lote' = cadastro só para consulta (não conta no estoque)
+  const tipoFinal = tipoMovimento === 'saida' ? 'saida' : (tipoMovimento === 'lote' ? 'lote' : 'entrada');
   const qtdFinal = parseFloat(String(quantidade || metros || 0).replace(',', '.')) || 0;
   const precoFinal = parseFloat(String(preco || 0).replace(',', '.')) || 0;
   const larguraFinal = parseFloat(String(largura || 0).replace(',', '.')) || 0;
@@ -111,7 +112,8 @@ app.put('/api/movimentacoes/:id', async (req, res) => {
   const { id } = req.params;
   let { tipoMovimento, codigo, nome, cor, localizacao, quantidade, metros, unidadeMedida, preco, estoqueMinimo, estoqueminimo, notaFiscal, notafiscal, fornecedor, foto, largura } = req.body;
   
-  const tipoFinal = tipoMovimento === 'saida' ? 'saida' : 'entrada';
+  // 'lote' = cadastro só para consulta (não conta no estoque)
+  const tipoFinal = tipoMovimento === 'saida' ? 'saida' : (tipoMovimento === 'lote' ? 'lote' : 'entrada');
   const qtdFinal = parseFloat(String(quantidade || metros || 0).replace(',', '.')) || 0;
   const precoFinal = parseFloat(String(preco || 0).replace(',', '.')) || 0;
   const larguraFinal = parseFloat(String(largura || 0).replace(',', '.')) || 0;
@@ -150,4 +152,4 @@ app.delete('/api/movimentacoes/:id', async (req, res) => {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
-});
+});
