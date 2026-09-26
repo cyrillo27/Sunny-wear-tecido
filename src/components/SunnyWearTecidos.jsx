@@ -112,6 +112,7 @@ const SunnyWearTecidos = () => {
   const [termoBuscaLote, setTermoBuscaLote] = useState('');
   const [buscaLotesTexto, setBuscaLotesTexto] = useState('');
   const [loteSelecionado, setLoteSelecionado] = useState(null); // id do lote aberto no modal de QR
+  const [usoLote, setUsoLote] = useState(null); // { loteId, item, quantidade, observacao } — modal "Usar tecido do lote"
 
   // 🔒 Sistema de Senha
   const [authConfig, setAuthConfig] = useState({ visivel: false, callback: null, mensagem: '' });
@@ -204,11 +205,48 @@ const SunnyWearTecidos = () => {
     return t === 'entrada' && !isItemReserva(item) && !isItemRetalho(item);
   };
 
-  // Os tecidos de um lote são entradas normais marcadas na observação com [LOTE:código]
+  // Os tecidos de um lote são gravados com tipoMovimento 'lote' e com a marcação
+  // [LOTE:código] no campo fornecedor (o servidor guarda esse campo).
+  const MARCA_LOTE_RE = /\[LOTE:([^\]]+)\]/i;
   const obterLoteId = (item) => {
-    if (!item || !item.observacao) return null;
-    const achado = String(item.observacao).match(/\[LOTE:([^\]]+)\]/i);
+    if (!item) return null;
+    const campos = [item.fornecedor, item.observacao, item.notafiscal, item.notaFiscal];
+    for (const c of campos) {
+      const achado = c ? String(c).match(MARCA_LOTE_RE) : null;
+      if (achado) return achado[1].trim();
+    }
+    return normalizarTexto(item.tipomovimento || item.tipoMovimento) === 'lote' ? 'SEM-CODIGO' : null;
+  };
+
+  // Lê fornecedor e observação do lote gravados como "[LOTE:ID] Fornecedor || Observação"
+  const lerInfoLote = (item) => {
+    const txt = String(item?.fornecedor || '');
+    if (MARCA_LOTE_RE.test(txt)) {
+      const resto = txt.replace(MARCA_LOTE_RE, '').trim();
+      const [forn, ...obs] = resto.split(' || ');
+      return { fornecedor: (forn || '').trim(), observacao: obs.join(' || ').trim() };
+    }
+    return { fornecedor: txt, observacao: String(item?.observacao || '').replace(MARCA_LOTE_RE, '').trim() };
+  };
+
+  // Uso de tecido do lote: registro 'lote' com "[LOTE:ID] [USO:idDoTecido] observação" no fornecedor
+  const MARCA_USO_RE = /\[USO:([^\]]+)\]/i;
+  const obterUsoRef = (item) => {
+    const achado = String(item?.fornecedor || '').match(MARCA_USO_RE);
     return achado ? achado[1].trim() : null;
+  };
+  const obsDoUso = (uso) => String(uso?.fornecedor || '').replace(MARCA_LOTE_RE, '').replace(MARCA_USO_RE, '').trim();
+  const formatarData = (valor) => {
+    const d = String(valor || '').split('T')[0];
+    const [a, mes, dia] = d.split('-');
+    return dia ? `${dia}/${mes}/${a}` : d;
+  };
+
+  const montarFornecedorLote = (codigoLote, fornecedor, observacao) => {
+    let txt = `[LOTE:${codigoLote}]`;
+    if (fornecedor) txt += ` ${fornecedor.trim()}`;
+    if (observacao) txt += ` || ${observacao.trim()}`;
+    return txt.slice(0, 255); // limite da coluna fornecedor no banco
   };
 
   const isItemLote = (item) => !!obterLoteId(item);
@@ -873,7 +911,7 @@ const SunnyWearTecidos = () => {
             estoqueMinimo: 0,
             estoqueminimo: 0,
             notaFiscal: loteCabecalho.notaFiscal,
-            fornecedor: loteCabecalho.fornecedor,
+            fornecedor: montarFornecedorLote(codigoLote, loteCabecalho.fornecedor, loteCabecalho.observacao),
             foto: it.foto || '',
             largura: it.largura,
             observacao: `[LOTE:${codigoLote}]${obsExtra}`
@@ -942,27 +980,127 @@ const SunnyWearTecidos = () => {
     });
   };
 
-  // Agrupa as movimentações por lote
+  // Agrupa as movimentações por lote (tecidos + usos)
   const lotesAgrupados = {};
   registrosLote.forEach((m) => {
     const loteId = obterLoteId(m);
     if (!loteId) return;
     if (!lotesAgrupados[loteId]) {
-      lotesAgrupados[loteId] = { id: loteId, itens: [], data: m.data || '', fornecedor: m.fornecedor || '', notaFiscal: m.notafiscal || m.notaFiscal || '', observacao: String(m.observacao || '').replace(/\[LOTE:[^\]]+\]/i, '').trim(), totalM: 0, totalKg: 0, valorTotal: 0 };
+      lotesAgrupados[loteId] = { id: loteId, itens: [], usos: [], data: '', fornecedor: '', notaFiscal: '', observacao: '', infoOk: false, totalM: 0, totalKg: 0, restanteM: 0, restanteKg: 0, valorTotal: 0 };
     }
     const g = lotesAgrupados[loteId];
-    const q = parseNumero(m.metros || m.quantidade || 0);
-    const un = normalizarTexto(m.unidademedida || m.unidadeMedida || 'm');
-    g.itens.push(m);
-    if (un === 'kg') g.totalKg += q; else g.totalM += q;
-    g.valorTotal += q * parseNumero(m.preco);
+    if (obterUsoRef(m)) { g.usos.push(m); return; }
+    if (!g.infoOk) {
+      const info = lerInfoLote(m);
+      g.fornecedor = info.fornecedor;
+      g.observacao = info.observacao;
+      g.notaFiscal = m.notafiscal || m.notaFiscal || '';
+      g.infoOk = true;
+    }
+    g.itens.push({ ...m });
     if (m.data && (!g.data || String(m.data) < String(g.data))) g.data = m.data;
   });
-  Object.values(lotesAgrupados).forEach((g) => {
+  Object.keys(lotesAgrupados).forEach((chave) => {
+    const g = lotesAgrupados[chave];
+    if (g.itens.length === 0) { delete lotesAgrupados[chave]; return; }
+    g.itens.sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+    g.usos.sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+    g.itens.forEach((it) => {
+      const idIt = String(it.id ?? it._id);
+      const qtd = parseNumero(it.metros || it.quantidade || 0);
+      const un = normalizarTexto(it.unidademedida || it.unidadeMedida || 'm');
+      it._usos = g.usos.filter((u) => obterUsoRef(u) === idIt);
+      it._qtd = arredondar(qtd);
+      it._usado = arredondar(it._usos.reduce((acc, u) => acc + parseNumero(u.metros || u.quantidade || 0), 0));
+      it._restante = arredondar(Math.max(0, qtd - it._usado));
+      if (un === 'kg') { g.totalKg += qtd; g.restanteKg += it._restante; } else { g.totalM += qtd; g.restanteM += it._restante; }
+      g.valorTotal += qtd * parseNumero(it.preco);
+    });
     g.totalM = arredondar(g.totalM);
     g.totalKg = arredondar(g.totalKg);
+    g.restanteM = arredondar(g.restanteM);
+    g.restanteKg = arredondar(g.restanteKg);
     g.valorTotal = arredondar(g.valorTotal);
+    g.dataExibicao = formatarData(g.data);
   });
+
+  const abrirUsoLote = (loteId, item) => setUsoLote({ loteId, item, quantidade: '', observacao: '' });
+
+  const confirmarUsoLote = (e) => {
+    e.preventDefault();
+    if (!usoLote) return;
+    const { loteId, item } = usoLote;
+    const qtd = parseNumero(usoLote.quantidade);
+    const un = item.unidademedida || item.unidadeMedida || 'm';
+    if (qtd <= 0) {
+      alert('Informe a quantidade usada.');
+      return;
+    }
+    if (qtd > item._restante) {
+      alert(`⚠️ Só restam ${item._restante} ${un} deste tecido no lote.`);
+      return;
+    }
+    pedirSenha(`Autorização para usar ${qtd} ${un} de ${item.nome} (${item.cor}) do lote ${loteId}:`, async () => {
+      const itemId = item.id ?? item._id;
+      const obs = (usoLote.observacao || '').trim();
+      const registro = {
+        tipoMovimento: 'lote',
+        codigo: item.codigo,
+        nome: item.nome,
+        cor: item.cor,
+        localizacao: item.localizacao,
+        quantidade: qtd,
+        metros: qtd,
+        unidadeMedida: un,
+        preco: 0,
+        estoqueMinimo: 0,
+        estoqueminimo: 0,
+        notaFiscal: '',
+        fornecedor: `[LOTE:${loteId}] [USO:${itemId}]${obs ? ' ' + obs : ''}`.slice(0, 255),
+        foto: '',
+        largura: 0
+      };
+      setCarregando(true);
+      try {
+        const resp = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(registro)
+        });
+        if (!resp.ok) {
+          alert('❌ Servidor recusou o registro de uso: ' + (await resp.text()));
+          return;
+        }
+        alert(`✂️ Uso registrado! Restam ${arredondar(item._restante - qtd)} ${un} de ${item.nome} (${item.cor}) no lote.`);
+        setUsoLote(null);
+        await carregarDadosDoServidor();
+      } catch (err) {
+        alert('Erro de rede ao registrar o uso.');
+      } finally {
+        setCarregando(false);
+      }
+    });
+  };
+
+  const desfazerUsoLote = (uso) => {
+    const id = uso.id ?? uso._id;
+    if (id === undefined || id === null) return;
+    const un = uso.unidademedida || uso.unidadeMedida || 'm';
+    if (!window.confirm(`Desfazer o uso de ${parseNumero(uso.metros || uso.quantidade)} ${un}? A quantidade volta para o lote.`)) return;
+    pedirSenha('Autorização para desfazer o uso:', async () => {
+      setCarregando(true);
+      try {
+        await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        setUsoLote(null);
+        await carregarDadosDoServidor();
+      } catch (err) {
+        alert('Erro ao desfazer o uso.');
+      } finally {
+        setCarregando(false);
+      }
+    });
+  };
+
   const listaLotes = Object.values(lotesAgrupados).sort((a, b) => String(b.data).localeCompare(String(a.data)));
   const lotesFiltrados = listaLotes.filter((g) => {
     const termo = normalizarTexto(buscaLotesTexto);
@@ -977,7 +1115,7 @@ const SunnyWearTecidos = () => {
     const g = lotesAgrupados[loteId];
     if (!g) return;
     const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const linhas = g.itens.map((i) => `<tr><td>${esc(i.codigo)}</td><td>${esc(i.nome)}</td><td>${esc(i.cor)}</td><td>${esc(parseNumero(i.metros || i.quantidade))} ${esc(i.unidademedida || i.unidadeMedida || 'm')}</td><td>${esc(i.localizacao)}</td></tr>`).join('');
+    const linhas = g.itens.map((i) => { const un = esc(i.unidademedida || i.unidadeMedida || 'm'); return `<tr><td>${esc(i.codigo)}</td><td>${esc(i.nome)}</td><td>${esc(i.cor)}</td><td>${esc(i._qtd)} ${un}</td><td>${esc(i._restante)} ${un}</td><td>${esc(i.localizacao)}</td></tr>`; }).join('');
     const janela = window.open('', '_blank');
     if (!janela) { alert('Permita pop-ups para imprimir a etiqueta.'); return; }
     janela.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Lote ${esc(loteId)}</title>
@@ -986,8 +1124,8 @@ const SunnyWearTecidos = () => {
       th,td{border:1px solid #CBD5E1;padding:6px 8px;text-align:left}th{background:#F1F5F9}</style></head><body>
       <div class="topo"><img src="${urlQrDoLote(loteId, 220)}" width="180" height="180" onload="setTimeout(function(){window.print()},300)"/>
       <div><h1>📦 Lote ${esc(loteId)}</h1><p>Fornecedor: ${esc(g.fornecedor || '-')}</p><p>NF: ${esc(g.notaFiscal || '-')}</p>
-      <p>Data: ${esc(g.data || '-')}</p>${g.observacao ? '<p>Obs: ' + esc(g.observacao) + '</p>' : ''}<p>${g.itens.length} tecido(s) • ${g.totalM} m${g.totalKg ? ' • ' + g.totalKg + ' kg' : ''}</p></div></div>
-      <table><thead><tr><th>Código</th><th>Tecido</th><th>Cor</th><th>Qtd</th><th>Local</th></tr></thead><tbody>${linhas}</tbody></table>
+      <p>Data: ${esc(g.dataExibicao || '-')}</p>${g.observacao ? '<p>Obs: ' + esc(g.observacao) + '</p>' : ''}<p>${g.itens.length} tecido(s) • ${g.totalM} m${g.totalKg ? ' • ' + g.totalKg + ' kg' : ''}</p></div></div>
+      <table><thead><tr><th>Código</th><th>Tecido</th><th>Cor</th><th>Qtd</th><th>Restante</th><th>Local</th></tr></thead><tbody>${linhas}</tbody></table>
       </body></html>`);
     janela.document.close();
   };
@@ -1140,6 +1278,134 @@ const SunnyWearTecidos = () => {
     );
   });
 
+  // Card de um tecido do lote com quantidade restante e botão "Usar"
+  const renderItemLote = (loteId, it, idx) => {
+    const un = it.unidademedida || it.unidadeMedida || 'm';
+    const pct = it._qtd > 0 ? Math.max(0, Math.min(100, (it._restante / it._qtd) * 100)) : 0;
+    const esgotado = it._restante <= 0;
+    return (
+      <div key={it.id || it._id || idx} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '12px', border: '1px solid #E2E8F0', borderRadius: '12px', background: esgotado ? '#F8FAFC' : '#FFFFFF', opacity: esgotado ? 0.75 : 1, width: '100%', boxSizing: 'border-box' }}>
+        {it.foto ? (
+          <img src={it.foto} alt="Tecido" style={{ width: '54px', height: '54px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }} onClick={() => setFotoSelecionada(it.foto)} />
+        ) : (
+          <div style={{ width: '54px', height: '54px', borderRadius: '8px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>🧵</div>
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: '800', color: '#0F172A', fontSize: '14px' }}>{it.nome}</div>
+          <div style={{ fontSize: '12px', color: '#64748B' }}>Cód: {it.codigo} • <span style={{ color: '#2563EB', fontWeight: '700' }}>{it.cor}</span></div>
+          <div style={{ fontSize: '12px', color: '#64748B' }}>📍 {it.localizacao || 'N/D'}{parseNumero(it.largura) > 0 ? ` • Larg: ${it.largura}m` : ''}{parseNumero(it.preco) > 0 ? ` • R$ ${parseNumero(it.preco).toFixed(2)}/${un}` : ''}</div>
+          <div style={{ height: '6px', background: '#E2E8F0', borderRadius: '99px', marginTop: '6px', overflow: 'hidden' }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: esgotado ? '#94A3B8' : '#059669', borderRadius: '99px' }} />
+          </div>
+          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+            Entrou {it._qtd} {un}{it._usado > 0 ? ` • Usado ${it._usado} ${un}` : ''}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+          <div>
+            <div style={{ fontSize: '16px', fontWeight: '800', color: esgotado ? '#94A3B8' : '#059669' }}>{it._restante} {un}</div>
+            <div style={{ fontSize: '10px', color: '#64748B' }}>{esgotado ? 'esgotado' : 'restante'}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => abrirUsoLote(loteId, it)}
+            style={{ border: 'none', borderRadius: '8px', padding: '6px 10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', background: esgotado ? '#E2E8F0' : '#7C3AED', color: esgotado ? '#475569' : '#FFFFFF' }}
+          >
+            {esgotado ? '📜 Histórico' : '✂️ Usar'}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const modalUsoLoteJSX = usoLote && (() => {
+    const g = lotesAgrupados[usoLote.loteId];
+    const it = g ? (g.itens.find((i) => String(i.id ?? i._id) === String(usoLote.item.id ?? usoLote.item._id)) || usoLote.item) : usoLote.item;
+    const un = it.unidademedida || it.unidadeMedida || 'm';
+    return (
+      <div style={styles.modalOverlay} onClick={() => setUsoLote(null)}>
+        <div style={{ ...styles.modalContent, alignItems: 'stretch', textAlign: 'left', width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', margin: 'auto', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
+          <button style={{ ...styles.modalCloseBtn, alignSelf: 'flex-end' }} onClick={() => setUsoLote(null)}>✕ Fechar</button>
+          <h3 style={{ margin: '0 0 2px 0', fontSize: '17px', color: '#0F172A', fontWeight: '800' }}>✂️ Usar tecido do lote</h3>
+          <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 14px 0' }}>Lote {usoLote.loteId}</p>
+
+          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '12px', marginBottom: '14px' }}>
+            <div style={{ fontWeight: '800', color: '#0F172A' }}>{it.nome} <span style={{ color: '#2563EB' }}>({it.cor})</span></div>
+            <div style={{ fontSize: '12px', color: '#64748B' }}>Cód: {it.codigo} • 📍 {it.localizacao || 'N/D'}</div>
+            <div style={{ fontSize: '13px', marginTop: '6px' }}>
+              Restante: <strong style={{ color: '#059669' }}>{it._restante} {un}</strong> <span style={{ color: '#64748B' }}>de {it._qtd} {un}</span>
+            </div>
+          </div>
+
+          {it._restante > 0 && (
+            <form onSubmit={confirmarUsoLote} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Quantidade usada ({un}) *</label>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <input type="text" inputMode="decimal" autoFocus placeholder="0.00" value={usoLote.quantidade} onChange={(e) => setUsoLote({ ...usoLote, quantidade: e.target.value })} style={{ ...styles.input, flex: 1 }} />
+                  <button type="button" onClick={() => setUsoLote({ ...usoLote, quantidade: String(it._restante) })} style={{ border: '1px solid #CBD5E1', background: '#F1F5F9', borderRadius: '8px', padding: '0 10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>Usar tudo</button>
+                </div>
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Para quê? (opcional)</label>
+                <input type="text" placeholder="Ex: Pedido 1234 / Corte camisetas" value={usoLote.observacao} onChange={(e) => setUsoLote({ ...usoLote, observacao: e.target.value })} style={styles.input} />
+              </div>
+              <button type="submit" disabled={carregando} style={{ ...styles.button, background: '#7C3AED', color: '#fff' }}>
+                {carregando ? 'Salvando...' : '✂️ Registrar uso'}
+              </button>
+            </form>
+          )}
+
+          <div style={{ marginTop: '16px' }}>
+            <strong style={{ fontSize: '13px', color: '#0F172A' }}>📜 Histórico de uso</strong>
+            {(!it._usos || it._usos.length === 0) ? (
+              <p style={{ fontSize: '12px', color: '#64748B', margin: '6px 0 0 0' }}>Nenhum uso registrado ainda.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
+                {it._usos.map((u) => (
+                  <div key={u.id || u._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '12px' }}>
+                    <div>
+                      <strong style={{ color: '#7C3AED' }}>-{parseNumero(u.metros || u.quantidade)} {un}</strong>
+                      <span style={{ color: '#64748B' }}> • {formatarData(u.data)}</span>
+                      {obsDoUso(u) && <div style={{ color: '#475569' }}>{obsDoUso(u)}</div>}
+                    </div>
+                    <button type="button" onClick={() => desfazerUsoLote(u)} title="Desfazer este uso" style={{ border: 'none', background: '#FEE2E2', color: '#991B1B', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>↩ Desfazer</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  })();
+
+  const modalSenhaJSX = authConfig.visivel && (
+    <div style={styles.modalOverlay} onClick={() => setAuthConfig({ visivel: false, callback: null, mensagem: '' })}>
+      <div style={{...styles.modalContent, alignItems: 'center', width: '100%', maxWidth: '340px', margin: 'auto'}} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#0F172A', fontWeight: '800' }}>🔒 Autorização Necessária</h3>
+        <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '20px', textAlign: 'center' }}>
+          {authConfig.mensagem}
+        </p>
+        <form onSubmit={confirmarSenha} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <input 
+            type="password" 
+            placeholder="Digite a senha..." 
+            value={senhaAuth} 
+            onChange={(e) => setSenhaAuth(e.target.value)} 
+            style={{...styles.input, textAlign: 'center', fontSize: '18px', letterSpacing: '4px', fontWeight: 'bold'}} 
+            autoFocus
+            required 
+          />
+          <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '4px' }}>
+            <button type="button" onClick={() => setAuthConfig({ visivel: false, callback: null, mensagem: '' })} style={{...styles.button, background: '#F1F5F9', color: '#475569', flex: 1, boxShadow: 'none', border: '1px solid #CBD5E1'}}>Cancelar</button>
+            <button type="submit" style={{...styles.button, background: '#2563EB', color: '#fff', flex: 1}}>Confirmar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
   if (loteQrUrl) {
     const loteIdUrl = loteQrUrl.trim();
     const grupo = Object.values(lotesAgrupados).find((g) => normalizarTexto(g.id) === normalizarTexto(loteIdUrl));
@@ -1172,12 +1438,16 @@ const SunnyWearTecidos = () => {
               <div style={{ ...styles.qrInfoBox, marginBottom: '14px' }}>
                 <div style={styles.qrInfoRow}><span>Fornecedor:</span> <strong>{grupo.fornecedor || 'N/D'}</strong></div>
                 <div style={styles.qrInfoRow}><span>Nota Fiscal:</span> <strong>{grupo.notaFiscal || 'N/D'}</strong></div>
-                <div style={styles.qrInfoRow}><span>Data:</span> <strong>{grupo.data || 'N/D'}</strong></div>
+                <div style={styles.qrInfoRow}><span>Data:</span> <strong>{grupo.dataExibicao || 'N/D'}</strong></div>
                 {grupo.observacao && <div style={styles.qrInfoRow}><span>Observação:</span> <strong>{grupo.observacao}</strong></div>}
                 <div style={styles.qrInfoRow}><span>Tecidos no lote:</span> <strong style={{ color: '#2563EB' }}>{grupo.itens.length}</strong></div>
                 <div style={styles.qrInfoRow}>
                   <span>Total do lote:</span>
-                  <strong style={{ color: '#059669' }}>{grupo.totalM} m{grupo.totalKg ? ` • ${grupo.totalKg} kg` : ''}</strong>
+                  <strong style={{ color: '#0F172A' }}>{grupo.totalM} m{grupo.totalKg ? ` • ${grupo.totalKg} kg` : ''}</strong>
+                </div>
+                <div style={styles.qrInfoRow}>
+                  <span>Restante no lote:</span>
+                  <strong style={{ color: '#059669' }}>{grupo.restanteM} m{grupo.totalKg ? ` • ${grupo.restanteKg} kg` : ''}</strong>
                 </div>
                 {grupo.valorTotal > 0 && (
                   <div style={styles.qrInfoRow}><span>Valor do lote:</span> <strong style={{ color: '#D97706' }}>R$ {grupo.valorTotal.toFixed(2)}</strong></div>
@@ -1185,27 +1455,7 @@ const SunnyWearTecidos = () => {
               </div>
 
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                {grupo.itens.map((it, idx) => {
-                  const un = it.unidademedida || it.unidadeMedida || 'm';
-                  return (
-                    <div key={it.id || it._id || idx} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '12px', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#FFFFFF' }}>
-                      {it.foto ? (
-                        <img src={it.foto} alt="Tecido" style={{ width: '54px', height: '54px', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer', flexShrink: 0 }} onClick={() => setFotoSelecionada(it.foto)} />
-                      ) : (
-                        <div style={{ width: '54px', height: '54px', borderRadius: '8px', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>🧵</div>
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: '800', color: '#0F172A', fontSize: '14px' }}>{it.nome}</div>
-                        <div style={{ fontSize: '12px', color: '#64748B' }}>Cód: {it.codigo} • <span style={{ color: '#2563EB', fontWeight: '700' }}>{it.cor}</span></div>
-                        <div style={{ fontSize: '12px', color: '#64748B' }}>📍 {it.localizacao || 'N/D'}{it.largura ? ` • Larg: ${it.largura}m` : ''}</div>
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A' }}>{parseNumero(it.metros || it.quantidade)} {un}</div>
-                        {parseNumero(it.preco) > 0 && <div style={{ fontSize: '11px', color: '#D97706', fontWeight: '700', marginTop: '2px' }}>R$ {parseNumero(it.preco).toFixed(2)}/{un}</div>}
-                      </div>
-                    </div>
-                  );
-                })}
+                {grupo.itens.map((it, idx) => renderItemLote(grupo.id, it, idx))}
               </div>
             </>
           )}
@@ -1226,6 +1476,8 @@ const SunnyWearTecidos = () => {
             </div>
           </div>
         )}
+        {modalUsoLoteJSX}
+        {modalSenhaJSX}
       </div>
     );
   }
@@ -1383,32 +1635,6 @@ const SunnyWearTecidos = () => {
           onClick={() => setMenuMobileAberto(false)} 
           style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 999 }}
         />
-      )}
-
-      {authConfig.visivel && (
-        <div style={styles.modalOverlay} onClick={() => setAuthConfig({ visivel: false, callback: null, mensagem: '' })}>
-          <div style={{...styles.modalContent, alignItems: 'center', width: '100%', maxWidth: '340px', margin: 'auto'}} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#0F172A', fontWeight: '800' }}>🔒 Autorização Necessária</h3>
-            <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '20px', textAlign: 'center' }}>
-              {authConfig.mensagem}
-            </p>
-            <form onSubmit={confirmarSenha} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input 
-                type="password" 
-                placeholder="Digite a senha..." 
-                value={senhaAuth} 
-                onChange={(e) => setSenhaAuth(e.target.value)} 
-                style={{...styles.input, textAlign: 'center', fontSize: '18px', letterSpacing: '4px', fontWeight: 'bold'}} 
-                autoFocus
-                required 
-              />
-              <div style={{ display: 'flex', gap: '10px', width: '100%', marginTop: '4px' }}>
-                <button type="button" onClick={() => setAuthConfig({ visivel: false, callback: null, mensagem: '' })} style={{...styles.button, background: '#F1F5F9', color: '#475569', flex: 1, boxShadow: 'none', border: '1px solid #CBD5E1'}}>Cancelar</button>
-                <button type="submit" style={{...styles.button, background: '#2563EB', color: '#fff', flex: 1}}>Confirmar</button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
 
       <aside style={styles.sidebar}>
@@ -2696,13 +2922,14 @@ const SunnyWearTecidos = () => {
                         </td>
                         <td style={styles.td}>
                           <strong>{g.totalM} m</strong>{g.totalKg ? <div style={{ fontSize: '12px' }}>{g.totalKg} kg</div> : null}
+                          <div style={{ fontSize: '11px', color: '#7C3AED', fontWeight: '700' }}>Restante: {g.restanteM} m{g.totalKg ? ` • ${g.restanteKg} kg` : ''}</div>
                           {g.valorTotal > 0 && <div style={{ fontSize: '11px', color: '#059669', fontWeight: '600' }}>R$ {g.valorTotal.toFixed(2)}</div>}
                         </td>
                         <td style={styles.td}>
                           <div style={{ fontSize: '13px', fontWeight: '600', color: '#0F172A' }}>{g.fornecedor || '-'}</div>
                           <div style={{ fontSize: '11px', color: '#64748B' }}>NF: {g.notaFiscal || 'N/D'}</div>
                         </td>
-                        <td style={styles.td}><span style={{ color: '#64748B' }}>{g.data}</span></td>
+                        <td style={styles.td}><span style={{ color: '#64748B' }}>{g.dataExibicao}</span></td>
                         <td style={styles.td}>
                           <button onClick={() => setLoteSelecionado(g.id)} style={styles.btnQr} title="Ver QR Code e tecidos">🔲</button>
                           <button onClick={() => imprimirEtiquetaLote(g.id)} style={styles.btnEditar} title="Imprimir etiqueta">🖨️</button>
@@ -2853,28 +3080,20 @@ const SunnyWearTecidos = () => {
               ) : (
                 <>
                   <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 14px 0', textAlign: 'center' }}>
-                    {g.itens.length} tecido(s) • {g.totalM} m{g.totalKg ? ` • ${g.totalKg} kg` : ''}{g.fornecedor ? ` • ${g.fornecedor}` : ''}{g.notaFiscal ? ` • NF ${g.notaFiscal}` : ''}
+                    {g.itens.length} tecido(s) • {g.totalM} m{g.totalKg ? ` • ${g.totalKg} kg` : ''} • restante {g.restanteM} m{g.totalKg ? ` • ${g.restanteKg} kg` : ''}{g.fornecedor ? ` • ${g.fornecedor}` : ''}{g.notaFiscal ? ` • NF ${g.notaFiscal}` : ''}
                   </p>
                   <div style={{ padding: '12px', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '12px', marginBottom: '10px' }}>
                     <img src={urlQrDoLote(loteSelecionado)} alt="QR Code do Lote" style={{ width: '220px', height: '220px', display: 'block' }} />
                   </div>
                   <span style={{ fontSize: '11px', color: '#64748B', textAlign: 'center', maxWidth: '300px', lineHeight: '1.4', marginBottom: '14px' }}>
-                    📱 Ao ler este QR Code com o celular, abre a lista com todos os tecidos deste lote.
+                    📱 Ao ler este QR Code com o celular, abre a lista com todos os tecidos deste lote e quanto resta de cada um.
                   </span>
                   <div style={{ display: 'flex', gap: '8px', width: '100%', marginBottom: '16px', flexWrap: 'wrap' }}>
                     <button onClick={() => imprimirEtiquetaLote(loteSelecionado)} style={{ ...styles.button, flex: 1, background: '#2563EB', color: '#fff' }}>🖨️ Imprimir Etiqueta</button>
                     <button onClick={() => window.open(urlDoLote(loteSelecionado), '_blank')} style={{ ...styles.button, flex: 1, background: '#F1F5F9', color: '#0F172A', boxShadow: 'none', border: '1px solid #CBD5E1' }}>🔗 Abrir Página</button>
                   </div>
                   <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {g.itens.map((it, idx) => (
-                      <div key={it.id || it._id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: '10px', fontSize: '13px' }}>
-                        <div>
-                          <strong style={{ color: '#0F172A' }}>{it.nome}</strong> <span style={{ color: '#64748B', fontSize: '12px' }}>(Cód: {it.codigo})</span><br />
-                          <span style={{ color: '#2563EB', fontWeight: '700', fontSize: '12px' }}>🎨 {it.cor}</span> <span style={{ color: '#64748B', fontSize: '12px' }}>• 📍 {it.localizacao}</span>
-                        </div>
-                        <strong style={{ color: '#0F172A', whiteSpace: 'nowrap' }}>{parseNumero(it.metros || it.quantidade)} {it.unidademedida || it.unidadeMedida || 'm'}</strong>
-                      </div>
-                    ))}
+                    {g.itens.map((it, idx) => renderItemLote(g.id, it, idx))}
                   </div>
                 </>
               )}
@@ -2882,6 +3101,9 @@ const SunnyWearTecidos = () => {
           </div>
         );
       })()}
+
+      {modalUsoLoteJSX}
+      {modalSenhaJSX}
 
       {qrSelecionado && (
         <div style={styles.modalOverlay} onClick={() => setQrSelecionado(null)}>
@@ -3350,4 +3572,4 @@ const styles = {
   noFoto: { fontSize: '11px', color: '#94A3B8', fontStyle: 'italic' }
 };
 
-export default SunnyWearTecidos;
+export default SunnyWearTecidos;
