@@ -204,35 +204,11 @@ const SunnyWearTecidos = () => {
     return t === 'entrada' && !isItemReserva(item) && !isItemRetalho(item);
   };
 
-  // Os tecidos de um lote são gravados com tipoMovimento 'lote' e com a marcação
-  // [LOTE:código] no campo fornecedor (o servidor guarda esse campo).
-  const MARCA_LOTE_RE = /\[LOTE:([^\]]+)\]/i;
+  // Os tecidos de um lote são entradas normais marcadas na observação com [LOTE:código]
   const obterLoteId = (item) => {
-    if (!item) return null;
-    const campos = [item.fornecedor, item.observacao, item.notafiscal, item.notaFiscal];
-    for (const c of campos) {
-      const achado = c ? String(c).match(MARCA_LOTE_RE) : null;
-      if (achado) return achado[1].trim();
-    }
-    return normalizarTexto(item.tipomovimento || item.tipoMovimento) === 'lote' ? 'SEM-CODIGO' : null;
-  };
-
-  // Lê fornecedor e observação do lote gravados como "[LOTE:ID] Fornecedor || Observação"
-  const lerInfoLote = (item) => {
-    const txt = String(item?.fornecedor || '');
-    if (MARCA_LOTE_RE.test(txt)) {
-      const resto = txt.replace(MARCA_LOTE_RE, '').trim();
-      const [forn, ...obs] = resto.split(' || ');
-      return { fornecedor: (forn || '').trim(), observacao: obs.join(' || ').trim() };
-    }
-    return { fornecedor: txt, observacao: String(item?.observacao || '').replace(MARCA_LOTE_RE, '').trim() };
-  };
-
-  const montarFornecedorLote = (codigoLote, fornecedor, observacao) => {
-    let txt = `[LOTE:${codigoLote}]`;
-    if (fornecedor) txt += ` ${fornecedor.trim()}`;
-    if (observacao) txt += ` || ${observacao.trim()}`;
-    return txt.slice(0, 255); // limite da coluna fornecedor no banco
+    if (!item || !item.observacao) return null;
+    const achado = String(item.observacao).match(/\[LOTE:([^\]]+)\]/i);
+    return achado ? achado[1].trim() : null;
   };
 
   const isItemLote = (item) => !!obterLoteId(item);
@@ -897,7 +873,7 @@ const SunnyWearTecidos = () => {
             estoqueMinimo: 0,
             estoqueminimo: 0,
             notaFiscal: loteCabecalho.notaFiscal,
-            fornecedor: montarFornecedorLote(codigoLote, loteCabecalho.fornecedor, loteCabecalho.observacao),
+            fornecedor: loteCabecalho.fornecedor,
             foto: it.foto || '',
             largura: it.largura,
             observacao: `[LOTE:${codigoLote}]${obsExtra}`
@@ -972,8 +948,7 @@ const SunnyWearTecidos = () => {
     const loteId = obterLoteId(m);
     if (!loteId) return;
     if (!lotesAgrupados[loteId]) {
-      const info = lerInfoLote(m);
-      lotesAgrupados[loteId] = { id: loteId, itens: [], data: m.data || '', fornecedor: info.fornecedor, notaFiscal: m.notafiscal || m.notaFiscal || '', observacao: info.observacao, totalM: 0, totalKg: 0, valorTotal: 0 };
+      lotesAgrupados[loteId] = { id: loteId, itens: [], data: m.data || '', fornecedor: m.fornecedor || '', notaFiscal: m.notafiscal || m.notaFiscal || '', observacao: String(m.observacao || '').replace(/\[LOTE:[^\]]+\]/i, '').trim(), totalM: 0, totalKg: 0, valorTotal: 0 };
     }
     const g = lotesAgrupados[loteId];
     const q = parseNumero(m.metros || m.quantidade || 0);
@@ -987,11 +962,6 @@ const SunnyWearTecidos = () => {
     g.totalM = arredondar(g.totalM);
     g.totalKg = arredondar(g.totalKg);
     g.valorTotal = arredondar(g.valorTotal);
-  });
-  Object.values(lotesAgrupados).forEach((g) => {
-    const d = String(g.data || '').split('T')[0];
-    const [a, mes, dia] = d.split('-');
-    g.dataExibicao = dia ? `${dia}/${mes}/${a}` : d;
   });
   const listaLotes = Object.values(lotesAgrupados).sort((a, b) => String(b.data).localeCompare(String(a.data)));
   const lotesFiltrados = listaLotes.filter((g) => {
@@ -1016,7 +986,7 @@ const SunnyWearTecidos = () => {
       th,td{border:1px solid #CBD5E1;padding:6px 8px;text-align:left}th{background:#F1F5F9}</style></head><body>
       <div class="topo"><img src="${urlQrDoLote(loteId, 220)}" width="180" height="180" onload="setTimeout(function(){window.print()},300)"/>
       <div><h1>📦 Lote ${esc(loteId)}</h1><p>Fornecedor: ${esc(g.fornecedor || '-')}</p><p>NF: ${esc(g.notaFiscal || '-')}</p>
-      <p>Data: ${esc(g.dataExibicao || '-')}</p>${g.observacao ? '<p>Obs: ' + esc(g.observacao) + '</p>' : ''}<p>${g.itens.length} tecido(s) • ${g.totalM} m${g.totalKg ? ' • ' + g.totalKg + ' kg' : ''}</p></div></div>
+      <p>Data: ${esc(g.data || '-')}</p>${g.observacao ? '<p>Obs: ' + esc(g.observacao) + '</p>' : ''}<p>${g.itens.length} tecido(s) • ${g.totalM} m${g.totalKg ? ' • ' + g.totalKg + ' kg' : ''}</p></div></div>
       <table><thead><tr><th>Código</th><th>Tecido</th><th>Cor</th><th>Qtd</th><th>Local</th></tr></thead><tbody>${linhas}</tbody></table>
       </body></html>`);
     janela.document.close();
@@ -1202,7 +1172,7 @@ const SunnyWearTecidos = () => {
               <div style={{ ...styles.qrInfoBox, marginBottom: '14px' }}>
                 <div style={styles.qrInfoRow}><span>Fornecedor:</span> <strong>{grupo.fornecedor || 'N/D'}</strong></div>
                 <div style={styles.qrInfoRow}><span>Nota Fiscal:</span> <strong>{grupo.notaFiscal || 'N/D'}</strong></div>
-                <div style={styles.qrInfoRow}><span>Data:</span> <strong>{grupo.dataExibicao || 'N/D'}</strong></div>
+                <div style={styles.qrInfoRow}><span>Data:</span> <strong>{grupo.data || 'N/D'}</strong></div>
                 {grupo.observacao && <div style={styles.qrInfoRow}><span>Observação:</span> <strong>{grupo.observacao}</strong></div>}
                 <div style={styles.qrInfoRow}><span>Tecidos no lote:</span> <strong style={{ color: '#2563EB' }}>{grupo.itens.length}</strong></div>
                 <div style={styles.qrInfoRow}>
@@ -2732,7 +2702,7 @@ const SunnyWearTecidos = () => {
                           <div style={{ fontSize: '13px', fontWeight: '600', color: '#0F172A' }}>{g.fornecedor || '-'}</div>
                           <div style={{ fontSize: '11px', color: '#64748B' }}>NF: {g.notaFiscal || 'N/D'}</div>
                         </td>
-                        <td style={styles.td}><span style={{ color: '#64748B' }}>{g.dataExibicao}</span></td>
+                        <td style={styles.td}><span style={{ color: '#64748B' }}>{g.data}</span></td>
                         <td style={styles.td}>
                           <button onClick={() => setLoteSelecionado(g.id)} style={styles.btnQr} title="Ver QR Code e tecidos">🔲</button>
                           <button onClick={() => imprimirEtiquetaLote(g.id)} style={styles.btnEditar} title="Imprimir etiqueta">🖨️</button>
@@ -3380,4 +3350,4 @@ const styles = {
   noFoto: { fontSize: '11px', color: '#94A3B8', fontStyle: 'italic' }
 };
 
-export default SunnyWearTecidos;
+export default SunnyWearTecidos;
