@@ -235,7 +235,11 @@ const SunnyWearTecidos = () => {
     const achado = String(item?.fornecedor || '').match(MARCA_USO_RE);
     return achado ? achado[1].trim() : null;
   };
-  const obsDoUso = (uso) => String(uso?.fornecedor || '').replace(MARCA_LOTE_RE, '').replace(MARCA_USO_RE, '').trim();
+  const obsDoUso = (uso) => {
+    const nf = String(uso?.notafiscal || uso?.notaFiscal || '').trim();
+    if (nf) return nf;
+    return String(uso?.fornecedor || '').replace(MARCA_LOTE_RE, '').replace(MARCA_USO_RE, '').replace(/SAIDA DO LOTE/i, '').trim();
+  };
   const formatarData = (valor) => {
     const d = String(valor || '').split('T')[0];
     const [a, mes, dia] = d.split('-');
@@ -252,8 +256,12 @@ const SunnyWearTecidos = () => {
   const isItemLote = (item) => !!obterLoteId(item);
 
   // Lotes são só cadastro de consulta: ficam FORA de todos os cálculos de estoque
+  // Saída feita pelo lote = saída real do estoque (tipo 'saida' com a marcação do lote)
+  const isSaidaDeLote = (item) => isItemLote(item) && normalizarTexto(item.tipomovimento || item.tipoMovimento) === 'saida';
+  // Tecidos separados no lote (e usos antigos) = só consulta, fora do estoque
+  const isRegistroSoDoLote = (item) => isItemLote(item) && !isSaidaDeLote(item);
   const registrosLote = Array.isArray(todosRegistros) ? todosRegistros.filter(isItemLote) : [];
-  const movimentacoes = Array.isArray(todosRegistros) ? todosRegistros.filter(m => !isItemLote(m)) : [];
+  const movimentacoes = Array.isArray(todosRegistros) ? todosRegistros.filter(m => !isRegistroSoDoLote(m)) : [];
 
   const carregarDadosDoServidor = async () => {
     setCarregando(true);
@@ -860,6 +868,19 @@ const SunnyWearTecidos = () => {
       alert('Informe a Localização do tecido (ou a localização padrão do lote).');
       return;
     }
+    const chaveNova = `${normalizarTexto(itemLote.codigo)}_${normalizarTexto(itemLote.cor)}`;
+    if (!tecidosConsolidados[chaveNova]) {
+      alert(`❌ O tecido ${itemLote.codigo} (${itemLote.cor}) não está no estoque. Dê entrada nele primeiro e depois separe no lote.`);
+      return;
+    }
+    const jaNesteLote = itensLote
+      .filter((i) => `${normalizarTexto(i.codigo)}_${normalizarTexto(i.cor)}` === chaveNova)
+      .reduce((acc, i) => acc + parseNumero(i.quantidade), 0);
+    const disponivel = arredondar(disponivelParaLote(itemLote.codigo, itemLote.cor) - jaNesteLote);
+    if (qtd > disponivel) {
+      alert(`⚠️ Só há ${Math.max(0, disponivel)} ${itemLote.unidadeMedida || 'm'} deste tecido livres para separar (estoque livre menos o que já está em lotes).`);
+      return;
+    }
     setItensLote((prev) => [...prev, { ...itemLote, codigo: itemLote.codigo.trim(), nome: itemLote.nome.trim(), cor: itemLote.cor.trim(), quantidade: qtd, localizacao: local, _tmpId: Date.now() + Math.random() }]);
     setItemLote(itemLoteVazio);
     setTermoBuscaLote('');
@@ -1024,6 +1045,15 @@ const SunnyWearTecidos = () => {
     g.dataExibicao = formatarData(g.data);
   });
 
+  // Quanto de cada tecido (código+cor) ainda está separado em lotes
+  const emLotesPorChave = {};
+  Object.values(lotesAgrupados).forEach((g) => g.itens.forEach((it) => {
+    const chave = `${normalizarTexto(it.codigo)}_${normalizarTexto(it.cor)}`;
+    emLotesPorChave[chave] = arredondar((emLotesPorChave[chave] || 0) + it._restante);
+  }));
+  const disponivelParaLote = (codigo, cor) =>
+    arredondar(calcularEstoqueLivre(codigo, cor) - (emLotesPorChave[`${normalizarTexto(codigo)}_${normalizarTexto(cor)}`] || 0));
+
   const abrirUsoLote = (loteId, item) => setUsoLote({ loteId, item, quantidade: '', observacao: '' });
 
   const confirmarUsoLote = (e) => {
@@ -1040,11 +1070,16 @@ const SunnyWearTecidos = () => {
       alert(`⚠️ Só restam ${item._restante} ${un} deste tecido no lote.`);
       return;
     }
-    pedirSenha(`Autorização para usar ${qtd} ${un} de ${item.nome} (${item.cor}) do lote ${loteId}:`, async () => {
+    const livreEstoque = calcularEstoqueLivre(item.codigo, item.cor);
+    if (qtd > livreEstoque) {
+      alert(`⚠️ O estoque livre deste tecido é de apenas ${livreEstoque} ${un}. Confira se ele não saiu por fora do lote.`);
+      return;
+    }
+    pedirSenha(`Autorização para dar saída de ${qtd} ${un} de ${item.nome} (${item.cor}) do lote ${loteId}:`, async () => {
       const itemId = item.id ?? item._id;
       const obs = (usoLote.observacao || '').trim();
       const registro = {
-        tipoMovimento: 'lote',
+        tipoMovimento: 'saida',
         codigo: item.codigo,
         nome: item.nome,
         cor: item.cor,
@@ -1055,8 +1090,8 @@ const SunnyWearTecidos = () => {
         preco: 0,
         estoqueMinimo: 0,
         estoqueminimo: 0,
-        notaFiscal: '',
-        fornecedor: `[LOTE:${loteId}] [USO:${itemId}]${obs ? ' ' + obs : ''}`.slice(0, 255),
+        notaFiscal: obs.slice(0, 100),
+        fornecedor: `[LOTE:${loteId}] [USO:${itemId}] SAIDA DO LOTE`.slice(0, 255),
         foto: '',
         largura: 0
       };
@@ -1068,14 +1103,14 @@ const SunnyWearTecidos = () => {
           body: JSON.stringify(registro)
         });
         if (!resp.ok) {
-          alert('❌ Servidor recusou o registro de uso: ' + (await resp.text()));
+          alert('❌ Servidor recusou a saída: ' + (await resp.text()));
           return;
         }
-        alert(`✂️ Uso registrado! Restam ${arredondar(item._restante - qtd)} ${un} de ${item.nome} (${item.cor}) no lote.`);
+        alert(`📤 Saída registrada e baixada do estoque! Restam ${arredondar(item._restante - qtd)} ${un} de ${item.nome} (${item.cor}) no lote.`);
         setUsoLote(null);
         await carregarDadosDoServidor();
       } catch (err) {
-        alert('Erro de rede ao registrar o uso.');
+        alert('Erro de rede ao registrar a saída.');
       } finally {
         setCarregando(false);
       }
@@ -1086,15 +1121,15 @@ const SunnyWearTecidos = () => {
     const id = uso.id ?? uso._id;
     if (id === undefined || id === null) return;
     const un = uso.unidademedida || uso.unidadeMedida || 'm';
-    if (!window.confirm(`Desfazer o uso de ${parseNumero(uso.metros || uso.quantidade)} ${un}? A quantidade volta para o lote.`)) return;
-    pedirSenha('Autorização para desfazer o uso:', async () => {
+    if (!window.confirm(`Desfazer esta saída de ${parseNumero(uso.metros || uso.quantidade)} ${un}? A quantidade volta para o lote e para o estoque.`)) return;
+    pedirSenha('Autorização para desfazer a saída:', async () => {
       setCarregando(true);
       try {
         await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
         setUsoLote(null);
         await carregarDadosDoServidor();
       } catch (err) {
-        alert('Erro ao desfazer o uso.');
+        alert('Erro ao desfazer a saída.');
       } finally {
         setCarregando(false);
       }
@@ -1298,7 +1333,7 @@ const SunnyWearTecidos = () => {
             <div style={{ width: `${pct}%`, height: '100%', background: esgotado ? '#94A3B8' : '#059669', borderRadius: '99px' }} />
           </div>
           <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
-            Entrou {it._qtd} {un}{it._usado > 0 ? ` • Usado ${it._usado} ${un}` : ''}
+            Separado {it._qtd} {un}{it._usado > 0 ? ` • Saiu ${it._usado} ${un}` : ''}
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
@@ -1309,9 +1344,9 @@ const SunnyWearTecidos = () => {
           <button
             type="button"
             onClick={() => abrirUsoLote(loteId, it)}
-            style={{ border: 'none', borderRadius: '8px', padding: '6px 10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', background: esgotado ? '#E2E8F0' : '#7C3AED', color: esgotado ? '#475569' : '#FFFFFF' }}
+            style={{ border: 'none', borderRadius: '8px', padding: '6px 10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', background: esgotado ? '#E2E8F0' : '#DC2626', color: esgotado ? '#475569' : '#FFFFFF' }}
           >
-            {esgotado ? '📜 Histórico' : '✂️ Usar'}
+            {esgotado ? '📜 Histórico' : '📤 Dar saída'}
           </button>
         </div>
       </div>
@@ -1326,7 +1361,7 @@ const SunnyWearTecidos = () => {
       <div style={styles.modalOverlay} onClick={() => setUsoLote(null)}>
         <div style={{ ...styles.modalContent, alignItems: 'stretch', textAlign: 'left', width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto', margin: 'auto', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
           <button style={{ ...styles.modalCloseBtn, alignSelf: 'flex-end' }} onClick={() => setUsoLote(null)}>✕ Fechar</button>
-          <h3 style={{ margin: '0 0 2px 0', fontSize: '17px', color: '#0F172A', fontWeight: '800' }}>✂️ Usar tecido do lote</h3>
+          <h3 style={{ margin: '0 0 2px 0', fontSize: '17px', color: '#0F172A', fontWeight: '800' }}>📤 Dar saída do lote</h3>
           <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 14px 0' }}>Lote {usoLote.loteId}</p>
 
           <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '12px', marginBottom: '14px' }}>
@@ -1340,36 +1375,36 @@ const SunnyWearTecidos = () => {
           {it._restante > 0 && (
             <form onSubmit={confirmarUsoLote} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={styles.formGroup}>
-                <label style={styles.formLabel}>Quantidade usada ({un}) *</label>
+                <label style={styles.formLabel}>Quantidade da saída ({un}) *</label>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <input type="text" inputMode="decimal" autoFocus placeholder="0.00" value={usoLote.quantidade} onChange={(e) => setUsoLote({ ...usoLote, quantidade: e.target.value })} style={{ ...styles.input, flex: 1 }} />
-                  <button type="button" onClick={() => setUsoLote({ ...usoLote, quantidade: String(it._restante) })} style={{ border: '1px solid #CBD5E1', background: '#F1F5F9', borderRadius: '8px', padding: '0 10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>Usar tudo</button>
+                  <button type="button" onClick={() => setUsoLote({ ...usoLote, quantidade: String(it._restante) })} style={{ border: '1px solid #CBD5E1', background: '#F1F5F9', borderRadius: '8px', padding: '0 10px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>Tudo</button>
                 </div>
               </div>
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Para quê? (opcional)</label>
                 <input type="text" placeholder="Ex: Pedido 1234 / Corte camisetas" value={usoLote.observacao} onChange={(e) => setUsoLote({ ...usoLote, observacao: e.target.value })} style={styles.input} />
               </div>
-              <button type="submit" disabled={carregando} style={{ ...styles.button, background: '#7C3AED', color: '#fff' }}>
-                {carregando ? 'Salvando...' : '✂️ Registrar uso'}
+              <button type="submit" disabled={carregando} style={{ ...styles.button, background: '#DC2626', color: '#fff' }}>
+                {carregando ? 'Salvando...' : '📤 Registrar saída'}
               </button>
             </form>
           )}
 
           <div style={{ marginTop: '16px' }}>
-            <strong style={{ fontSize: '13px', color: '#0F172A' }}>📜 Histórico de uso</strong>
+            <strong style={{ fontSize: '13px', color: '#0F172A' }}>📜 Histórico de saídas</strong>
             {(!it._usos || it._usos.length === 0) ? (
-              <p style={{ fontSize: '12px', color: '#64748B', margin: '6px 0 0 0' }}>Nenhum uso registrado ainda.</p>
+              <p style={{ fontSize: '12px', color: '#64748B', margin: '6px 0 0 0' }}>Nenhuma saída registrada ainda.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
                 {it._usos.map((u) => (
                   <div key={u.id || u._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', padding: '8px 10px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '12px' }}>
                     <div>
-                      <strong style={{ color: '#7C3AED' }}>-{parseNumero(u.metros || u.quantidade)} {un}</strong>
+                      <strong style={{ color: '#DC2626' }}>-{parseNumero(u.metros || u.quantidade)} {un}</strong>
                       <span style={{ color: '#64748B' }}> • {formatarData(u.data)}</span>
                       {obsDoUso(u) && <div style={{ color: '#475569' }}>{obsDoUso(u)}</div>}
                     </div>
-                    <button type="button" onClick={() => desfazerUsoLote(u)} title="Desfazer este uso" style={{ border: 'none', background: '#FEE2E2', color: '#991B1B', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>↩ Desfazer</button>
+                    <button type="button" onClick={() => desfazerUsoLote(u)} title="Desfazer esta saída" style={{ border: 'none', background: '#FEE2E2', color: '#991B1B', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>↩ Desfazer</button>
                   </div>
                 ))}
               </div>
@@ -2683,7 +2718,7 @@ const SunnyWearTecidos = () => {
             <div style={styles.cardSection}>
               <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
                 <h3 style={{ ...styles.sectionTitle, margin: 0 }}>📦 Cadastro de Lote</h3>
-                <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Cadastre os tecidos do lote apenas para consulta — <strong>não dá entrada no estoque</strong>. Ao salvar, é gerado um QR Code que mostra tudo o que tem no lote.</p>
+                <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Separe em lotes os tecidos que <strong>já deram entrada no estoque</strong>. Separar não altera o estoque; as saídas feitas pelo lote baixam do estoque. Ao salvar, é gerado um QR Code com tudo o que tem no lote.</p>
               </div>
 
               {/* Dados gerais do lote */}
@@ -2720,10 +2755,10 @@ const SunnyWearTecidos = () => {
                 </div>
 
                 <div style={{ gridColumn: '1 / -1', background: '#EFF6FF', padding: '12px', borderRadius: '10px', border: '1px solid #93C5FD' }}>
-                  <label style={{ ...styles.formLabel, color: '#1D4ED8' }}>⚡ PREENCHIMENTO INTELIGENTE (opcional)</label>
+                  <label style={{ ...styles.formLabel, color: '#1D4ED8' }}>🔎 ESCOLHA O TECIDO DO ESTOQUE *</label>
                   <input
                     type="text"
-                    placeholder="Digite o código ou nome de um tecido já cadastrado..."
+                    placeholder="Digite o código, nome ou cor do tecido que já deu entrada..."
                     value={termoBuscaLote}
                     onChange={(e) => setTermoBuscaLote(e.target.value)}
                     style={{ ...styles.inputFull, border: '1px solid #93C5FD', marginBottom: 0 }}
@@ -2733,10 +2768,11 @@ const SunnyWearTecidos = () => {
                       {(() => {
                         const termo = normalizarTexto(termoBuscaLote);
                         const resultados = tecidosConsolidadosArray.filter(t =>
-                          normalizarTexto(t.codigo).includes(termo) || normalizarTexto(t.nome).includes(termo) || normalizarTexto(t.cor).includes(termo)
+                          (normalizarTexto(t.codigo).includes(termo) || normalizarTexto(t.nome).includes(termo) || normalizarTexto(t.cor).includes(termo)) &&
+                          disponivelParaLote(t.codigo, t.cor) > 0
                         );
                         if (resultados.length === 0) {
-                          return <div style={{ textAlign: 'center', color: '#64748B', fontSize: '13px', padding: '8px' }}>Nenhum tecido encontrado. Preencha manualmente abaixo.</div>;
+                          return <div style={{ textAlign: 'center', color: '#64748B', fontSize: '13px', padding: '8px' }}>Nenhum tecido com saldo livre encontrado. Dê entrada no tecido primeiro.</div>;
                         }
                         return resultados.map((t, idx) => (
                           <div
@@ -2751,7 +2787,8 @@ const SunnyWearTecidos = () => {
                                 unidadeMedida: t.unidade || 'm',
                                 largura: movItem?.largura || '',
                                 preco: movItem?.preco || '',
-                                localizacao: prev.localizacao || movItem?.localizacao || ''
+                                localizacao: prev.localizacao || movItem?.localizacao || '',
+                                foto: movItem?.foto || ''
                               }));
                               setTermoBuscaLote('');
                             }}
@@ -2761,7 +2798,10 @@ const SunnyWearTecidos = () => {
                               <strong style={{ color: '#0F172A', fontSize: '13px' }}>{t.nome}</strong> <span style={{ fontSize: '12px', color: '#64748B' }}>(Cód: {t.codigo})</span><br />
                               <span style={{ color: '#2563EB', fontWeight: '700', fontSize: '12px' }}>🎨 {t.cor}</span>
                             </div>
-                            <span style={{ fontSize: '12px', color: '#4F46E5', fontWeight: '700' }}>👉 Preencher</span>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '12px', color: '#059669', fontWeight: '800' }}>Livre p/ separar: {disponivelParaLote(t.codigo, t.cor)} {t.unidade || 'm'}</div>
+                              <span style={{ fontSize: '12px', color: '#4F46E5', fontWeight: '700' }}>👉 Escolher</span>
+                            </div>
                           </div>
                         ));
                       })()}
@@ -2771,15 +2811,15 @@ const SunnyWearTecidos = () => {
 
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Código do Tecido *</label>
-                  <input type="text" placeholder="Ex: TEC-001" value={itemLote.codigo} onChange={(e) => setItemLote({ ...itemLote, codigo: e.target.value })} style={styles.input} />
+                  <input type="text" value={itemLote.codigo} readOnly placeholder="Escolha o tecido na busca acima" style={{ ...styles.input, background: '#F1F5F9' }} />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Nome do Tecido *</label>
-                  <input type="text" placeholder="Ex: Malha Canelada" value={itemLote.nome} onChange={(e) => setItemLote({ ...itemLote, nome: e.target.value })} style={styles.input} />
+                  <input type="text" value={itemLote.nome} readOnly placeholder="Escolha o tecido na busca acima" style={{ ...styles.input, background: '#F1F5F9' }} />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Cor *</label>
-                  <input type="text" placeholder="Ex: Azul Marinho" value={itemLote.cor} onChange={(e) => setItemLote({ ...itemLote, cor: e.target.value })} style={styles.input} />
+                  <input type="text" value={itemLote.cor} readOnly placeholder="Escolha o tecido na busca acima" style={{ ...styles.input, background: '#F1F5F9' }} />
                 </div>
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Largura (m)</label>
@@ -3029,6 +3069,7 @@ const SunnyWearTecidos = () => {
                           <td style={styles.td}>
                             <div style={{ fontWeight: '600', color: '#0F172A' }}>{item.nome} <span style={{color: '#2563EB'}}>({item.cor})</span></div>
                             {item.largura ? <div style={{fontSize: '11px', color: '#2563EB', fontWeight: '500'}}>Largura: {item.largura}m</div> : null}
+                            {isSaidaDeLote(item) ? <div style={{fontSize: '11px', color: '#7C3AED', fontWeight: '700', cursor: 'pointer'}} onClick={() => setLoteSelecionado(obterLoteId(item))}>📦 Saída do lote {obterLoteId(item)}</div> : null}
                           </td>
                           <td style={styles.td}>
                             <div style={{fontSize: '13px', fontWeight: '600', color: '#0F172A'}}>{fornecedor || '-'}</div>
