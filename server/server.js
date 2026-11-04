@@ -1,12 +1,13 @@
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+const crypto = require('crypto');
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Conexão com o PostgreSQL no Render
+// Conexão com o PostgreSQL (endereço na variável DATABASE_URL)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -40,17 +41,43 @@ pool.query(`
   console.log('📦 Tabela e coluna "largura" verificadas com sucesso!');
 }).catch(err => console.error('Erro ao configurar tabela:', err));
 
-// Rota de login
-app.post('/api/login', (req, res) => {
-  const { usuario, senha } = req.body;
-  const usuarioAdmin = process.env.ADMIN_USER || 'sunnytecido';
-  const senhaAdmin = process.env.ADMIN_PASS || 'tecido@2026';
+// Compara textos sem revelar pelo tempo de resposta onde está a diferença
+const textosIguais = (a, b) => crypto.timingSafeEqual(
+  crypto.createHash('sha256').update(String(a)).digest(),
+  crypto.createHash('sha256').update(String(b)).digest()
+);
 
-  if (usuario === usuarioAdmin && senha === senhaAdmin) {
+// Protege as rotas que alteram dados: exige a senha de ações no cabeçalho
+const exigirSenha = (req, res, next) => {
+  const senhaAcoes = process.env.SENHA_ACOES;
+  if (!senhaAcoes) {
+    return res.status(503).json({ erro: 'Servidor sem SENHA_ACOES configurada' });
+  }
+  if (!textosIguais(req.get('x-senha-acao') || '', senhaAcoes)) {
+    return res.status(401).json({ erro: 'Senha incorreta' });
+  }
+  next();
+};
+
+// Rota de login (sem usuário ou senha padrão no código)
+app.post('/api/login', (req, res) => {
+  const { usuario, senha } = req.body || {};
+  const usuarioAdmin = process.env.ADMIN_USER;
+  const senhaAdmin = process.env.ADMIN_PASS;
+
+  if (!usuarioAdmin || !senhaAdmin) {
+    return res.status(503).json({ sucesso: false, erro: 'Login não configurado no servidor' });
+  }
+  if (textosIguais(usuario || '', usuarioAdmin) && textosIguais(senha || '', senhaAdmin)) {
     res.json({ sucesso: true });
   } else {
     res.status(401).json({ sucesso: false, erro: 'Usuário ou senha incorretos' });
   }
+});
+
+// Confere a senha de ações antes de o site executar a operação
+app.post('/api/validar-senha', exigirSenha, (req, res) => {
+  res.json({ sucesso: true });
 });
 
 // Buscar movimentações
@@ -75,7 +102,7 @@ app.get('/api/movimentacoes', async (req, res) => {
 });
 
 // Cadastrar nova movimentação (com largura)
-app.post('/api/movimentacoes', async (req, res) => {
+app.post('/api/movimentacoes', exigirSenha, async (req, res) => {
   let { tipoMovimento, codigo, nome, cor, localizacao, quantidade, metros, unidadeMedida, preco, estoqueMinimo, estoqueminimo, notaFiscal, notafiscal, fornecedor, foto, data, largura } = req.body;
   
   // 'lote' = cadastro só para consulta (não conta no estoque)
@@ -108,7 +135,7 @@ app.post('/api/movimentacoes', async (req, res) => {
 });
 
 // Atualizar movimentação
-app.put('/api/movimentacoes/:id', async (req, res) => {
+app.put('/api/movimentacoes/:id', exigirSenha, async (req, res) => {
   const { id } = req.params;
   let { tipoMovimento, codigo, nome, cor, localizacao, quantidade, metros, unidadeMedida, preco, estoqueMinimo, estoqueminimo, notaFiscal, notafiscal, fornecedor, foto, largura } = req.body;
   
@@ -140,7 +167,7 @@ app.put('/api/movimentacoes/:id', async (req, res) => {
 });
 
 // Deletar
-app.delete('/api/movimentacoes/:id', async (req, res) => {
+app.delete('/api/movimentacoes/:id', exigirSenha, async (req, res) => {
   try {
     await pool.query('DELETE FROM movimentacoes WHERE id = $1', [req.params.id]);
     res.json({ mensagem: 'Deletado com sucesso' });
