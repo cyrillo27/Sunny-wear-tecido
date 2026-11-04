@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const crypto = require('crypto');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -80,13 +81,54 @@ app.post('/api/validar-senha', exigirSenha, (req, res) => {
   res.json({ sucesso: true });
 });
 
+// A lista não traz as fotos, só o endereço de cada uma
+const COLUNAS_LISTA = 'id, tipomovimento, codigo, nome, cor, localizacao, metros, quantidade, unidademedida, preco, estoqueminimo, notafiscal, fornecedor, data, largura, octet_length(foto) AS foto_tam';
+
+// Quando o site reenvia o endereço de uma foto, grava a foto original, nunca o endereço
+const URL_FOTO = /^(?:https?:\/\/[^/]+)?\/api\/movimentacoes\/(\d+)\/foto(?:\?.*)?$/;
+const resolverFoto = async (foto) => {
+  const encontrado = URL_FOTO.exec(String(foto || ''));
+  if (!encontrado) return foto;
+  const resultado = await pool.query('SELECT foto FROM movimentacoes WHERE id = $1', [encontrado[1]]);
+  return resultado.rows[0]?.foto || '';
+};
+
+// Entrega a foto de um registro como imagem, com cache no navegador
+app.get('/api/movimentacoes/:id/foto', async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) return res.status(404).end();
+  try {
+    const resultado = await pool.query('SELECT foto FROM movimentacoes WHERE id = $1', [req.params.id]);
+    const foto = resultado.rows[0]?.foto || '';
+
+    if (/^https?:\/\//i.test(foto)) return res.redirect(foto);
+
+    const virgula = foto.indexOf(',');
+    const cabecalho = virgula > 0 ? foto.slice(0, virgula) : '';
+    const tipo = /^data:(image\/[a-z0-9.+-]+)/i.exec(cabecalho);
+    if (!tipo) return res.status(404).end();
+
+    const conteudo = foto.slice(virgula + 1);
+    res.set({
+      'Content-Type': tipo[1],
+      'Cache-Control': 'public, max-age=86400',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; sandbox",
+    });
+    res.send(/;base64$/i.test(cabecalho) ? Buffer.from(conteudo, 'base64') : Buffer.from(decodeURIComponent(conteudo)));
+  } catch (erro) {
+    console.error('Erro ao buscar foto:', erro.message);
+    res.status(500).json({ erro: 'Erro ao buscar foto no banco' });
+  }
+});
+
 // Buscar movimentações
 app.get('/api/movimentacoes', async (req, res) => {
   try {
-    const resultado = await pool.query('SELECT * FROM movimentacoes ORDER BY id DESC');
+    const resultado = await pool.query(`SELECT ${COLUNAS_LISTA} FROM movimentacoes ORDER BY id DESC`);
     
-    const dadosPadronizados = resultado.rows.map(r => ({
+    const dadosPadronizados = resultado.rows.map(({ foto_tam, ...r }) => ({
       ...r,
+      foto: foto_tam > 0 ? `/api/movimentacoes/${r.id}/foto?v=${foto_tam}` : '',
       estoqueminimo: Number(r.estoqueminimo || 0),
       largura: Number(r.largura || 0),
       unidademedida: r.unidademedida || 'm',
@@ -113,6 +155,7 @@ app.post('/api/movimentacoes', exigirSenha, async (req, res) => {
   let minFinal = Number(estoqueminimo !== undefined && estoqueminimo !== '' ? estoqueminimo : (estoqueMinimo !== undefined && estoqueMinimo !== '' ? estoqueMinimo : 0));
 
   try {
+    foto = await resolverFoto(foto);
     const query = `
       INSERT INTO movimentacoes (tipomovimento, codigo, nome, cor, localizacao, metros, quantidade, unidademedida, preco, estoqueminimo, notafiscal, fornecedor, foto, data, largura)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *
@@ -147,6 +190,7 @@ app.put('/api/movimentacoes/:id', exigirSenha, async (req, res) => {
   let minFinal = Number(estoqueminimo !== undefined && estoqueminimo !== '' ? estoqueminimo : (estoqueMinimo !== undefined && estoqueMinimo !== '' ? estoqueMinimo : 0));
 
   try {
+    foto = await resolverFoto(foto);
     const query = `
       UPDATE movimentacoes 
       SET tipomovimento = $1, codigo = $2, nome = $3, cor = $4, localizacao = $5, metros = $6, quantidade = $7, unidademedida = $8, preco = $9, estoqueminimo = $10, notafiscal = $11, fornecedor = $12, foto = $13, largura = $14
@@ -175,6 +219,9 @@ app.delete('/api/movimentacoes/:id', exigirSenha, async (req, res) => {
     res.status(500).json({ erro: 'Erro ao deletar do banco' });
   }
 });
+
+// Entrega o site já compilado (npm run build) no mesmo endereço da API
+app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {

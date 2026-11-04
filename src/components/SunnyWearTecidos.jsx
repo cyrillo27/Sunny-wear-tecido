@@ -289,7 +289,10 @@ const SunnyWearTecidos = () => {
       if (resposta.ok) {
         const dados = await resposta.json();
         if (Array.isArray(dados)) {
-          setMovimentacoes(dados);
+          const origemApi = new URL(API_URL, window.location.href).origin;
+          setMovimentacoes(dados.map((m) => (
+            typeof m.foto === 'string' && m.foto.startsWith('/') ? { ...m, foto: `${origemApi}${m.foto}` } : m
+          )));
         } else {
           setMovimentacoes([]);
         }
@@ -306,8 +309,16 @@ const SunnyWearTecidos = () => {
 
   useEffect(() => {
     carregarDadosDoServidor();
-    const intervalo = setInterval(carregarDadosDoServidor, 5000);
-    return () => clearInterval(intervalo);
+    // Atualiza a cada minuto, só com a aba visível, e ao voltar para a aba
+    const atualizarSeVisivel = () => {
+      if (!document.hidden) carregarDadosDoServidor();
+    };
+    const intervalo = setInterval(atualizarSeVisivel, 60000);
+    document.addEventListener('visibilitychange', atualizarSeVisivel);
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', atualizarSeVisivel);
+    };
   }, []);
 
   const handleFotoChange = (e) => {
@@ -489,7 +500,6 @@ const SunnyWearTecidos = () => {
       setCarregando(true);
       try {
         const itemId = item.id || item._id;
-        await apiFetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
         const registroSaida = {
           ...item,
@@ -501,11 +511,15 @@ const SunnyWearTecidos = () => {
         delete registroSaida.id;
         delete registroSaida._id;
 
-        await apiFetch(API_URL, {
+        // Grava a saída antes de apagar o retalho, para a foto ser copiada e nada se perder se falhar
+        const respostaSaida = await apiFetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(registroSaida)
         });
+        if (!respostaSaida.ok) throw new Error(await respostaSaida.text());
+
+        await apiFetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
         alert('✅ Retalho utilizado na produção!');
         await carregarDadosDoServidor();
