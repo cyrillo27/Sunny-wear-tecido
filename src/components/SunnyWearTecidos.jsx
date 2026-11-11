@@ -329,16 +329,39 @@ const SunnyWearTecidos = () => {
     };
   }, []);
 
-  const handleFotoChange = (e) => {
+  // Reduz a foto (máx. 1600 px, JPEG) antes de enviar: o servidor na Netlify
+  // aceita no máximo ~6 MB por envio e fotos de celular passam disso.
+  const comprimirFoto = (file) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const LADO_MAX = 1600;
+      const escala = Math.min(1, LADO_MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF'; // fundo branco para imagens com transparência
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não foi possível ler a imagem.')); };
+    img.src = url;
+  });
+
+  const lerFoto = async (e, aplicar) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm((prev) => ({ ...prev, foto: reader.result }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      aplicar(await comprimirFoto(file));
+    } catch (erro) {
+      alert('❌ Não foi possível usar esta imagem. Tente uma foto em JPG ou PNG.');
     }
   };
+
+  const handleFotoChange = (e) => lerFoto(e, (foto) => setForm((prev) => ({ ...prev, foto })));
 
   const reservas = movimentacoes.filter(isItemReserva);
   const sobras = movimentacoes.filter(isItemRetalho);
@@ -1104,14 +1127,7 @@ const SunnyWearTecidos = () => {
   const urlQrDoLote = (loteId, tamanho = 260) =>
     `https://api.qrserver.com/v1/create-qr-code/?size=${tamanho}x${tamanho}&data=${encodeURIComponent(urlDoLote(loteId))}`;
 
-  const handleFotoItemLote = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setItemLote((prev) => ({ ...prev, foto: reader.result }));
-      reader.readAsDataURL(file);
-    }
-  };
+  const handleFotoItemLote = (e) => lerFoto(e, (foto) => setItemLote((prev) => ({ ...prev, foto })));
 
   const adicionarItemAoLote = (e) => {
     e.preventDefault();
