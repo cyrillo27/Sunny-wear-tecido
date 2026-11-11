@@ -483,6 +483,7 @@ const SunnyWearTecidos = () => {
         const registroSaida = {
           ...item,
           tipoMovimento: 'saida',
+          unidadeMedida: item.unidadeMedida || item.unidademedida || 'm', // mantém kg quando o retalho é em kg
           observacao: 'USO-RETALHO - Baixa efetuada',
           fornecedor: 'CONSUMO-RETALHO',
           notaFiscal: '-'
@@ -1411,21 +1412,23 @@ const SunnyWearTecidos = () => {
   const topTecidosMaisUsados = Object.values(usoTecidos).filter(t => t.totalUso > 0).sort((a, b) => b.totalUso - a.totalUso).slice(0, 5);
   const maxUsoTop = topTecidosMaisUsados.length > 0 ? Math.max(...topTecidosMaisUsados.map(t => t.totalUso)) : 100;
 
-  const entradasMetros = arredondar(listaSeguraCalculos
-    .filter(m => isItemEntradaNormal(m) && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
+  // O servidor devolve a unidade como "unidademedida"; o formulário usa "unidadeMedida"
+  const emMetros = (m) => normalizarTexto(m?.unidademedida || m?.unidadeMedida || 'm') === 'm';
+  const somarMetros = (lista) => arredondar(lista
+    .filter(emMetros)
     .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0));
 
-  const saidasMetros = arredondar(listaSeguraCalculos
-    .filter(m => isItemSaidaNormal(m) && (m?.unidademedida === 'm' || m?.unidadeMedida === 'm' || !m?.unidademedida))
-    .reduce((acc, m) => acc + parseNumero(m.metros || m.quantidade || 0), 0));
+  // Data de hoje no horário do computador (não em UTC, que vira o dia às 21h no Brasil)
+  const agora = new Date();
+  const hojeLocal = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+  const ehDeHoje = (m) => String(m?.data || '').split('T')[0] === hojeLocal;
 
-  const totalReservasMetros = arredondar(reservas
-    .filter(r => (r?.unidadeMedida === 'm' || !r?.unidadeMedida))
-    .reduce((acc, r) => acc + parseNumero(r.quantidade || r.metros || 0), 0));
+  const entradasMetros = somarMetros(listaSeguraCalculos.filter(isItemEntradaNormal));
+  const saidasMetros = somarMetros(listaSeguraCalculos.filter(isItemSaidaNormal));
+  const saidasHojeMetros = somarMetros(listaSeguraCalculos.filter(m => isItemSaidaNormal(m) && ehDeHoje(m)));
     
-  const totalSobrasMetros = arredondar(sobras
-    .filter(s => s.unidadeMedida === 'm')
-    .reduce((acc, s) => acc + parseNumero(s.quantidade || 0), 0));
+  const totalReservasMetros = somarMetros(reservas);
+  const totalSobrasMetros = somarMetros(sobras);
 
   const estoqueBrutoMetros = arredondar(entradasMetros - saidasMetros);
   const estoqueDisponivelMetros = arredondar(estoqueBrutoMetros - totalReservasMetros - totalSobrasMetros);
@@ -2020,14 +2023,14 @@ const SunnyWearTecidos = () => {
                 <span style={styles.metricSub}>Sobras guardadas</span>
               </div>
               <div style={styles.metricCard}>
-                <span style={styles.metricLabel}>Entradas Hoje</span>
+                <span style={styles.metricLabel}>Total de Entradas</span>
                 <strong style={{...styles.metricVal, color: '#059669'}}>{entradasMetros.toLocaleString()} m</strong>
-                <span style={styles.metricSub}>Aquisições registradas</span>
+                <span style={styles.metricSub}>Compras registradas (todas)</span>
               </div>
               <div style={styles.metricCard}>
-                <span style={styles.metricLabel}>Saídas Hoje</span>
+                <span style={styles.metricLabel}>Total de Saídas</span>
                 <strong style={{...styles.metricVal, color: '#DC2626'}}>{saidasMetros.toLocaleString()} m</strong>
-                <span style={styles.metricSub}>Consumo / Baixas</span>
+                <span style={styles.metricSub}>Hoje: {saidasHojeMetros.toLocaleString()} m</span>
               </div>
             </div>
 
