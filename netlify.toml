@@ -1,0 +1,4 @@
+# O site publicado na Netlify fala com o servidor (API) que roda no Render.
+# Este endereço não é secreto: é o mesmo que o navegador já acessa.
+[build.environment]
+  VITE_API_URL = "https://sunny-wear-tecido.onrender.com/api/movimentacoes"
