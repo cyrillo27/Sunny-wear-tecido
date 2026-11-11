@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const SunnyWearTecidos = () => {
   const [codigoQrUrl, setCodigoQrUrl] = useState(() => {
@@ -131,20 +131,39 @@ const SunnyWearTecidos = () => {
     setSenhaAuth('');
   };
 
-  const confirmarSenha = (e) => {
-    e.preventDefault();
-    if (senhaAuth === '3559') {
-      const cb = authConfig.callback;
-      setAuthConfig({ visivel: false, callback: null, mensagem: '' });
-      setSenhaAuth('');
-      if (cb) cb();
-    } else {
-      alert('❌ Senha incorreta! Ação bloqueada.');
-      setSenhaAuth('');
-    }
-  };
+  const API_URL = import.meta.env.VITE_API_URL || '/api/movimentacoes';
+  const senhaAcaoRef = useRef('');
 
-  const API_URL = 'https://sunny-wear-tecido.onrender.com/api/movimentacoes';
+  // Envia a senha confirmada nas chamadas que alteram dados
+  const apiFetch = (url, opcoes = {}) => fetch(url, {
+    ...opcoes,
+    headers: { ...(opcoes.headers || {}), 'x-senha-acao': senhaAcaoRef.current },
+  });
+
+  const confirmarSenha = async (e) => {
+    e.preventDefault();
+    const senhaDigitada = senhaAuth;
+    setSenhaAuth('');
+    try {
+      const resposta = await fetch(API_URL.replace(/\/movimentacoes$/, '/validar-senha'), {
+        method: 'POST',
+        headers: { 'x-senha-acao': senhaDigitada },
+      });
+      if (!resposta.ok) {
+        alert(resposta.status === 401
+          ? '❌ Senha incorreta! Ação bloqueada.'
+          : '❌ Não foi possível conferir a senha no servidor. Ação bloqueada.');
+        return;
+      }
+    } catch (erro) {
+      alert('❌ Sem conexão com o servidor. Ação bloqueada.');
+      return;
+    }
+    senhaAcaoRef.current = senhaDigitada;
+    const cb = authConfig.callback;
+    setAuthConfig({ visivel: false, callback: null, mensagem: '' });
+    if (cb) cb();
+  };
 
   const parseNumero = (val) => {
     if (typeof val === 'number') return val;
@@ -278,7 +297,10 @@ const SunnyWearTecidos = () => {
       if (resposta.ok) {
         const dados = await resposta.json();
         if (Array.isArray(dados)) {
-          setMovimentacoes(dados);
+          const origemApi = new URL(API_URL, window.location.href).origin;
+          setMovimentacoes(dados.map((m) => (
+            typeof m.foto === 'string' && m.foto.startsWith('/') ? { ...m, foto: `${origemApi}${m.foto}` } : m
+          )));
         } else {
           setMovimentacoes([]);
         }
@@ -295,20 +317,51 @@ const SunnyWearTecidos = () => {
 
   useEffect(() => {
     carregarDadosDoServidor();
-    const intervalo = setInterval(carregarDadosDoServidor, 5000);
-    return () => clearInterval(intervalo);
+    // Atualiza a cada minuto, só com a aba visível, e ao voltar para a aba
+    const atualizarSeVisivel = () => {
+      if (!document.hidden) carregarDadosDoServidor();
+    };
+    const intervalo = setInterval(atualizarSeVisivel, 60000);
+    document.addEventListener('visibilitychange', atualizarSeVisivel);
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', atualizarSeVisivel);
+    };
   }, []);
 
-  const handleFotoChange = (e) => {
+  // Reduz a foto (máx. 1600 px, JPEG) antes de enviar: o servidor na Netlify
+  // aceita no máximo ~6 MB por envio e fotos de celular passam disso.
+  const comprimirFoto = (file) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const LADO_MAX = 1600;
+      const escala = Math.min(1, LADO_MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF'; // fundo branco para imagens com transparência
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não foi possível ler a imagem.')); };
+    img.src = url;
+  });
+
+  const lerFoto = async (e, aplicar) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm((prev) => ({ ...prev, foto: reader.result }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      aplicar(await comprimirFoto(file));
+    } catch (erro) {
+      alert('❌ Não foi possível usar esta imagem. Tente uma foto em JPG ou PNG.');
     }
   };
+
+  const handleFotoChange = (e) => lerFoto(e, (foto) => setForm((prev) => ({ ...prev, foto })));
 
   const reservas = movimentacoes.filter(isItemReserva);
   const sobras = movimentacoes.filter(isItemRetalho);
@@ -430,13 +483,13 @@ const SunnyWearTecidos = () => {
       try {
         let resposta;
         if (idEditandoSobra) {
-          resposta = await fetch(`${API_URL}/${encodeURIComponent(idEditandoSobra)}`, {
+          resposta = await apiFetch(`${API_URL}/${encodeURIComponent(idEditandoSobra)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(novaSobra)
           });
         } else {
-          resposta = await fetch(API_URL, {
+          resposta = await apiFetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(novaSobra)
@@ -478,7 +531,6 @@ const SunnyWearTecidos = () => {
       setCarregando(true);
       try {
         const itemId = item.id || item._id;
-        await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
         const registroSaida = {
           ...item,
@@ -491,11 +543,15 @@ const SunnyWearTecidos = () => {
         delete registroSaida.id;
         delete registroSaida._id;
 
-        await fetch(API_URL, {
+        // Grava a saída antes de apagar o retalho, para a foto ser copiada e nada se perder se falhar
+        const respostaSaida = await apiFetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(registroSaida)
         });
+        if (!respostaSaida.ok) throw new Error(await respostaSaida.text());
+
+        await apiFetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
         alert('✅ Retalho utilizado na produção!');
         await carregarDadosDoServidor();
@@ -513,7 +569,7 @@ const SunnyWearTecidos = () => {
     pedirSenha('Autorização necessária para excluir o retalho:', async () => {
       setCarregando(true);
       try {
-        await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        await apiFetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
         alert('Retalho excluído.');
         await carregarDadosDoServidor();
       } catch (err) {
@@ -564,13 +620,13 @@ const SunnyWearTecidos = () => {
       try {
         let resposta;
         if (idEditandoReserva) {
-          resposta = await fetch(`${API_URL}/${encodeURIComponent(idEditandoReserva)}`, {
+          resposta = await apiFetch(`${API_URL}/${encodeURIComponent(idEditandoReserva)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(novaReserva)
           });
         } else {
-          resposta = await fetch(API_URL, {
+          resposta = await apiFetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(novaReserva)
@@ -612,7 +668,7 @@ const SunnyWearTecidos = () => {
       setCarregando(true);
       try {
         const itemId = item.id || item._id;
-        await fetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
+        await apiFetch(`${API_URL}/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 
         const dadosSaida = {
           tipoMovimento: 'saida',
@@ -629,7 +685,7 @@ const SunnyWearTecidos = () => {
           notaFiscal: obterNumeroPedido(item) ? `PEDIDO ${obterNumeroPedido(item)}` : '-'
         };
 
-        await fetch(API_URL, {
+        await apiFetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(dadosSaida)
@@ -652,7 +708,7 @@ const SunnyWearTecidos = () => {
     pedirSenha('Autorização para cancelar reserva:', async () => {
       setCarregando(true);
       try {
-        const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const resposta = await apiFetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
         if (resposta.ok) {
           alert('🔄 Reserva cancelada e tecido retornado.');
           await carregarDadosDoServidor();
@@ -771,7 +827,7 @@ const SunnyWearTecidos = () => {
             fornecedor: (modo === 'reservar' ? `📌 RESERVA ${descricao}` : descricao).slice(0, 255),
             notaFiscal: `PEDIDO ${numero}`.slice(0, 100),
           };
-          const resposta = await fetch(API_URL, {
+          const resposta = await apiFetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(registro),
@@ -840,13 +896,13 @@ const SunnyWearTecidos = () => {
             fornecedor: `PEDIDO ${p.numero}${p.cliente ? ` - ${p.cliente}` : ''}`.slice(0, 255),
             notaFiscal: `PEDIDO ${p.numero}`.slice(0, 100),
           };
-          const criada = await fetch(API_URL, {
+          const criada = await apiFetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dadosSaida),
           });
           if (!criada.ok) throw new Error(await criada.text());
-          const apagada = await fetch(`${API_URL}/${encodeURIComponent(r.id || r._id)}`, { method: 'DELETE' });
+          const apagada = await apiFetch(`${API_URL}/${encodeURIComponent(r.id || r._id)}`, { method: 'DELETE' });
           if (!apagada.ok) throw new Error('Não foi possível remover a reserva de ' + r.nome);
         }
         alert(`✅ Baixa do pedido ${p.numero} registrada!`);
@@ -867,7 +923,7 @@ const SunnyWearTecidos = () => {
       setCarregando(true);
       try {
         for (const r of p.reservados) {
-          const resposta = await fetch(`${API_URL}/${encodeURIComponent(r.id || r._id)}`, { method: 'DELETE' });
+          const resposta = await apiFetch(`${API_URL}/${encodeURIComponent(r.id || r._id)}`, { method: 'DELETE' });
           if (!resposta.ok) throw new Error('Não foi possível cancelar a reserva de ' + r.nome);
         }
         alert(`🔄 Reserva do pedido ${p.numero} cancelada.`);
@@ -952,7 +1008,7 @@ const SunnyWearTecidos = () => {
               tipoMovimento: 'entrada'
             };
 
-            resposta = await fetch(`${API_URL}/${encodeURIComponent(idExistente)}`, {
+            resposta = await apiFetch(`${API_URL}/${encodeURIComponent(idExistente)}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(dadosAtualizados)
@@ -980,13 +1036,13 @@ const SunnyWearTecidos = () => {
         };
 
         if (targetId) {
-          resposta = await fetch(`${API_URL}/${encodeURIComponent(targetId)}`, {
+          resposta = await apiFetch(`${API_URL}/${encodeURIComponent(targetId)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dadosParaEnviar)
           });
         } else {
-          resposta = await fetch(API_URL, {
+          resposta = await apiFetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dadosParaEnviar)
@@ -1053,7 +1109,7 @@ const SunnyWearTecidos = () => {
     
     pedirSenha('Autorização para apagar este item:', async () => {
       try {
-        const resposta = await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const resposta = await apiFetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
         if (resposta.ok) {
           alert('Excluído com sucesso.');
           carregarDadosDoServidor();
@@ -1071,14 +1127,7 @@ const SunnyWearTecidos = () => {
   const urlQrDoLote = (loteId, tamanho = 260) =>
     `https://api.qrserver.com/v1/create-qr-code/?size=${tamanho}x${tamanho}&data=${encodeURIComponent(urlDoLote(loteId))}`;
 
-  const handleFotoItemLote = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setItemLote((prev) => ({ ...prev, foto: reader.result }));
-      reader.readAsDataURL(file);
-    }
-  };
+  const handleFotoItemLote = (e) => lerFoto(e, (foto) => setItemLote((prev) => ({ ...prev, foto })));
 
   const adicionarItemAoLote = (e) => {
     e.preventDefault();
@@ -1162,7 +1211,7 @@ const SunnyWearTecidos = () => {
             observacao: `[LOTE:${codigoLote}]${obsExtra}`
           };
           try {
-            let resp = await fetch(API_URL, {
+            let resp = await apiFetch(API_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(registro)
@@ -1170,7 +1219,7 @@ const SunnyWearTecidos = () => {
             if (!resp.ok) {
               // Se o servidor não aceitar o tipo 'lote', grava com a marcação [LOTE:...],
               // que continua sendo ignorada pelos cálculos de estoque.
-              resp = await fetch(API_URL, {
+              resp = await apiFetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...registro, tipoMovimento: 'entrada' })
@@ -1211,7 +1260,7 @@ const SunnyWearTecidos = () => {
         for (const r of registros) {
           const id = r.id || r._id;
           if (id !== undefined && id !== null) {
-            await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            await apiFetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
           }
         }
         alert(`🗑️ Lote ${loteId} excluído.`);
@@ -1321,7 +1370,7 @@ const SunnyWearTecidos = () => {
       };
       setCarregando(true);
       try {
-        const resp = await fetch(API_URL, {
+        const resp = await apiFetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(registro)
@@ -1349,7 +1398,7 @@ const SunnyWearTecidos = () => {
     pedirSenha('Autorização para desfazer a saída:', async () => {
       setCarregando(true);
       try {
-        await fetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        await apiFetch(`${API_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' });
         setUsoLote(null);
         await carregarDadosDoServidor();
       } catch (err) {
@@ -1426,7 +1475,7 @@ const SunnyWearTecidos = () => {
   const entradasMetros = somarMetros(listaSeguraCalculos.filter(isItemEntradaNormal));
   const saidasMetros = somarMetros(listaSeguraCalculos.filter(isItemSaidaNormal));
   const saidasHojeMetros = somarMetros(listaSeguraCalculos.filter(m => isItemSaidaNormal(m) && ehDeHoje(m)));
-    
+
   const totalReservasMetros = somarMetros(reservas);
   const totalSobrasMetros = somarMetros(sobras);
 
