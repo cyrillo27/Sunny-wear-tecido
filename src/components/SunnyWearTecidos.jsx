@@ -114,6 +114,14 @@ const SunnyWearTecidos = () => {
   const [loteSelecionado, setLoteSelecionado] = useState(null); // id do lote aberto no modal de QR
   const [usoLote, setUsoLote] = useState(null); // { loteId, item, quantidade, observacao } — modal "Usar tecido do lote"
 
+  // 🧾 Pedidos: monta o pedido e confere se há tecido livre no estoque
+  const [pedidoCab, setPedidoCab] = useState({ numero: '', cliente: '' });
+  const [itensPedido, setItensPedido] = useState([]);
+  const [itemPedido, setItemPedido] = useState(null); // tecido escolhido na pesquisa, aguardando a quantidade
+  const [qtdItemPedido, setQtdItemPedido] = useState('');
+  const [termoBuscaPedido, setTermoBuscaPedido] = useState('');
+  const [buscaPedidosTexto, setBuscaPedidosTexto] = useState('');
+
   // 🔒 Sistema de Senha
   const [authConfig, setAuthConfig] = useState({ visivel: false, callback: null, mensagem: '' });
   const [senhaAuth, setSenhaAuth] = useState('');
@@ -649,7 +657,8 @@ const SunnyWearTecidos = () => {
           localizacao: item.localizacao,
           observacao: 'Baixa de reserva efetuada',
           fornecedor: 'CONSUMO-RESERVA',
-          notaFiscal: '-'
+          // Reserva de pedido continua ligada ao pedido depois da baixa
+          notaFiscal: obterNumeroPedido(item) ? `PEDIDO ${obterNumeroPedido(item)}` : '-'
         };
 
         await apiFetch(API_URL, {
@@ -685,6 +694,220 @@ const SunnyWearTecidos = () => {
       } catch (err) {
         alert('Erro de conexão.');
       } finally {
+        setCarregando(false);
+      }
+    });
+  };
+
+  // ================= 🧾 PEDIDOS =================
+  // O pedido fica gravado nos próprios registros: notaFiscal = "PEDIDO <número>"
+  const MARCA_PEDIDO_RE = /^PEDIDO\s+(.+)$/i;
+  const obterNumeroPedido = (item) => {
+    const achado = String(item?.notafiscal || item?.notaFiscal || '').trim().match(MARCA_PEDIDO_RE);
+    return achado ? achado[1].trim() : null;
+  };
+  // Tira do nome do cliente palavras que o sistema usa para classificar os registros
+  const limparTextoPedido = (txt) => String(txt || '')
+    .replace(/reserva|retalho|sobra|consumo|baixa|uso futuro|\[|\]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const chaveTecido = (codigo, cor) => `${normalizarTexto(codigo)}_${normalizarTexto(cor || 'N/D')}`;
+
+  // Soma o que o pedido pede de cada tecido e compara com o estoque livre
+  const analisarPedido = (itens) => {
+    const grupos = {};
+    itens.forEach((it) => {
+      const k = chaveTecido(it.codigo, it.cor);
+      if (!grupos[k]) grupos[k] = { ...it, pedido: 0 };
+      grupos[k].pedido = arredondar(grupos[k].pedido + parseNumero(it.quantidade));
+    });
+    return Object.values(grupos).map((g) => {
+      const livre = calcularEstoqueLivre(g.codigo, g.cor);
+      const falta = arredondar(Math.max(0, g.pedido - livre));
+      return { ...g, livre, falta, ok: falta === 0 };
+    });
+  };
+
+  const analisePedidoAtual = analisarPedido(itensPedido);
+  const pedidoTodoDisponivel = itensPedido.length > 0 && analisePedidoAtual.every((a) => a.ok);
+
+  const adicionarItemPedido = (e) => {
+    e.preventDefault();
+    if (!itemPedido) {
+      alert('Pesquise e escolha um tecido primeiro.');
+      return;
+    }
+    const qtd = parseNumero(qtdItemPedido);
+    if (qtd <= 0) {
+      alert('Informe a quantidade do tecido para este pedido.');
+      return;
+    }
+    setItensPedido((prev) => [...prev, { ...itemPedido, quantidade: qtd, tmpId: `${Date.now()}-${Math.random()}` }]);
+    setItemPedido(null);
+    setQtdItemPedido('');
+  };
+
+  const removerItemPedido = (tmpId) => setItensPedido((prev) => prev.filter((it) => it.tmpId !== tmpId));
+
+  const limparPedido = () => {
+    setPedidoCab({ numero: '', cliente: '' });
+    setItensPedido([]);
+    setItemPedido(null);
+    setQtdItemPedido('');
+    setTermoBuscaPedido('');
+  };
+
+  // modo: 'reservar' (separa o tecido) ou 'baixar' (saída definitiva do estoque)
+  const gravarPedido = (modo) => {
+    const numero = limparTextoPedido(pedidoCab.numero).toUpperCase();
+    const cliente = limparTextoPedido(pedidoCab.cliente);
+    if (!numero) {
+      alert('Informe o número do pedido.');
+      return;
+    }
+    if (itensPedido.length === 0) {
+      alert('Adicione pelo menos um tecido ao pedido.');
+      return;
+    }
+    if (movimentacoes.some((m) => normalizarTexto(obterNumeroPedido(m)) === normalizarTexto(numero))) {
+      alert(`⚠️ Já existe um pedido ${numero} registrado. Use outro número.`);
+      return;
+    }
+    const analise = analisarPedido(itensPedido);
+    const faltando = analise.filter((a) => !a.ok);
+    if (faltando.length > 0) {
+      alert('❌ Não há estoque suficiente para este pedido:\n\n' + faltando.map((f) =>
+        `• ${f.nome} (${f.cor}) — pedido ${f.pedido} ${f.unidade}, livre ${f.livre} ${f.unidade}, falta ${f.falta} ${f.unidade}`
+      ).join('\n'));
+      return;
+    }
+
+    const titulo = modo === 'reservar' ? 'reservar o tecido do pedido' : 'dar baixa (saída) no pedido';
+    pedirSenha(`Autorização necessária para ${titulo} ${numero}:`, async () => {
+      setCarregando(true);
+      const salvos = [];
+      try {
+        for (const a of analise) {
+          const movItem = listaSeguraCalculos.find((m) => chaveTecido(m.codigo, m.cor) === chaveTecido(a.codigo, a.cor) && m.localizacao);
+          const descricao = `PEDIDO ${numero}${cliente ? ` - ${cliente}` : ''}`;
+          const registro = {
+            tipoMovimento: 'saida',
+            codigo: a.codigo,
+            nome: a.nome,
+            cor: a.cor,
+            quantidade: a.pedido,
+            metros: a.pedido,
+            unidadeMedida: a.unidade || 'm',
+            localizacao: movItem?.localizacao || 'Separado para pedido',
+            fornecedor: (modo === 'reservar' ? `📌 RESERVA ${descricao}` : descricao).slice(0, 255),
+            notaFiscal: `PEDIDO ${numero}`.slice(0, 100),
+          };
+          const resposta = await apiFetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(registro),
+          });
+          if (!resposta.ok) throw new Error(await resposta.text());
+          salvos.push(`${a.nome} (${a.cor})`);
+        }
+        alert(modo === 'reservar'
+          ? `📌 Pedido ${numero} reservado! O tecido foi separado do estoque livre.`
+          : `✅ Baixa do pedido ${numero} registrada no estoque!`);
+        limparPedido();
+      } catch (erro) {
+        console.error(erro);
+        alert(`❌ Erro ao gravar o pedido: ${erro.message}` +
+          (salvos.length ? `\n\nJá foram gravados: ${salvos.join(', ')}. Confira em "Pedidos registrados".` : ''));
+      } finally {
+        await carregarDadosDoServidor();
+        setCarregando(false);
+      }
+    });
+  };
+
+  // Pedidos já gravados, agrupados pelo número
+  const pedidosRegistrados = (() => {
+    const grupos = {};
+    movimentacoes.forEach((m) => {
+      const numero = obterNumeroPedido(m);
+      if (!numero) return;
+      const k = normalizarTexto(numero);
+      if (!grupos[k]) {
+        const forn = String(m.fornecedor || '');
+        const cliente = forn.includes(' - ') ? forn.split(' - ').slice(1).join(' - ').trim() : '';
+        grupos[k] = { numero, cliente, data: m.data, reservados: [], baixados: [] };
+      }
+      if (isItemReserva(m)) grupos[k].reservados.push(m);
+      else if (isItemSaidaNormal(m)) grupos[k].baixados.push(m);
+      if (String(m.data || '') > String(grupos[k].data || '')) grupos[k].data = m.data;
+    });
+    return Object.values(grupos).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+  })();
+
+  const pedidosFiltrados = pedidosRegistrados.filter((p) => {
+    const termo = normalizarTexto(buscaPedidosTexto);
+    if (!termo) return true;
+    return normalizarTexto(p.numero).includes(termo) ||
+      normalizarTexto(p.cliente).includes(termo) ||
+      [...p.reservados, ...p.baixados].some((m) => normalizarTexto(`${m.codigo} ${m.nome} ${m.cor}`).includes(termo));
+  });
+
+  // Transforma as reservas do pedido em saída definitiva
+  const baixarPedidoReservado = (p) => {
+    if (!window.confirm(`Confirma a baixa definitiva do tecido reservado para o pedido ${p.numero}?`)) return;
+    pedirSenha(`Autorização para dar baixa no pedido ${p.numero}:`, async () => {
+      setCarregando(true);
+      try {
+        for (const r of p.reservados) {
+          const dadosSaida = {
+            tipoMovimento: 'saida',
+            codigo: r.codigo,
+            nome: r.nome,
+            cor: r.cor,
+            quantidade: parseNumero(r.quantidade || r.metros),
+            metros: parseNumero(r.quantidade || r.metros),
+            unidadeMedida: r.unidadeMedida || r.unidademedida || 'm',
+            localizacao: r.localizacao,
+            fornecedor: `PEDIDO ${p.numero}${p.cliente ? ` - ${p.cliente}` : ''}`.slice(0, 255),
+            notaFiscal: `PEDIDO ${p.numero}`.slice(0, 100),
+          };
+          const criada = await apiFetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosSaida),
+          });
+          if (!criada.ok) throw new Error(await criada.text());
+          const apagada = await apiFetch(`${API_URL}/${encodeURIComponent(r.id || r._id)}`, { method: 'DELETE' });
+          if (!apagada.ok) throw new Error('Não foi possível remover a reserva de ' + r.nome);
+        }
+        alert(`✅ Baixa do pedido ${p.numero} registrada!`);
+      } catch (erro) {
+        console.error(erro);
+        alert(`❌ Erro ao dar baixa: ${erro.message}\nConfira o pedido na lista.`);
+      } finally {
+        await carregarDadosDoServidor();
+        setCarregando(false);
+      }
+    });
+  };
+
+  // Cancela as reservas do pedido: o tecido volta para o estoque livre
+  const cancelarPedidoReservado = (p) => {
+    if (!window.confirm(`Cancelar a reserva do pedido ${p.numero}? O tecido volta para o estoque livre.`)) return;
+    pedirSenha(`Autorização para cancelar o pedido ${p.numero}:`, async () => {
+      setCarregando(true);
+      try {
+        for (const r of p.reservados) {
+          const resposta = await apiFetch(`${API_URL}/${encodeURIComponent(r.id || r._id)}`, { method: 'DELETE' });
+          if (!resposta.ok) throw new Error('Não foi possível cancelar a reserva de ' + r.nome);
+        }
+        alert(`🔄 Reserva do pedido ${p.numero} cancelada.`);
+      } catch (erro) {
+        console.error(erro);
+        alert(`❌ ${erro.message}`);
+      } finally {
+        await carregarDadosDoServidor();
         setCarregando(false);
       }
     });
@@ -1741,6 +1964,12 @@ const SunnyWearTecidos = () => {
           >
             📤 Registrar Saída
           </button>
+          <button
+            onClick={() => { setAbaAtiva('pedidos'); setMenuMobileAberto(false); carregarDadosDoServidor(); }}
+            style={{ ...styles.sidebarLink, ...(abaAtiva === 'pedidos' ? styles.sidebarLinkActive : {}) }}
+          >
+            🧾 Pedidos
+          </button>
           <button 
             onClick={() => { setAbaAtiva('reservas'); setMenuMobileAberto(false); }} 
             style={{ ...styles.sidebarLink, ...(abaAtiva === 'reservas' ? styles.sidebarLinkActive : {}) }}
@@ -2218,6 +2447,225 @@ const SunnyWearTecidos = () => {
           </div>
         )}
 
+        {abaAtiva === 'pedidos' && (
+          <div style={styles.cardSection}>
+            <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+              <div>
+                <h3 style={{ ...styles.sectionTitle, margin: 0 }}>🧾 Novo Pedido — Conferir Estoque</h3>
+                <p style={{ color: '#64748B', fontSize: '13px', margin: '4px 0 0 0' }}>Monte o pedido com os tecidos e quantidades. O sistema mostra na hora se há estoque livre (já descontando reservas e sobras) e quanto falta.</p>
+              </div>
+              <button type="button" onClick={carregarDadosDoServidor} disabled={carregando} style={{ ...styles.btnEditar, padding: '8px 12px' }}>
+                {carregando ? '⏳ Atualizando...' : '🔄 Atualizar estoque'}
+              </button>
+            </div>
+
+            <div style={styles.formGrid} className="form-grid-responsive">
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Número do Pedido *</label>
+                <input type="text" placeholder="Ex: 1234" value={pedidoCab.numero} onChange={(e) => setPedidoCab({ ...pedidoCab, numero: e.target.value })} style={styles.input} />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Cliente / Destino (Opcional)</label>
+                <input type="text" placeholder="Ex: Loja Centro / Coleção Verão" value={pedidoCab.cliente} onChange={(e) => setPedidoCab({ ...pedidoCab, cliente: e.target.value })} style={styles.input} />
+              </div>
+            </div>
+
+            <form onSubmit={adicionarItemPedido} style={{ background: '#EFF6FF', padding: '16px', borderRadius: '10px', border: '2px solid #2563EB', marginTop: '18px' }}>
+              <label style={{ ...styles.formLabel, color: '#1D4ED8', fontSize: '12px' }}>➕ ADICIONAR TECIDO AO PEDIDO (pesquise e clique na cor)</label>
+              {!itemPedido ? (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Digite o código, nome ou cor do tecido..."
+                    value={termoBuscaPedido}
+                    onChange={(e) => setTermoBuscaPedido(e.target.value)}
+                    style={{ ...styles.inputFull, border: '1px solid #93C5FD', marginBottom: '0' }}
+                  />
+                  {termoBuscaPedido.trim() !== '' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto', marginTop: '12px' }}>
+                      {(() => {
+                        const termo = normalizarTexto(termoBuscaPedido);
+                        const resultados = tecidosConsolidadosArray.filter(t =>
+                          normalizarTexto(t.codigo).includes(termo) ||
+                          normalizarTexto(t.nome).includes(termo) ||
+                          normalizarTexto(t.cor).includes(termo)
+                        );
+                        if (resultados.length === 0) {
+                          return <div style={{ textAlign: 'center', color: '#64748B', fontSize: '13px', padding: '10px' }}>Nenhum tecido cadastrado com esse nome/código. Cadastre em "Registrar Entrada".</div>;
+                        }
+                        return resultados.map((t, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => { setItemPedido({ codigo: t.codigo, nome: t.nome, cor: t.cor, unidade: t.unidade || 'm' }); setTermoBuscaPedido(''); }}
+                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#FFFFFF', border: '1px solid #BFDBFE', borderRadius: '8px', cursor: 'pointer', gap: '10px' }}
+                          >
+                            <div>
+                              <strong style={{ color: '#0F172A', fontSize: '14px' }}>{t.nome}</strong> <span style={{ fontSize: '12px', color: '#64748B' }}>(Cód: {t.codigo})</span><br />
+                              <span style={{ color: '#2563EB', fontWeight: '800', fontSize: '14px' }}>🎨 Cor: {t.cor}</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ color: t.total > 0 ? '#059669' : '#DC2626', fontWeight: '800', fontSize: '16px' }}>{t.total} {t.unidade} livres</span><br />
+                              <span style={{ fontSize: '12px', color: '#4F46E5', fontWeight: '700' }}>👉 Clique para escolher</span>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: '6px' }}>
+                  <div style={{ flex: '2 1 220px', background: '#fff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
+                    <strong style={{ color: '#0F172A' }}>{itemPedido.nome}</strong> <span style={{ fontSize: '12px', color: '#64748B' }}>(Cód: {itemPedido.codigo})</span><br />
+                    <span style={{ color: '#2563EB', fontWeight: '700', fontSize: '13px' }}>🎨 {itemPedido.cor}</span>
+                    <span style={{ fontSize: '12px', color: '#059669', fontWeight: '700', marginLeft: '8px' }}>Livre: {calcularEstoqueLivre(itemPedido.codigo, itemPedido.cor)} {itemPedido.unidade}</span>
+                  </div>
+                  <div style={{ ...styles.formGroup, flex: '1 1 140px' }}>
+                    <label style={styles.formLabel}>Quantidade ({itemPedido.unidade}) *</label>
+                    <input type="text" inputMode="decimal" autoFocus placeholder="Ex: 25,5" value={qtdItemPedido} onChange={(e) => setQtdItemPedido(e.target.value)} style={styles.input} />
+                  </div>
+                  <button type="submit" style={{ ...styles.button, width: 'auto', background: '#2563EB', color: '#fff', padding: '12px 18px' }}>➕ Adicionar</button>
+                  <button type="button" onClick={() => { setItemPedido(null); setQtdItemPedido(''); }} style={{ ...styles.button, width: 'auto', background: '#64748B', color: '#fff', padding: '12px 18px' }}>Trocar tecido</button>
+                </div>
+              )}
+            </form>
+
+            <div style={{ marginTop: '24px' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📋 Conferência do Pedido {pedidoCab.numero ? `nº ${pedidoCab.numero}` : ''}</h4>
+              <div style={styles.tableResponsive}>
+                <table style={{ ...styles.table, minWidth: '720px' }}>
+                  <thead>
+                    <tr style={styles.thTr}>
+                      <th style={styles.th}>Tecido / Cor</th>
+                      <th style={styles.th}>Pedido</th>
+                      <th style={styles.th}>Livre no Estoque</th>
+                      <th style={styles.th}>Situação</th>
+                      <th style={styles.th}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itensPedido.length === 0 ? (
+                      <tr><td colSpan="5" style={styles.empty}>Nenhum tecido adicionado ao pedido ainda.</td></tr>
+                    ) : (
+                      itensPedido.map((it) => {
+                        const a = analisePedidoAtual.find((x) => chaveTecido(x.codigo, x.cor) === chaveTecido(it.codigo, it.cor));
+                        const repetido = a && a.pedido !== arredondar(parseNumero(it.quantidade));
+                        return (
+                          <tr key={it.tmpId} style={{ ...styles.tr, background: a?.ok ? '#F0FDF4' : '#FEF2F2' }}>
+                            <td style={styles.td}>
+                              <div style={{ fontWeight: '600', color: '#0F172A' }}>{it.nome} (<span style={{ color: '#2563EB' }}>{it.cor}</span>)</div>
+                              <span style={{ fontSize: '11px', color: '#64748B' }}>Cód: {it.codigo}</span>
+                            </td>
+                            <td style={styles.td}>
+                              <strong>{it.quantidade} {it.unidade}</strong>
+                              {repetido && <div style={{ fontSize: '11px', color: '#64748B' }}>Total deste tecido no pedido: {a.pedido} {it.unidade}</div>}
+                            </td>
+                            <td style={styles.td}><strong style={{ color: a?.livre > 0 ? '#059669' : '#DC2626' }}>{a?.livre} {it.unidade}</strong></td>
+                            <td style={styles.td}>
+                              {a?.ok
+                                ? <span style={{ ...styles.badge, background: '#DCFCE7', color: '#166534' }}>✅ Disponível</span>
+                                : <span style={{ ...styles.badge, background: '#FEE2E2', color: '#991B1B' }}>❌ Falta {a?.falta} {it.unidade}</span>}
+                            </td>
+                            <td style={styles.td}>
+                              <button onClick={() => removerItemPedido(it.tmpId)} style={styles.btnDeletar} title="Tirar do pedido">🗑️</button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {itensPedido.length > 0 && (
+                <div style={{ marginTop: '16px', padding: '14px 16px', borderRadius: '10px', border: `2px solid ${pedidoTodoDisponivel ? '#16A34A' : '#DC2626'}`, background: pedidoTodoDisponivel ? '#F0FDF4' : '#FEF2F2' }}>
+                  <strong style={{ color: pedidoTodoDisponivel ? '#166534' : '#991B1B', fontSize: '15px' }}>
+                    {pedidoTodoDisponivel
+                      ? '✅ Tem estoque para o pedido inteiro!'
+                      : `❌ Estoque insuficiente em ${analisePedidoAtual.filter(a => !a.ok).length} tecido(s). Compre ou ajuste o pedido antes de confirmar.`}
+                  </strong>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
+                    <button type="button" disabled={!pedidoTodoDisponivel || carregando} onClick={() => gravarPedido('reservar')} style={{ ...styles.button, width: 'auto', flex: '1 1 220px', background: pedidoTodoDisponivel ? 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)' : '#94A3B8', color: '#fff', cursor: pedidoTodoDisponivel ? 'pointer' : 'not-allowed' }}>
+                      📌 Reservar tecido para o pedido
+                    </button>
+                    <button type="button" disabled={!pedidoTodoDisponivel || carregando} onClick={() => gravarPedido('baixar')} style={{ ...styles.button, width: 'auto', flex: '1 1 220px', background: pedidoTodoDisponivel ? '#059669' : '#94A3B8', color: '#fff', cursor: pedidoTodoDisponivel ? 'pointer' : 'not-allowed' }}>
+                      📤 Dar baixa agora (saída)
+                    </button>
+                    <button type="button" onClick={limparPedido} style={{ ...styles.button, width: 'auto', flex: '0 1 160px', background: '#64748B', color: '#fff' }}>
+                      Limpar pedido
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#64748B', margin: '10px 0 0 0' }}>
+                    <strong>Reservar</strong>: o tecido sai do estoque livre e fica guardado para o pedido (dá baixa depois). <strong>Dar baixa</strong>: registra a saída definitiva agora.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: '36px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                <h4 style={{ margin: 0, fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>📚 Pedidos Registrados</h4>
+                <span style={{ fontSize: '12px', color: '#64748B' }}>Total: <strong>{pedidosFiltrados.length}</strong></span>
+              </div>
+              <input
+                type="text"
+                placeholder="Pesquisar por número do pedido, cliente ou tecido..."
+                value={buscaPedidosTexto}
+                onChange={(e) => setBuscaPedidosTexto(e.target.value)}
+                style={styles.inputFull}
+              />
+              <div style={styles.tableResponsive}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr style={styles.thTr}>
+                      <th style={styles.th}>Pedido</th>
+                      <th style={styles.th}>Data</th>
+                      <th style={styles.th}>Tecidos</th>
+                      <th style={styles.th}>Situação</th>
+                      <th style={styles.th}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pedidosFiltrados.length === 0 ? (
+                      <tr><td colSpan="5" style={styles.empty}>Nenhum pedido registrado ainda.</td></tr>
+                    ) : (
+                      pedidosFiltrados.map((p) => (
+                        <tr key={p.numero} style={styles.tr}>
+                          <td style={styles.td}>
+                            <strong style={{ color: '#0F172A' }}>nº {p.numero}</strong>
+                            {p.cliente && <div style={{ fontSize: '12px', color: '#64748B' }}>{p.cliente}</div>}
+                          </td>
+                          <td style={styles.td}>{formatarData(p.data)}</td>
+                          <td style={styles.td}>
+                            {[...p.reservados, ...p.baixados].map((m) => (
+                              <div key={m.id || m._id} style={{ fontSize: '12px', marginBottom: '2px' }}>
+                                {isItemReserva(m) ? '📌' : '📤'} {m.nome} (<span style={{ color: '#2563EB' }}>{m.cor}</span>) — <strong>{parseNumero(m.quantidade || m.metros)} {m.unidademedida || m.unidadeMedida || 'm'}</strong>
+                              </div>
+                            ))}
+                          </td>
+                          <td style={styles.td}>
+                            {p.reservados.length > 0
+                              ? <span style={{ ...styles.badge, background: '#FEF3C7', color: '#92400E' }}>📌 Reservado{p.baixados.length > 0 ? ' (parcial)' : ''}</span>
+                              : <span style={{ ...styles.badge, background: '#DCFCE7', color: '#166534' }}>✅ Baixado</span>}
+                          </td>
+                          <td style={styles.td}>
+                            {p.reservados.length > 0 ? (
+                              <>
+                                <button onClick={() => baixarPedidoReservado(p)} style={styles.btnUsarSobra} title="Dar baixa definitiva no tecido reservado">✅ Dar baixa</button>
+                                <button onClick={() => cancelarPedidoReservado(p)} style={styles.btnDeletar} title="Cancelar reserva e devolver o tecido ao estoque">🗑️</button>
+                              </>
+                            ) : <span style={{ fontSize: '12px', color: '#94A3B8' }}>—</span>}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         {abaAtiva === 'reservas' && (
           <div style={styles.cardSection}>
             <div style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '14px', marginBottom: '20px' }}>
@@ -2381,7 +2829,7 @@ const SunnyWearTecidos = () => {
                           </td>
                           <td style={styles.td}><strong style={{ color: '#D97706', fontSize: '14px' }}>{item.quantidade} {item.unidadeMedida}</strong></td>
                           <td style={styles.td}><span style={styles.localBadge}>📍 {item.localizacao}</span></td>
-                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{(item.observacao || '').replace(/RESERVA(\s-\s)?/gi, '')}</span></td>
+                          <td style={styles.td}><span style={{ color: '#64748B', fontSize: '12px' }}>{obterNumeroPedido(item) ? `🧾 ${String(item.fornecedor || '').replace(/📌\s*RESERVA\s*/i, '')}` : (item.observacao || '').replace(/RESERVA(\s-\s)?/gi, '')}</span></td>
                           <td style={styles.td}>
                             <button onClick={() => concluirReserva(item)} style={styles.btnUsarSobra} title="Consumir / Dar baixa definitiva">✅ Usar</button>
                             <button onClick={() => setQrSelecionado(item)} style={styles.btnQr} title="Gerar QR Code da Reserva">🔲</button>
